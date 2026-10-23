@@ -97,7 +97,7 @@ public sealed class OptionsWindow : Window
             _log("Full ZIP log export started: " + path);
             await FFmpegLogArchiveService.SaveZipAsync(
                 path, _sessionLog, _getSettings(), _getQueueSnapshot(),
-                progress => Dispatcher.UIThread.Post(() => _status.Text = progress));
+                progress => Avalonia.Threading.Dispatcher.UIThread.Post(() => _status.Text = progress));
 
             _log("Full ZIP log export finished: " + path);
             _status.Text = $"Saved full ZIP log archive:{Environment.NewLine}{path}";

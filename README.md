@@ -2,7 +2,7 @@
 
 **FFGrabber** is a Windows-first graphical frontend for the real FFmpeg command-line tools. It launches `ffmpeg.exe`, `ffprobe.exe`, and `ffplay.exe` directly; it does not embed a separate media engine.
 
-> **Status: early preview (0.1.0).** The initial source implements the Avalonia GUI, direct process invocation, basic transcode/remux/extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, progress parsing, cancellation, tool discovery, and x64/ARM64 installer automation. It is not yet a feature-complete replacement for a professional mastering suite.
+> **Status: early preview (0.1.0).** The initial source implements the Avalonia GUI, direct process invocation, basic transcode/remux/extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, process logging, cancellation, tool discovery, and x64/ARM64 installer automation. It is not yet a feature-complete replacement for a professional mastering suite.
 
 ## Stack
 
@@ -18,7 +18,7 @@
 - Configure encoder preset, CRF or target bitrate, output resolution, frame rate, pixel format, audio codec and bitrate.
 - Remux with stream copy, extract audio, or copy video without audio.
 - Preview generated FFmpeg arguments before running.
-- Queue jobs sequentially, display progress, and cancel the active process.
+- Queue jobs sequentially, stream process output into the log, and cancel the active process.
 - Inspect container and stream metadata using ffprobe JSON output.
 - Launch ffplay to preview a source file.
 - Find tools on PATH, in bundled folders, or at a user-selected location.

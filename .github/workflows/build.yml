@@ -129,8 +129,8 @@ jobs:
         shell: pwsh
         run: |
           $version = '0.1.0'
-          if ('\${{ github.ref_type }}' -eq 'tag' -and '\${{ github.ref_name }}'.StartsWith('v')) {
-            $version = '\${{ github.ref_name }}'.Substring(1)
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}'.StartsWith('v')) {
+            $version = '${{ github.ref_name }}'.Substring(1)
           }
           if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') { throw "Invalid release version: $version" }
           "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -139,9 +139,9 @@ jobs:
         id: release-check
         shell: pwsh
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $tagName = 'v\${{ steps.release-version.outputs.value }}'
+          $tagName = 'v${{ steps.release-version.outputs.value }}'
           $uri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$tagName"
           $headers = @{
             Authorization = "Bearer $env:GH_TOKEN"
@@ -184,10 +184,10 @@ jobs:
           $setups = @(Get-ChildItem -Path release-assets -File -Filter 'FFGrabber-Setup-*.exe')
           if ($setups.Count -ne 2) { throw "Expected both setup executables, found $($setups.Count)." }
           $names = @($setups | ForEach-Object { $_.Name })
-          if ($names -notcontains 'FFGrabber-Setup-x64-v\${{ steps.release-version.outputs.value }}.exe') {
+          if ($names -notcontains 'FFGrabber-Setup-x64-v${{ steps.release-version.outputs.value }}.exe') {
             throw 'The x64 installer is missing from release assets.'
           }
-          if ($names -notcontains 'FFGrabber-Setup-arm64-v\${{ steps.release-version.outputs.value }}.exe') {
+          if ($names -notcontains 'FFGrabber-Setup-arm64-v${{ steps.release-version.outputs.value }}.exe') {
             throw 'The ARM64 installer is missing from release assets.'
           }
           $lines = foreach ($setup in ($setups | Sort-Object Name)) {
@@ -204,9 +204,9 @@ jobs:
         if: steps.release-check.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v\${{ steps.release-version.outputs.value }}
-          target_commitish: \${{ github.sha }}
-          name: FFGrabber v\${{ steps.release-version.outputs.value }}
+          tag_name: v${{ steps.release-version.outputs.value }}
+          target_commitish: ${{ github.sha }}
+          name: FFGrabber v${{ steps.release-version.outputs.value }}
           files: release-assets/*
           generate_release_notes: true
           fail_on_unmatched_files: true

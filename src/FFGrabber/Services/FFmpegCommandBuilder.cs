@@ -30,6 +30,8 @@ public static class FFmpegCommandBuilder
 
         // FFmpeg input/demuxer options must be placed before the corresponding -i.
         args.AddRange(FFmpegArgumentParser.Parse(s.InputOptions));
+        if (!string.IsNullOrWhiteSpace(s.InputFormat) && !string.Equals(s.InputFormat, "auto", StringComparison.OrdinalIgnoreCase))
+            args.AddRange(["-f", s.InputFormat.Trim()]);
         args.AddRange(["-i", s.InputPath]);
 
         var customMapping = FFmpegArgumentParser.Parse(s.StreamMappingOptions);
@@ -111,6 +113,8 @@ public static class FFmpegCommandBuilder
 
         args.AddRange(FFmpegArgumentParser.Parse(s.MuxerOptions));
         args.AddRange(FFmpegArgumentParser.Parse(s.OutputOptions));
+        if (!string.IsNullOrWhiteSpace(s.OutputFormat) && !string.Equals(s.OutputFormat, "auto", StringComparison.OrdinalIgnoreCase))
+            args.AddRange(["-f", s.OutputFormat.Trim()]);
         args.Add(s.OutputPath);
         return args;
     }

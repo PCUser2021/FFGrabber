@@ -2,7 +2,7 @@
 
 ## Built-in controls
 
-The standard fields build common transcode, stream-copy/remux, audio-extraction and video-only commands. Inputs and outputs can be local files, URLs, pipes, or FFmpeg protocol/device expressions; the file-picker buttons are a convenience for ordinary local files. The command preview shows the generated argument vector before you start a job.
+The standard fields build common transcode, stream-copy/remux, audio-extraction and video-only commands. Video/audio encoder lists and input demuxer/output muxer lists are discovered from the bundled FFmpeg executable at startup. Select **auto** to let FFmpeg probe the input or infer the output container from the filename. Choosing a specific input format emits `-f` before `-i`; choosing an output format emits `-f` before the destination. Inputs and outputs can be local files, URLs, pipes, or FFmpeg protocol/device expressions; the file-picker buttons are a convenience for ordinary local files. The command preview shows the generated argument vector before you start a job.
 
 ## Advanced option groups
 
@@ -29,4 +29,4 @@ Some switches appear only when a component was compiled into FFmpeg. Hardware en
 
 Open **Options… → Save Logs…** and choose where the ZIP should be written. The support ZIP includes the complete current session log (not the abbreviated on-screen preview), historical FFGrabber session logs found in the local log folder, OS/runtime details, current setting values, active job settings, pending job settings, queue display snapshot, FFmpeg/ffprobe/ffplay versions, FFmpeg build configuration, and full help/capability reports supported by the installed binaries. It does not include the contents of source media. Review the bundle for local paths or sensitive command-line options before sharing it.
 
-Session logs are stored under `%LOCALAPPDATA%\FFGrabber\Logs`.
+The bundled x64 FFmpeg is Gyan's pinned 9.0.2 full GPL build; Windows ARM64 uses a pinned architecture-matched FFmpeg 9.0.2 GPL build. Both archives are checked against pinned SHA-256 digests during CI and local builds. Session logs are stored under `%LOCALAPPDATA%\FFGrabber\Logs`.

@@ -24,7 +24,9 @@ public sealed record EncodingSettings(
     string AudioEncoderOptions = "",
     string FilterOptions = "",
     string MuxerOptions = "",
-    string OutputOptions = "");
+    string OutputOptions = "",
+    string InputFormat = "auto",
+    string OutputFormat = "auto");
 
 public sealed class EncodingJob(EncodingSettings settings)
 {

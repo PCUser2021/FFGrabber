@@ -22,6 +22,8 @@ public partial class MainWindow : Window
     private readonly TextBox _output = new() { PlaceholderText = "Output file path, URL, or FFmpeg target", MinWidth = 420 };
     private readonly ComboBox _mode = Combo(["Convert / encode", "Remux / stream copy", "Extract audio", "Video only"]);
     private readonly ComboBox _videoCodec = Combo(["libx264", "libx265", "libsvtav1", "copy"]);
+    private readonly ComboBox _inputFormat = Combo(["auto"]);
+    private readonly ComboBox _outputFormat = Combo(["auto"]);
     private readonly ComboBox _preset = Combo(["medium", "slow", "fast", "veryfast"]);
     private readonly ComboBox _rateControl = Combo(["CRF quality", "Target bitrate"]);
     private readonly TextBox _crf = new() { Text = "20", Width = 100 };
@@ -41,7 +43,7 @@ public partial class MainWindow : Window
     private readonly TextBox _videoEncoderOptions = MultiLine(@"e.g. -profile:v high -level:v 5.1 -x264-params ""keyint=240:min-keyint=24""", 56);
     private readonly TextBox _audioEncoderOptions = MultiLine("-compression_level 8 -application audio", 56);
     private readonly TextBox _filterOptions = MultiLine(@"e.g. -vf ""scale=1920:-2"" OR -filter_complex ""[0:v]scale=1920:-2[v]""", 60);
-    private readonly TextBox _muxerOptions = MultiLine("-f matroska -cluster_time_limit 1000", 56);
+    private readonly TextBox _muxerOptions = MultiLine("Optional muxer-specific options, e.g. -cluster_time_limit 1000", 56);
     private readonly TextBox _outputOptions = MultiLine(@"e.g. -shortest -t 00:10:00 -metadata comment=""created with FFGrabber""", 56);
 
     private readonly TextBox _preview = new() { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, MinHeight = 52 };
@@ -122,6 +124,8 @@ public partial class MainWindow : Window
         settings.Children.Add(frame);
         settings.Children.Add(Row("Audio codec / encoder", _audioCodec));
         settings.Children.Add(Row("Audio bitrate", _audioBitrate));
+        settings.Children.Add(Row("Input demuxer / format (-f)", _inputFormat));
+        settings.Children.Add(Row("Output muxer / container (-f)", _outputFormat));
 
         var checks = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 18 };
         checks.Children.Add(_metadata);
@@ -163,6 +167,7 @@ public partial class MainWindow : Window
         _sessionLog.Write($"FFGrabber main window initialized; OS={RuntimeInformation.OSDescription}; architecture={RuntimeInformation.ProcessArchitecture}; appVersion={typeof(MainWindow).Assembly.GetName().Version}");
         _sessionLog.Write($"Tool paths: ffmpeg={FFmpegLocator.Find("ffmpeg") ?? "(not found)"}; ffprobe={FFmpegLocator.Find("ffprobe") ?? "(not found)"}; ffplay={FFmpegLocator.Find("ffplay") ?? "(not found)"}");
         AppendDisplayLog("Session log location: " + _sessionLog.CurrentLogPath);
+        Opened += async (_, _) => await LoadAvailableCapabilitiesAsync();
         Closed += (_, _) => _sessionLog.Dispose();
     }
 
@@ -264,7 +269,50 @@ public partial class MainWindow : Window
         _audioEncoderOptions.Text ?? string.Empty,
         _filterOptions.Text ?? string.Empty,
         _muxerOptions.Text ?? string.Empty,
-        _outputOptions.Text ?? string.Empty);
+        _outputOptions.Text ?? string.Empty,
+        Selected(_inputFormat),
+        Selected(_outputFormat));
+
+    private async Task LoadAvailableCapabilitiesAsync()
+    {
+        var executable = FFmpegLocator.Find("ffmpeg");
+        if (executable is null)
+        {
+            AppendLog("FFmpeg was not found; basic fallback encoder options remain available.");
+            return;
+        }
+
+        try
+        {
+            AppendLog("Discovering encoder, demuxer and muxer options from: " + executable);
+            var capabilities = await FFmpegCapabilityService.LoadAsync(executable);
+            SetChoices(_videoCodec, new[] { "copy" }.Concat(capabilities.VideoEncoders), "libx264");
+            SetChoices(_audioCodec, new[] { "copy" }.Concat(capabilities.AudioEncoders), "aac");
+            SetChoices(_inputFormat, new[] { "auto" }.Concat(capabilities.Demuxers), "auto");
+            SetChoices(_outputFormat, new[] { "auto" }.Concat(capabilities.Muxers), "auto");
+            AppendLog($"Discovered {capabilities.VideoEncoders.Count} video encoders, {capabilities.AudioEncoders.Count} audio encoders, {capabilities.Demuxers.Count} demuxers and {capabilities.Muxers.Count} muxers.");
+        }
+        catch (Exception ex)
+        {
+            AppendLog("Dynamic FFmpeg capability discovery failed; advanced text options remain available: " + ex);
+        }
+    }
+
+    private static void SetChoices(ComboBox combo, IEnumerable<string> choices, string preferred)
+    {
+        var previous = combo.SelectedItem?.ToString();
+        var values = choices
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (values.Count == 0)
+            return;
+
+        combo.ItemsSource = values;
+        combo.SelectedItem = values.FirstOrDefault(value => string.Equals(value, previous, StringComparison.OrdinalIgnoreCase))
+            ?? values.FirstOrDefault(value => string.Equals(value, preferred, StringComparison.OrdinalIgnoreCase))
+            ?? values[0];
+    }
 
     private void PreviewCommand(object? sender, RoutedEventArgs e)
     {

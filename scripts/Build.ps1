@@ -3,7 +3,7 @@ param(
     [ValidateSet('x64', 'arm64')]
     [string] $Architecture = 'x64',
     [ValidatePattern('^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$')]
-    [string] $Version = '0.2.0',
+    [string] $Version = '0.3.0',
     [switch] $SkipFfmpegDownload,
     [switch] $Installer
 )
@@ -24,7 +24,7 @@ if (-not $SkipFfmpegDownload) {
 }
 if ($Installer) {
     $candidates = [System.Collections.Generic.List[string]]::new()
-    $standardPath = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\\ISCC.exe'
+    $standardPath = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\ISCC.exe'
     if (Test-Path $standardPath -PathType Leaf) { $candidates.Add($standardPath) }
 
     $onPath = Get-Command 'ISCC.exe' -ErrorAction SilentlyContinue
@@ -45,7 +45,7 @@ if ($Installer) {
     foreach ($candidatePath in $candidates) {
         try {
             $versionText = (Get-Item -LiteralPath $candidatePath).VersionInfo.ProductVersion
-            if ($versionText -match '^(\\d+\\.\\d+\\.\\d+)') {
+            if ($versionText -match '^(\d+\.\d+\.\d+)') {
                 $detectedVersion = [version]::Parse($Matches[1])
                 if ($detectedVersion -ge $requiredInnoVersion) {
                     $isccPath = $candidatePath

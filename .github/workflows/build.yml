@@ -90,18 +90,42 @@ jobs:
             }
           }
 
-      - name: Install Inno Setup
+      - name: Install latest stable Inno Setup from official signed release
         shell: pwsh
-        run: choco install innosetup --version=7.1.0 --yes --no-progress
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            'User-Agent' = 'FFGrabber-build'
+            'Accept' = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/jrsoftware/issrc/releases/latest' -Headers $headers
+          $asset = $release.assets | Where-Object { $_.name -match '^innosetup-\d+\.\d+\.\d+-x64\.exe$' } | Select-Object -First 1
+          if (-not $asset) { throw "Official Inno Setup x64 installer was not found in release $($release.tag_name)." }
+          if ($asset.digest -notmatch '^sha256:[0-9a-fA-F]{64}$') { throw 'GitHub did not provide the official installer SHA-256 digest; refusing an unverified download.' }
+
+          $installerPath = Join-Path $env:RUNNER_TEMP $asset.name
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installerPath -Headers @{ 'User-Agent' = 'FFGrabber-build' }
+          $actualHash = (Get-FileHash -Path $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expectedHash = ($asset.digest -replace '^sha256:', '').ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) { throw "Inno Setup SHA-256 mismatch. Expected $expectedHash, got $actualHash." }
+
+          $signature = Get-AuthenticodeSignature -FilePath $installerPath
+          if ($signature.Status -ne 'Valid') { throw "The official Inno Setup Authenticode signature is not valid: $($signature.Status)." }
+
+          $installDirectory = Join-Path $env:RUNNER_TEMP 'InnoSetup'
+          New-Item -ItemType Directory -Path $installDirectory -Force | Out-Null
+          $process = Start-Process -FilePath $installerPath -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$installDirectory") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Inno Setup installer exited with code $($process.ExitCode)." }
+          $iscc = Join-Path $installDirectory 'ISCC.exe'
+          if (-not (Test-Path $iscc -PathType Leaf)) { throw "Installed compiler not found: $iscc" }
+          Write-Host "Installed signed Inno Setup $($release.tag_name); verified SHA-256 $actualHash."
 
       - name: Compile installer and create SHA-256
         shell: pwsh
         run: |
-          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
-          if (-not (Test-Path $iscc)) {
-            $candidate = Get-ChildItem -Path @($env:ProgramFiles, ${env:ProgramFiles(x86)}) -Filter ISCC.exe -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($candidate) { $iscc = $candidate.FullName } else { throw 'ISCC.exe was not found.' }
-          }
+          $iscc = Join-Path $env:RUNNER_TEMP 'InnoSetup\ISCC.exe'
+          if (-not (Test-Path $iscc -PathType Leaf)) { throw "Verified Inno Setup compiler was not found: $iscc" }
           New-Item -ItemType Directory -Path artifacts/installer -Force | Out-Null
           & $iscc '/DAppArch=${{ matrix.arch }}' '/DAppVersion=${{ steps.app-version.outputs.value }}' '/DAppFileVersion=${{ steps.app-version.outputs.file_value }}' installer/FFGrabber.iss
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
@@ -128,7 +152,7 @@ jobs:
         id: release-version
         shell: pwsh
         run: |
-          $version = '0.1.0'
+          $version = '0.2.0'
           if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}'.StartsWith('v')) {
             $version = '${{ github.ref_name }}'.Substring(1)
           }

@@ -13,6 +13,10 @@ $headers = @{
     'Accept' = 'application/vnd.github+json'
     'X-GitHub-Api-Version' = '2022-11-28'
 }
+# Use the workflow's short-lived GitHub token when available to avoid anonymous API rate limits.
+if (-not [string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+    $headers['Authorization'] = "Bearer $($env:GH_TOKEN)"
+}
 
 # Intentionally select the newest *stable release branch* build, never the moving master/development build.
 # BtbN's daily stable builds include versioned filenames such as
@@ -22,7 +26,23 @@ $pattern = '^ffmpeg-n(?<version>\d+\.\d+(?:\.\d+)?)-(?<distance>\d+)-g(?<commit>
     [regex]::Escape($architectureToken) + '-gpl-(?<series>\d+(?:\.\d+)?)\.zip$'
 
 Write-Host "Searching BtbN/FFmpeg-Builds stable release branches for Windows $Architecture..."
-$releases = Invoke-RestMethod -Uri 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases?per_page=30' -Headers $headers
+$releases = $null
+$attempt = 0
+while ($null -eq $releases) {
+    try {
+        $releases = Invoke-RestMethod -Uri 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases?per_page=30' -Headers $headers
+    } catch {
+        $attempt++
+        $statusCode = 0
+        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+        if ($attempt -ge 4 -or ($statusCode -notin @(403, 429, 500, 502, 503, 504))) { throw }
+        $delay = [Math]::Min(30, 3 * [Math]::Pow(2, $attempt - 1))
+        Write-Warning "GitHub release lookup returned HTTP $statusCode; retrying in $delay seconds (attempt $attempt of 3)."
+        Start-Sleep -Seconds ([int]$delay)
+    }
+}
 $candidates = [System.Collections.Generic.List[object]]::new()
 
 foreach ($release in $releases) {

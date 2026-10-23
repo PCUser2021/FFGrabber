@@ -1,0 +1,141 @@
+name: Build FFGrabber installers
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and verify ${{ matrix.arch }} installer
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            rid: win-x64
+            machine: 0x8664
+          - arch: arm64
+            rid: win-arm64
+            machine: 0xAA64
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: app-version
+        shell: pwsh
+        run: |
+          $version = '0.1.0'
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}'.StartsWith('v')) {
+            $version = '${{ github.ref_name }}'.Substring(1)
+          }
+          if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') { throw "Invalid version: $version" }
+          $fileVersion = (($version -split '[-+]')[0]) + '.0'
+          "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "file_value=$fileVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore and publish
+        shell: pwsh
+        run: |
+          dotnet restore src/FFGrabber/FFGrabber.csproj -r ${{ matrix.rid }}
+          if ($LASTEXITCODE -ne 0) { throw 'dotnet restore failed.' }
+          dotnet publish src/FFGrabber/FFGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=false -p:Version=${{ steps.app-version.outputs.value }} -o artifacts/publish/${{ matrix.arch }}
+          if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
+          if (-not (Test-Path 'artifacts/publish/${{ matrix.arch }}/FFGrabber.exe')) { throw 'Published executable missing.' }
+          Copy-Item LICENSE, THIRD-PARTY-NOTICES.md -Destination 'artifacts/publish/${{ matrix.arch }}' -Force
+
+      - name: Fetch and verify FFmpeg
+        shell: pwsh
+        run: ./scripts/Fetch-FFmpeg.ps1 -Architecture ${{ matrix.arch }} -OutputDirectory artifacts/publish/${{ matrix.arch }}/tools/ffmpeg/${{ matrix.arch }}
+
+      - name: Verify executable architectures and smoke-test x64 tools
+        shell: pwsh
+        run: |
+          function Get-PeMachine([string] $Path) {
+            $stream = [System.IO.File]::OpenRead($Path)
+            try {
+              $reader = [System.IO.BinaryReader]::new($stream)
+              $stream.Position = 0x3C
+              $offset = $reader.ReadInt32()
+              if ($offset -lt 64 -or $offset -gt ($stream.Length - 6)) { throw "Invalid PE header: $Path" }
+              $stream.Position = $offset
+              if ($reader.ReadUInt32() -ne 0x00004550) { throw "Invalid PE signature: $Path" }
+              return [int]$reader.ReadUInt16()
+            } finally { $stream.Dispose() }
+          }
+          $publish = 'artifacts/publish/${{ matrix.arch }}'
+          $bin = Join-Path $publish 'tools/ffmpeg/${{ matrix.arch }}/bin'
+          $expected = [int]${{ matrix.machine }}
+          foreach ($path in @((Join-Path $publish 'FFGrabber.exe'), (Join-Path $bin 'ffmpeg.exe'), (Join-Path $bin 'ffprobe.exe'), (Join-Path $bin 'ffplay.exe'))) {
+            if (-not (Test-Path $path -PathType Leaf)) { throw "Required executable missing: $path" }
+            $machine = Get-PeMachine $path
+            if ($machine -ne $expected) { throw "Wrong architecture for $path. Expected $expected, got $machine." }
+          }
+          if ('${{ matrix.arch }}' -eq 'x64') {
+            foreach ($tool in @('ffmpeg.exe', 'ffprobe.exe', 'ffplay.exe')) {
+              & (Join-Path $bin $tool) -hide_banner -version *> $null
+              if ($LASTEXITCODE -ne 0) { throw "$tool smoke test failed." }
+            }
+          }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile installer and create SHA-256
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            $candidate = Get-ChildItem -Path @($env:ProgramFiles, ${env:ProgramFiles(x86)}) -Filter ISCC.exe -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($candidate) { $iscc = $candidate.FullName } else { throw 'ISCC.exe was not found.' }
+          }
+          New-Item -ItemType Directory -Path artifacts/installer -Force | Out-Null
+          & $iscc '/DAppArch=${{ matrix.arch }}' '/DAppVersion=${{ steps.app-version.outputs.value }}' '/DAppFileVersion=${{ steps.app-version.outputs.file_value }}' installer/FFGrabber.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
+          $setup = Join-Path (Get-Location) 'artifacts/installer/FFGrabber-Setup-${{ matrix.arch }}-v${{ steps.app-version.outputs.value }}.exe'
+          if (-not (Test-Path $setup)) { throw "Setup file missing: $setup" }
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          [System.IO.File]::WriteAllText("$setup.sha256", "$hash  $([IO.Path]::GetFileName($setup))`n", [System.Text.UTF8Encoding]::new($false))
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FFGrabber-Setup-${{ matrix.arch }}
+          path: artifacts/installer/FFGrabber-Setup-${{ matrix.arch }}-v${{ steps.app-version.outputs.value }}.exe*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Attach setup files to GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Download x64 setup
+        uses: actions/download-artifact@v4
+        with:
+          name: FFGrabber-Setup-x64
+          path: release-assets
+      - name: Download ARM64 setup
+        uses: actions/download-artifact@v4
+        with:
+          name: FFGrabber-Setup-arm64
+          path: release-assets
+      - name: Publish checksummed setup files
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true

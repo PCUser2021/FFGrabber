@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -60,6 +61,7 @@ public partial class MainWindow : Window
     private readonly Button _startButton = new() { Content = "Start queue", Classes = { "primary" } };
     private readonly Button _cancelButton = new() { Content = "Cancel active job", IsEnabled = false };
     private CancellationTokenSource? _cancellation;
+    private EncodingSettings? _activeJobSettings;
 
     public MainWindow()
     {
@@ -363,6 +365,7 @@ public partial class MainWindow : Window
             while (_jobs.Count > 0)
             {
                 var job = _jobs.Dequeue();
+                _activeJobSettings = job;
                 AppendLog("Starting output: " + job.OutputPath);
                 try
                 {
@@ -387,10 +390,12 @@ public partial class MainWindow : Window
                 {
                     AppendLog("Job error: " + ex);
                 }
+                _activeJobSettings = null;
             }
         }
         finally
         {
+            _activeJobSettings = null;
             _cancellation.Dispose();
             _cancellation = null;
             _startButton.IsEnabled = true;
@@ -466,7 +471,7 @@ public partial class MainWindow : Window
             FFmpegLocator.Find("ffmpeg"),
             _sessionLog,
             GetSettings,
-            () => string.Join(Environment.NewLine, _queueItems),
+            BuildQueueSnapshot,
             AppendLog);
         await options.ShowDialog(this);
     }
@@ -476,6 +481,14 @@ public partial class MainWindow : Window
         var window = new FFmpegCapabilitiesWindow(FFmpegLocator.Find("ffmpeg"));
         await window.ShowDialog(this);
     }
+
+    private string BuildQueueSnapshot() =>
+        JsonSerializer.Serialize(new
+        {
+            DisplayQueue = _queueItems.ToArray(),
+            ActiveJobSettings = _activeJobSettings,
+            PendingJobSettings = _jobs.ToArray()
+        }, new JsonSerializerOptions { WriteIndented = true });
 
     private void AppendLog(string message)
     {

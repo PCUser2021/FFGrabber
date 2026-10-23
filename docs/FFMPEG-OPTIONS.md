@@ -27,6 +27,6 @@ Some switches appear only when a component was compiled into FFmpeg. Hardware en
 
 ## Full log export
 
-Open **Options… → Save Logs…** and choose where the ZIP should be written. The support ZIP includes the complete current session log (not the abbreviated on-screen preview), historical FFGrabber session logs found in the local log folder, OS/runtime details, current setting values, queue snapshot, FFmpeg/ffprobe/ffplay versions, FFmpeg build configuration, and full help/capability reports supported by the installed binaries. It does not include the contents of source media. Review the bundle for local paths or sensitive command-line options before sharing it.
+Open **Options… → Save Logs…** and choose where the ZIP should be written. The support ZIP includes the complete current session log (not the abbreviated on-screen preview), historical FFGrabber session logs found in the local log folder, OS/runtime details, current setting values, active job settings, pending job settings, queue display snapshot, FFmpeg/ffprobe/ffplay versions, FFmpeg build configuration, and full help/capability reports supported by the installed binaries. It does not include the contents of source media. Review the bundle for local paths or sensitive command-line options before sharing it.
 
 Session logs are stored under `%LOCALAPPDATA%\FFGrabber\Logs`.

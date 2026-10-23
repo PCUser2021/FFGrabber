@@ -26,7 +26,7 @@ The Windows CI workflow publishes this release only after both architecture buil
 
 - Advanced raw FFmpeg options for global/input-demuxer, stream mapping, video encoder, audio encoder, filter graph, muxer/container, and output settings.
 - FFmpeg capability browser for full help, encoders, decoders, formats, muxers, demuxers, filters, protocols, devices, hardware accelerators, pixel formats, sample formats, bitstream filters and channel layouts.
-- Full support ZIP export through **Options → Save Logs…**, including the untruncated session log, prior local session logs, system/runtime details, active settings/queue, FFmpeg build configuration, and tool capability reports.
+- Full support ZIP export through **Options → Save Logs…**, including the untruncated session log, prior local session logs, system/runtime details, current settings, active and pending job settings, FFmpeg build configuration, and tool capability reports.
 - Checksummed static GPL FFmpeg builds from the newest available stable release branch for each supported Windows architecture.
 
 - Convert using H.264 (`libx264`), HEVC (`libx265`) or AV1 (`libsvtav1`) where the chosen FFmpeg build supports them.
@@ -37,7 +37,7 @@ The Windows CI workflow publishes this release only after both architecture buil
 - Queue jobs sequentially, stream process output into the log, and cancel the active process.
 - Inspect container and stream metadata using ffprobe JSON output.
 - Launch ffplay to preview a source file.
-- Find tools on PATH, in bundled folders, or at a user-selected location.
+- Discover bundled tools or executables available on `PATH`.
 - Build self-contained Windows x64 and ARM64 packages.
 
 ## Build on Windows

@@ -23,18 +23,44 @@ if (-not $SkipFfmpegDownload) {
     if ($LASTEXITCODE -ne 0) { throw 'FFmpeg download or checksum verification failed.' }
 }
 if ($Installer) {
-    $iscc = Get-Command 'ISCC.exe' -ErrorAction SilentlyContinue
-    $isccPath = if ($iscc) { $iscc.Source } else { $null }
-    if (-not $isccPath) {
-        $standardPath = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\\ISCC.exe'
-        if (Test-Path $standardPath -PathType Leaf) {
-            $isccPath = $standardPath
-        } else {
-            $candidate = Get-ChildItem -Path @($env:ProgramFiles, ${env:ProgramFiles(x86)}) -Filter 'ISCC.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($candidate) { $isccPath = $candidate.FullName }
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    $standardPath = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\\ISCC.exe'
+    if (Test-Path $standardPath -PathType Leaf) { $candidates.Add($standardPath) }
+
+    $onPath = Get-Command 'ISCC.exe' -ErrorAction SilentlyContinue
+    if ($onPath -and -not $candidates.Contains($onPath.Source)) { $candidates.Add($onPath.Source) }
+
+    foreach ($programRoot in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if (-not [string]::IsNullOrWhiteSpace($programRoot) -and (Test-Path $programRoot)) {
+            $found = Get-ChildItem -Path $programRoot -Filter 'ISCC.exe' -File -Recurse -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -match '[\\/]Inno Setup 7[\\/]' }
+            foreach ($item in $found) {
+                if (-not $candidates.Contains($item.FullName)) { $candidates.Add($item.FullName) }
+            }
         }
     }
-    if (-not $isccPath) { throw 'Install Inno Setup 7.1.0 from https://jrsoftware.org/isdl.php.' }
+
+    $isccPath = $null
+    $requiredInnoVersion = [version]'7.1.0'
+    foreach ($candidatePath in $candidates) {
+        try {
+            $versionText = (Get-Item -LiteralPath $candidatePath).VersionInfo.ProductVersion
+            if ($versionText -match '^(\\d+\\.\\d+\\.\\d+)') {
+                $detectedVersion = [version]::Parse($Matches[1])
+                if ($detectedVersion -ge $requiredInnoVersion) {
+                    $isccPath = $candidatePath
+                    Write-Host "Using Inno Setup $detectedVersion at $isccPath"
+                    break
+                }
+            }
+        } catch {
+            Write-Verbose "Skipping Inno Setup candidate '$candidatePath': $($_.Exception.Message)"
+        }
+    }
+
+    if (-not $isccPath) {
+        throw 'Inno Setup 7.1.0 or newer is required for local installer builds. Install the latest official stable version from https://jrsoftware.org/isdl.php.'
+    }
     New-Item -ItemType Directory -Path (Join-Path $root 'artifacts/installer') -Force | Out-Null
     & $isccPath "/DAppArch=$Architecture" "/DAppVersion=$Version" "/DAppFileVersion=$((($Version -split '[-+]')[0]) + '.0')" (Join-Path $root 'installer/FFGrabber.iss')
     if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }

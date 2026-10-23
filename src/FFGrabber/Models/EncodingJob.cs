@@ -16,7 +16,15 @@ public sealed record EncodingSettings(
     string FrameRate,
     string PixelFormat,
     bool PreserveMetadata,
-    bool FastStart);
+    bool FastStart,
+    string GlobalOptions = "",
+    string InputOptions = "",
+    string StreamMappingOptions = "",
+    string VideoEncoderOptions = "",
+    string AudioEncoderOptions = "",
+    string FilterOptions = "",
+    string MuxerOptions = "",
+    string OutputOptions = "");
 
 public sealed class EncodingJob(EncodingSettings settings)
 {

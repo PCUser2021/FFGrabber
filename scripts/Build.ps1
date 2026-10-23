@@ -3,7 +3,7 @@ param(
     [ValidateSet('x64', 'arm64')]
     [string] $Architecture = 'x64',
     [ValidatePattern('^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$')]
-    [string] $Version = '0.1.0',
+    [string] $Version = '0.2.0',
     [switch] $SkipFfmpegDownload,
     [switch] $Installer
 )
@@ -24,9 +24,19 @@ if (-not $SkipFfmpegDownload) {
 }
 if ($Installer) {
     $iscc = Get-Command 'ISCC.exe' -ErrorAction SilentlyContinue
-    if (-not $iscc) { throw 'Install Inno Setup 7 from https://jrsoftware.org/isdl.php.' }
+    $isccPath = if ($iscc) { $iscc.Source } else { $null }
+    if (-not $isccPath) {
+        $standardPath = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\\ISCC.exe'
+        if (Test-Path $standardPath -PathType Leaf) {
+            $isccPath = $standardPath
+        } else {
+            $candidate = Get-ChildItem -Path @($env:ProgramFiles, ${env:ProgramFiles(x86)}) -Filter 'ISCC.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($candidate) { $isccPath = $candidate.FullName }
+        }
+    }
+    if (-not $isccPath) { throw 'Install Inno Setup 7.1.0 from https://jrsoftware.org/isdl.php.' }
     New-Item -ItemType Directory -Path (Join-Path $root 'artifacts/installer') -Force | Out-Null
-    & $iscc.Source "/DAppArch=$Architecture" "/DAppVersion=$Version" "/DAppFileVersion=$((($Version -split '[-+]')[0]) + '.0')" (Join-Path $root 'installer/FFGrabber.iss')
+    & $isccPath "/DAppArch=$Architecture" "/DAppVersion=$Version" "/DAppFileVersion=$((($Version -split '[-+]')[0]) + '.0')" (Join-Path $root 'installer/FFGrabber.iss')
     if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
 }
 Write-Host "FFGrabber $Version published to $publish"

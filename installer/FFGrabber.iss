@@ -1,11 +1,11 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.2.0"
 #endif
 #ifndef AppArch
   #define AppArch "x64"
 #endif
 #ifndef AppFileVersion
-  #define AppFileVersion "0.1.0.0"
+  #define AppFileVersion "0.2.0.0"
 #endif
 #define AppName "FFGrabber"
 #define AppPublisher "FFGrabber contributors"

@@ -1,25 +1,20 @@
 # FFGrabber roadmap
 
-## Preview scope
+## Implemented in the 0.2.0 upgrade
 
-- Direct FFmpeg process execution with structured argument passing
-- Convert, remux, audio extraction and video-only stream copy
-- ffprobe metadata inspection and ffplay preview
-- Sequential queue, cancellation and progress reporting
-- Windows x64 / ARM64 installer packaging
+- Advanced raw option groups for global, demuxer/input, stream mapping, video encoder, audio encoder, filters/filter graphs, muxer/container and output options.
+- Runtime FFmpeg capability browser for generic help and compiled encoders, decoders, codecs, formats, muxers, demuxers, filters, bitstream filters, protocols, devices, hardware acceleration, pixel formats, sample formats, and channel layouts.
+- Direct argument-vector process execution without invoking a shell.
+- Untruncated append-only session logging and **Options → Save Logs…** ZIP export.
+- Support bundles containing current and previous session logs, system/runtime details, current settings, queue snapshot, FFmpeg build configuration, and capability reports from ffmpeg/ffprobe/ffplay.
+- Architecture-matched Windows x64 / ARM64 installers bundling the newest available stable FFmpeg release-branch static GPL builds with SHA-256 verification.
+- CI checks for PE architecture, FFmpeg archive integrity, x64 tool smoke tests, installer compilation and checksum generation.
 
-## Encoding workflow
+## Next development targets
 
-- Named and reusable presets
-- Stream mapping, subtitles, chapters, metadata and disposition controls
-- Encoder-aware settings for x264, x265, SVT-AV1, NVENC, Quick Sync and AMF
-- Two-pass encoding, advanced rate control and size estimation
-- Audio sample rate, channel layout, loudness normalization and per-stream selection
-- Color primaries, transfer characteristics, HDR metadata and pixel-format validation
-
-## Product quality
-
-- Automated unit and integration tests with fixture media
-- Accessibility, keyboard navigation and localization
-- Update checker, signed installers, software bill of materials and reproducible builds
-- Thorough FFmpeg license audit for every shipped binary build
+- Per-stream selection UI, subtitle/attachment handling, dispositions, channel layout and sample-rate controls.
+- Named presets, two-pass encoding, target file-size planning, loudness normalization and advanced rate-control UI.
+- Hardware-encoder discovery and guided NVENC, Quick Sync and AMF settings when the selected FFmpeg build and device support them.
+- Color primaries, transfer characteristics, HDR metadata controls and validation.
+- Automated integration tests with media fixtures and executable option probes on Windows x64 and ARM64 runners.
+- Accessibility, keyboard navigation, localization, signed installers, software bill of materials and a release license audit.

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using System.Text;
 using Avalonia.Media;
 using FFGrabber.Services;
 
@@ -25,7 +26,8 @@ public sealed class FFmpegCapabilitiesWindow : Window
         ("Hardware accelerators — -hwaccels", ["-hwaccels"]),
         ("Pixel formats — -pix_fmts", ["-pix_fmts"]),
         ("Sample formats — -sample_fmts", ["-sample_fmts"]),
-        ("Channel layouts — -layouts", ["-layouts"])
+        ("Channel layouts — -layouts", ["-layouts"]),
+        ("Named colors — -colors", ["-colors"])
     ];
 
     private readonly string? _ffmpegPath;
@@ -145,10 +147,16 @@ public sealed class FFmpegCapabilitiesWindow : Window
         _output.Text = string.Empty;
         try
         {
-            var result = await FFmpegProcessRunner.RunAsync(_ffmpegPath, arguments);
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+            var result = await FFmpegProcessRunner.RunAsync(
+                _ffmpegPath,
+                arguments,
+                onStandardOutput: line => stdout.AppendLine(line),
+                onStandardError: line => stderr.AppendLine(line));
             var pieces = new List<string>();
-            if (!string.IsNullOrEmpty(result.StandardOutput)) pieces.Add(result.StandardOutput);
-            if (!string.IsNullOrEmpty(result.StandardError)) pieces.Add(result.StandardError);
+            if (stdout.Length > 0) pieces.Add("----- stdout -----" + Environment.NewLine + stdout);
+            if (stderr.Length > 0) pieces.Add("----- stderr -----" + Environment.NewLine + stderr);
             _fullOutput = $"$ {FFmpegCommandBuilder.ToDisplayCommand(_ffmpegPath, arguments)}{Environment.NewLine}Exit code: {result.ExitCode}{Environment.NewLine}{string.Join(Environment.NewLine, pieces)}";
             _filter.Text = string.Empty;
             _output.Text = _fullOutput;

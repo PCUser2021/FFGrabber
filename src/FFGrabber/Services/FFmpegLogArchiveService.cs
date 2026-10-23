@@ -152,20 +152,29 @@ public static class FFmpegLogArchiveService
         var command = FFmpegCommandBuilder.ToDisplayCommand(executable, arguments);
         try
         {
-            var result = await FFmpegProcessRunner.RunAsync(executable, arguments, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            // Capture from the streaming callbacks instead of the bounded ProcessRunResult buffers,
+            // so the support ZIP contains the complete help/report output even for large -h full output.
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+            var result = await FFmpegProcessRunner.RunAsync(
+                executable,
+                arguments,
+                onStandardOutput: line => stdout.AppendLine(line),
+                onStandardError: line => stderr.AppendLine(line),
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
             var builder = new StringBuilder();
             builder.AppendLine($"Command: {command}");
             builder.AppendLine($"Exit code: {result.ExitCode}");
-            if (!string.IsNullOrWhiteSpace(result.StandardOutput))
+            if (stdout.Length > 0)
             {
                 builder.AppendLine("----- stdout -----");
-                builder.AppendLine(result.StandardOutput);
+                builder.Append(stdout);
             }
-            if (!string.IsNullOrWhiteSpace(result.StandardError))
+            if (stderr.Length > 0)
             {
                 builder.AppendLine("----- stderr -----");
-                builder.AppendLine(result.StandardError);
+                builder.Append(stderr);
             }
             return builder.ToString();
         }

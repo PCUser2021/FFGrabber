@@ -36,11 +36,11 @@ public partial class MainWindow : Window
     private readonly TextBox _globalOptions = MultiLine("-loglevel verbose -threads 0", 56);
     private readonly TextBox _inputOptions = MultiLine("-ss 00:00:05 -probesize 50M -analyzeduration 100M", 56);
     private readonly TextBox _mappingOptions = MultiLine("-map 0:v:0 -map 0:a? -map_metadata 0 -map_chapters 0", 56);
-    private readonly TextBox _videoEncoderOptions = MultiLine("-profile:v high -level:v 5.1 -tune film -x264-params "keyint=240:min-keyint=24"", 56);
+    private readonly TextBox _videoEncoderOptions = MultiLine(@"e.g. -profile:v high -level:v 5.1 -x264-params ""keyint=240:min-keyint=24""", 56);
     private readonly TextBox _audioEncoderOptions = MultiLine("-compression_level 8 -application audio", 56);
-    private readonly TextBox _filterOptions = MultiLine("-vf "scale=1920:-2"  OR  -filter_complex "[0:v]scale=1920:-2[v]"", 60);
+    private readonly TextBox _filterOptions = MultiLine(@"e.g. -vf ""scale=1920:-2"" OR -filter_complex ""[0:v]scale=1920:-2[v]""", 60);
     private readonly TextBox _muxerOptions = MultiLine("-f matroska -cluster_time_limit 1000", 56);
-    private readonly TextBox _outputOptions = MultiLine("-shortest -t 00:10:00 -metadata comment="created with FFGrabber"", 56);
+    private readonly TextBox _outputOptions = MultiLine(@"e.g. -shortest -t 00:10:00 -metadata comment=""created with FFGrabber""", 56);
 
     private readonly TextBox _preview = new() { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, MinHeight = 52 };
     private readonly TextBox _log = new()

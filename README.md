@@ -20,7 +20,7 @@ The Windows CI workflow publishes this release only after both architecture buil
 - Avalonia UI 12.1.4 (latest stable checked 2026-10-23)
 - FluentAvaloniaUI 3.1.0 (latest stable checked 2026-10-23)
 - Inno Setup 7.1.0 for Windows installers
-- FFmpeg 9.0.2 full GPL build from [GyanD/codexffmpeg](https://github.com/GyanD/codexffmpeg/releases) (x64), plus a pinned [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases) ARM64 build
+- FFmpeg 9.0.2 compiled from the official upstream `n9.0.2` source tag for x64 and ARM64, using BtbN’s pinned static GPL dependency build tooling. The source commit is verified against `946fcce07b6dcd0331c8cc609192aeff5e1924f8`.
 
 ## Features
 
@@ -28,7 +28,7 @@ The Windows CI workflow publishes this release only after both architecture buil
 - FFmpeg capability browser for full help, encoders, decoders, formats, muxers, demuxers, filters, protocols, devices, hardware accelerators, pixel formats, sample formats, bitstream filters and channel layouts.
 - Full support ZIP export through **Options → Save Logs…**, including the untruncated session log, prior local session logs, system/runtime details, current settings, active and pending job settings, FFmpeg build configuration, and tool capability reports.
 - Runtime-discovered video/audio encoder lists and complete muxer/demuxer selectors populated from the FFmpeg binary actually installed.
-- Pinned FFmpeg 9.0.2: GyanD full GPL build for x64 and an architecture-matched BtbN GPL build for ARM64; both archives are verified against fixed SHA-256 digests.
+- GitHub Actions compiles FFmpeg from the verified upstream 9.0.2 source tag for both supported Windows architectures, uses the static GPL dependency profile, records source/build provenance, validates PE machine types, and emits SHA-256 manifests for the resulting binaries. The GyanD 9.0.2 repository ZIP is a mirror/support archive, not the FFmpeg source tree; the script verifies that fact and compiles the upstream source it references.
 
 - Convert using H.264 (`libx264`), HEVC (`libx265`) or AV1 (`libsvtav1`) where the chosen FFmpeg build supports them.
 - Configure encoder preset, CRF or target bitrate, output resolution, frame rate, pixel format, audio codec and bitrate.
@@ -48,14 +48,14 @@ Prerequisites: .NET 10 SDK, PowerShell 7 recommended, and network access to fetc
 ```powershell
 ./scripts/Build.ps1 -Architecture x64
 ./scripts/Build.ps1 -Architecture arm64
-./scripts/Build.ps1 -Architecture x64 -Version 0.2.0 -Installer
+./scripts/Build.ps1 -Architecture x64 -Version 0.3.0 -Installer
 ```
 
-Add `-SkipFfmpegDownload` to publish the application without bundling FFmpeg. A complete installer bundles pinned FFmpeg 9.0.2 tools matching the target architecture.
+Add `-SkipFfmpegDownload` to publish the application without bundling FFmpeg. This local PowerShell helper uses the checksummed prebuilt archive route; the GitHub Actions installer pipeline compiles FFmpeg from source. To source-build the Windows FFmpeg tools yourself, run `scripts/Build-FFmpegFromSource.sh` in Linux/WSL2 with Docker.
 
 ## GitHub Actions
 
-The workflow in `.github/workflows/build.yml` builds Windows x64 and ARM64 on GitHub-hosted runners, verifies pinned FFmpeg 9.0.2 archive digests and provenance metadata, checks PE machine headers, smoke-tests x64 FFmpeg tools and confirms the FFmpeg version, compiles installers with the latest stable Inno Setup 7.x release, exports checksums, and publishes a permanent release only after both builds pass. A push of a new feature commit to `main` creates the version configured in the workflow; later releases are produced by changing the project version or pushing a version tag. Existing releases are not overwritten by routine pushes to `main`.
+The workflow in `.github/workflows/build.yml` first compiles FFmpeg 9.0.2 from the verified upstream source tag for Windows x64 and ARM64, then packages those locally built binaries into the FFGrabber installers. CI validates source provenance, PE machine headers, x64 runtime version, GPL build flags, signed Inno Setup, and installer checksums. The local `scripts/Build.ps1` convenience command still downloads a pinned prebuilt FFmpeg archive; use `scripts/Build-FFmpegFromSource.sh` from Linux/WSL2 with Docker to compile FFmpeg locally. A push of a new feature commit to `main` creates the version configured in the workflow; later releases are produced by changing the project version or pushing a version tag. Existing releases are not overwritten by routine pushes to `main`.
 
 The previous `v0.1.0` and `v0.2.0` installers and source remain preserved in release history, and the pre-expansion source snapshot is kept on branch `backup/2026-10-23-pre-encoder-expansion`.
 

@@ -11,7 +11,34 @@ permissions:
   contents: write
 
 jobs:
+  build-ffmpeg:
+    name: Compile FFmpeg 9.0.2 GPL from source (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+          - arch: arm64
+    steps:
+      - name: Check out FFGrabber source
+        uses: actions/checkout@v7.0.1
+
+      - name: Compile and package FFmpeg from the verified upstream tag
+        shell: bash
+        run: ./scripts/Build-FFmpegFromSource.sh "${{ matrix.arch }}" "artifacts/ffmpeg-source/${{ matrix.arch }}"
+
+      - name: Upload source-built FFmpeg tools and provenance
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: FFGrabber-FFmpeg-Source-${{ matrix.arch }}
+          path: artifacts/ffmpeg-source/${{ matrix.arch }}/
+          if-no-files-found: error
+          retention-days: 14
+
   build:
+    needs: build-ffmpeg
     name: Build and verify ${{ matrix.arch }} installer
     runs-on: windows-latest
     strategy:
@@ -56,11 +83,11 @@ jobs:
           if (-not (Test-Path 'artifacts/publish/${{ matrix.arch }}/FFGrabber.exe')) { throw 'Published executable missing.' }
           Copy-Item LICENSE, THIRD-PARTY-NOTICES.md -Destination 'artifacts/publish/${{ matrix.arch }}' -Force
 
-      - name: Fetch and verify FFmpeg
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: ./scripts/Fetch-FFmpeg.ps1 -Architecture ${{ matrix.arch }} -OutputDirectory artifacts/publish/${{ matrix.arch }}/tools/ffmpeg/${{ matrix.arch }}
+      - name: Download FFmpeg compiled from source
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: FFGrabber-FFmpeg-Source-${{ matrix.arch }}
+          path: artifacts/publish/${{ matrix.arch }}/tools/ffmpeg/${{ matrix.arch }}
 
       - name: Verify executable architectures and smoke-test x64 tools
         shell: pwsh
@@ -83,8 +110,11 @@ jobs:
           $metadataPath = Join-Path $toolRoot 'ffmpeg-build.json'
           if (-not (Test-Path $metadataPath -PathType Leaf)) { throw 'FFmpeg provenance metadata is missing.' }
           $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
-          if ($metadata.stable_version -ne '9.0.2') { throw "Expected pinned FFmpeg 9.0.2, found $($metadata.stable_version)." }
-          if ($metadata.checksum_verified -ne $true) { throw 'FFmpeg archive was not checksum verified.' }
+          if ($metadata.stable_version -ne '9.0.2') { throw "Expected FFmpeg 9.0.2, found $($metadata.stable_version)." }
+          if ($metadata.build_method -ne 'source') { throw "Expected source-built FFmpeg, found method '$($metadata.build_method)'." }
+          if ($metadata.source_commit -ne '946fcce07b6dcd0331c8cc609192aeff5e1924f8') { throw "Unexpected FFmpeg source commit: $($metadata.source_commit)." }
+          if ($metadata.source_tag_verified -ne $true) { throw 'The upstream FFmpeg release tag was not verified against the pinned commit.' }
+          if ($metadata.variant -ne 'gpl') { throw "Expected GPL profile, found '$($metadata.variant)'." }
           $expected = [int]${{ matrix.machine }}
           foreach ($path in @((Join-Path $publish 'FFGrabber.exe'), (Join-Path $bin 'ffmpeg.exe'), (Join-Path $bin 'ffprobe.exe'), (Join-Path $bin 'ffplay.exe'))) {
             if (-not (Test-Path $path -PathType Leaf)) { throw "Required executable missing: $path" }
@@ -97,6 +127,11 @@ jobs:
               if ($LASTEXITCODE -ne 0) { throw "$tool smoke test failed." }
               if ($tool -eq 'ffmpeg.exe' -and $versionOutput -notmatch 'ffmpeg version 9\.0\.2') {
                 throw "Expected FFmpeg 9.0.2 but got: $($versionOutput.Split([Environment]::NewLine)[0])"
+              }
+              if ($tool -eq 'ffmpeg.exe') {
+                $buildConf = & (Join-Path $bin $tool) -hide_banner -buildconf 2>&1 | Out-String
+                if ($LASTEXITCODE -ne 0 -or $buildConf -notmatch '--enable-gpl') { throw 'GPL feature configuration is missing.' }
+                if ($buildConf -match '--enable-nonfree') { throw 'Refusing to package FFmpeg configured with --enable-nonfree; such builds are not redistributable.' }
               }
             }
           }

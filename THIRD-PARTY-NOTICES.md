@@ -2,15 +2,17 @@
 
 ## FFmpeg
 
-FFGrabber 0.3.0 pins FFmpeg 9.0.2. The Windows x64 package uses Gyan's full GPL archive at [GyanD/codexffmpeg release 9.0.2](https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2). Windows ARM64 uses the architecture-matched GPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases) at release tag `autobuild-2026-10-23-13-04` (FFmpeg 9.0.2 release branch). The exact archive URLs and SHA-256 digests are pinned in `scripts/Fetch-FFmpeg.ps1`; the build script rejects a mismatched download before extraction.
+FFGrabber GitHub Actions source-builds FFmpeg 9.0.2 for x64 and ARM64. GyanD/codexffmpeg tag `9.0.2` is a release mirror/support repository containing metadata, not the FFmpeg C source. Its release references the upstream FFmpeg tag `n9.0.2`, resolved to commit `946fcce07b6dcd0331c8cc609192aeff5e1924f8`. The workflow checks this tag/commit, then compiles that upstream source using a pinned revision of [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) and its static GPL dependency profile. A JSON provenance file and SHA-256 manifest accompany the resulting binaries. The standalone local PowerShell build helper still supports downloading fixed-hash upstream prebuilt packages.
 
 FFmpeg and each bundled third-party library retain their own licenses. GPL builds can add encoders such as libx264/libx265 where included, but **no single FFmpeg binary can contain every possible codec, hardware backend or patent-restricted component**. FFGrabber's capabilities browser displays the codecs, muxers, demuxers, filters, protocols and options actually present in the bundled build. The exact upstream license files discovered inside each archive are carried into the packaged tool directory. Review the selected build's license obligations before redistributing it.
 
 Official references:
+- GyanD mirror archive: https://github.com/GyanD/codexffmpeg/archive/refs/tags/9.0.2.zip
+- Verified FFmpeg source commit: https://github.com/FFmpeg/FFmpeg/commit/946fcce07b6dcd0331c8cc609192aeff5e1924f8
 - FFmpeg releases: https://ffmpeg.org/download.html
 - FFmpeg legal information: https://ffmpeg.org/legal.html
-- GyanD Windows full builds: https://github.com/GyanD/codexffmpeg/releases
-- BtbN Windows ARM64 build source: https://github.com/BtbN/FFmpeg-Builds
+- GyanD Windows prebuilt releases: https://github.com/GyanD/codexffmpeg/releases
+- BtbN Windows source-build tooling/dependency profile: https://github.com/BtbN/FFmpeg-Builds
 
 ## Avalonia UI
 

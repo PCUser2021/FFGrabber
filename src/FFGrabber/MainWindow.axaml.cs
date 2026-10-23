@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.Media;
@@ -13,7 +14,7 @@ namespace FFGrabber;
 
 public partial class MainWindow : Window
 {
-    private readonly TextBox _input = new() { Watermark = "Select source media", MinWidth = 420 };
+    private readonly TextBox _input = new() { PlaceholderText = "Select source media", MinWidth = 420 };
     private readonly TextBox _output = new() { Watermark = "Output path including filename and extension", MinWidth = 420 };
     private readonly ComboBox _mode = Combo(["Convert / encode", "Remux / stream copy", "Extract audio", "Video only"]);
     private readonly ComboBox _videoCodec = Combo(["libx264", "libx265", "libsvtav1", "copy"]);

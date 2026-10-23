@@ -28,7 +28,9 @@ public static class FFmpegLogArchiveService
         ("hardware-accelerators.txt", ["-hwaccels"]),
         ("pixel-formats.txt", ["-pix_fmts"]),
         ("sample-formats.txt", ["-sample_fmts"]),
-        ("channel-layouts.txt", ["-layouts"])
+        ("channel-layouts.txt", ["-layouts"]),
+        ("named-colors.txt", ["-colors"]),
+        ("stream-dispositions.txt", ["-dispositions"])
     ];
 
     public static async Task SaveZipAsync(
@@ -74,6 +76,9 @@ public static class FFmpegLogArchiveService
         reportEntries.Add(("diagnostics/current-encoding-settings.json",
             JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true })));
         reportEntries.Add(("diagnostics/queue-snapshot.txt", queueSnapshot ?? string.Empty));
+        var bundledBuildMetadata = Path.Combine(AppContext.BaseDirectory, "tools", "ffmpeg", FFmpegLocator.ArchitectureFolder, "ffmpeg-build.json");
+        if (File.Exists(bundledBuildMetadata))
+            reportEntries.Add(("diagnostics/ffmpeg/bundled-build-metadata.json", File.ReadAllText(bundledBuildMetadata, Encoding.UTF8)));
         reportEntries.Add(("README-SUPPORT-BUNDLE.txt",
             "FFGrabber support bundle.\r\n\r\n" +
             "Contents include the complete current-session log, available previous FFGrabber session logs, " +

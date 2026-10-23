@@ -27,7 +27,10 @@ public sealed class FFmpegCapabilitiesWindow : Window
         ("Pixel formats — -pix_fmts", ["-pix_fmts"]),
         ("Sample formats — -sample_fmts", ["-sample_fmts"]),
         ("Channel layouts — -layouts", ["-layouts"]),
-        ("Named colors — -colors", ["-colors"])
+        ("Named colors — -colors", ["-colors"]),
+        ("Stream dispositions — -dispositions", ["-dispositions"]),
+        ("FFmpeg version and library versions", ["-version"]),
+        ("FFmpeg build configuration", ["-buildconf"])
     ];
 
     private readonly string? _ffmpegPath;

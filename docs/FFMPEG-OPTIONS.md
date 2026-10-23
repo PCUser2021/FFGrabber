@@ -2,7 +2,7 @@
 
 ## Built-in controls
 
-The standard fields build common transcode, stream-copy/remux, audio-extraction and video-only commands. The command preview shows the generated argument vector before you start a job.
+The standard fields build common transcode, stream-copy/remux, audio-extraction and video-only commands. Inputs and outputs can be local files, URLs, pipes, or FFmpeg protocol/device expressions; the file-picker buttons are a convenience for ordinary local files. The command preview shows the generated argument vector before you start a job.
 
 ## Advanced option groups
 
@@ -13,7 +13,7 @@ Expand **Advanced FFmpeg options** to supply ordinary FFmpeg flags:
 - **Stream mapping / selection:** examples include `-map 0:v:0 -map 0:a?`, `-map_metadata 0` and `-map_chapters 0`.
 - **Video encoder:** encoder AVOptions such as `-profile:v high`, `-level:v 5.1`, `-tune film`, `-x264-params ...` or `-x265-params ...`.
 - **Audio encoder:** codec-dependent AVOptions such as compression level, application mode, channel layout, or sample settings.
-- **Filters / filtergraph:** use complete flags such as `-vf "scale=1920:-2"` or `-filter_complex "[0:v]scale=1920:-2[v]"`.
+- **Filters / filtergraph:** use complete flags such as `-vf "scale=1920:-2"` or `-filter_complex "[0:v]scale=1920:-2[v]`. The application passes the source as a single `-i` argument and does not invoke a shell, so an FFmpeg URL/device source should be entered in the source field while its demuxer/device flags go in the input options field.
 - **Muxer / container:** format-specific options such as `-f matroska`, `-movflags +faststart` or `-cluster_time_limit 1000`.
 - **Other output:** output options such as `-shortest`, `-t 00:10:00`, `-metadata comment="created with FFGrabber"` and codec/muxer flags not covered above.
 

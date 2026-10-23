@@ -17,8 +17,8 @@ namespace FFGrabber;
 public partial class MainWindow : Window
 {
     private readonly SessionLog _sessionLog = new();
-    private readonly TextBox _input = new() { PlaceholderText = "Select source media", MinWidth = 420 };
-    private readonly TextBox _output = new() { PlaceholderText = "Output path including filename and extension", MinWidth = 420 };
+    private readonly TextBox _input = new() { PlaceholderText = "Local file, URL, device expression, pipe, or FFmpeg input", MinWidth = 420 };
+    private readonly TextBox _output = new() { PlaceholderText = "Output file path, URL, or FFmpeg target", MinWidth = 420 };
     private readonly ComboBox _mode = Combo(["Convert / encode", "Remux / stream copy", "Extract audio", "Video only"]);
     private readonly ComboBox _videoCodec = Combo(["libx264", "libx265", "libsvtav1", "copy"]);
     private readonly ComboBox _preset = Combo(["medium", "slow", "fast", "veryfast"]);
@@ -401,9 +401,9 @@ public partial class MainWindow : Window
 
     private async Task ProbeAsync()
     {
-        if (!File.Exists(_input.Text))
+        if (string.IsNullOrWhiteSpace(_input.Text))
         {
-            AppendLog("Choose a valid input file first.");
+            AppendLog("Enter a source path, URL, or device expression first.");
             return;
         }
 
@@ -433,9 +433,9 @@ public partial class MainWindow : Window
 
     private void Play(object? sender, RoutedEventArgs e)
     {
-        if (!File.Exists(_input.Text))
+        if (string.IsNullOrWhiteSpace(_input.Text))
         {
-            AppendLog("Choose a valid input file first.");
+            AppendLog("Enter a source path, URL, or device expression first.");
             return;
         }
 

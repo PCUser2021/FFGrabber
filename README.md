@@ -32,6 +32,7 @@ The Windows CI workflow publishes this release only after both architecture buil
 - Convert using H.264 (`libx264`), HEVC (`libx265`) or AV1 (`libsvtav1`) where the chosen FFmpeg build supports them.
 - Configure encoder preset, CRF or target bitrate, output resolution, frame rate, pixel format, audio codec and bitrate.
 - Remux with stream copy, extract audio, or copy video without audio.
+- Accept local files, network URLs, pipes, FFmpeg protocol targets and device expressions in the input/output fields; protocol and capture-device flags can be supplied in advanced input/output options.
 - Preview generated FFmpeg arguments before running.
 - Queue jobs sequentially, stream process output into the log, and cancel the active process.
 - Inspect container and stream metadata using ffprobe JSON output.

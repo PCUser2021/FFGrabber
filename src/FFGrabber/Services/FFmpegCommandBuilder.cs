@@ -14,11 +14,14 @@ public static class FFmpegCommandBuilder
 
     public static List<string> Build(EncodingSettings s)
     {
-        if (string.IsNullOrWhiteSpace(s.InputPath) || !File.Exists(s.InputPath))
-            throw new ArgumentException("Select an existing input media file.");
+        if (string.IsNullOrWhiteSpace(s.InputPath))
+            throw new ArgumentException("Specify a source path, URL, device expression, pipe, or other FFmpeg input.");
         if (string.IsNullOrWhiteSpace(s.OutputPath))
-            throw new ArgumentException("Specify an output file path.");
-        if (string.Equals(Path.GetFullPath(s.InputPath), Path.GetFullPath(s.OutputPath), StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Specify an output path, URL, or other FFmpeg target.");
+        if (string.Equals(s.InputPath.Trim(), s.OutputPath.Trim(), StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Input and output locations must be different.");
+        if (IsLocalPath(s.InputPath) && IsLocalPath(s.OutputPath) &&
+            string.Equals(NormalizeLocalPath(s.InputPath), NormalizeLocalPath(s.OutputPath), StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Input and output paths must be different.");
 
         var args = new List<string> { "-hide_banner" };
@@ -110,6 +113,20 @@ public static class FFmpegCommandBuilder
         args.AddRange(FFmpegArgumentParser.Parse(s.OutputOptions));
         args.Add(s.OutputPath);
         return args;
+    }
+
+    private static bool IsLocalPath(string value)
+    {
+        // FFmpeg accepts files, network URLs, pipes, capture devices and protocol-specific sources.
+        // Avoid filesystem normalization for non-file URI schemes; pass them as individual arguments.
+        return !Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.IsFile;
+    }
+
+    private static string NormalizeLocalPath(string value)
+    {
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.IsFile)
+            return Path.GetFullPath(uri.LocalPath);
+        return Path.GetFullPath(value);
     }
 
     private static void AppendAudioBitrate(List<string> args, string codec, string bitrate)

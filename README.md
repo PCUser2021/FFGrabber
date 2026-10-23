@@ -2,7 +2,17 @@
 
 **FFGrabber** is a Windows-first graphical frontend for the real FFmpeg command-line tools. It launches `ffmpeg.exe`, `ffprobe.exe`, and `ffplay.exe` directly; it does not embed a separate media engine.
 
-> **Status: early preview (0.1.0).** The initial source implements the Avalonia GUI, direct process invocation, basic transcode/remux/extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, process logging, cancellation, tool discovery, and x64/ARM64 installer automation. It is not yet a feature-complete replacement for a professional mastering suite.
+> **Status: early preview (0.1.0).** FFGrabber provides a native Avalonia GUI, direct FFmpeg process invocation, basic transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, process logging, cancellation, and x64/ARM64 installer builds. It is not yet a feature-complete replacement for a professional mastering suite.
+
+## Downloads
+
+**Official permanent download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
+
+- **Windows x64 (Intel/AMD):** [Download the installer](https://github.com/PCUser2021/FFGrabber/releases/download/v0.1.0/FFGrabber-Setup-x64-v0.1.0.exe) · [SHA-256 file](https://github.com/PCUser2021/FFGrabber/releases/download/v0.1.0/FFGrabber-Setup-x64-v0.1.0.exe.sha256)
+- **Windows ARM64:** [Download the installer](https://github.com/PCUser2021/FFGrabber/releases/download/v0.1.0/FFGrabber-Setup-arm64-v0.1.0.exe) · [SHA-256 file](https://github.com/PCUser2021/FFGrabber/releases/download/v0.1.0/FFGrabber-Setup-arm64-v0.1.0.exe.sha256)
+- **Combined checksum manifest:** [SHA256SUMS.txt](https://github.com/PCUser2021/FFGrabber/releases/download/v0.1.0/SHA256SUMS.txt)
+
+The Windows CI workflow publishes this release only after both architecture builds, FFmpeg verification, PE architecture checks, and Inno Setup compilation pass. Release assets remain available from the Releases page rather than depending on short-lived Actions artifact retention.
 
 ## Stack
 
@@ -38,9 +48,9 @@ Add `-SkipFfmpegDownload` to publish the application without bundling FFmpeg. A 
 
 ## GitHub Actions
 
-The workflow in `.github/workflows/build.yml` builds and tests Windows x64 and ARM64 packages on GitHub-hosted Windows runners. It checks PE machine headers, smoke-tests the x64 FFmpeg tools, compiles Inno Setup installers, and uploads installers with SHA-256 files as workflow artifacts. Pushing a tag such as `v0.1.0` is configured to publish a GitHub Release with the installers.
+The workflow in `.github/workflows/build.yml` builds Windows x64 and ARM64 on GitHub-hosted runners, verifies FFmpeg archive checksums, checks PE machine headers, smoke-tests the x64 FFmpeg executables, compiles installers, and computes SHA-256 checksums. On the first successful `main` build, it publishes the versioned GitHub Release automatically; future versions can be published by pushing a version tag such as `v0.2.0`. Existing releases are not overwritten by routine pushes to `main`.
 
-**Important:** The project must pass its first Windows CI build before installers should be described as verified or production-ready.
+The first successful installer build was verified in [GitHub Actions run #6](https://github.com/PCUser2021/FFGrabber/actions/runs/40032421872).
 
 ## FFmpeg licensing
 

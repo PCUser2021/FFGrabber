@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.Media;
@@ -30,7 +31,7 @@ public partial class MainWindow : Window
     private readonly CheckBox _overwrite = new() { Content = "Overwrite output", IsChecked = false };
     private readonly TextBox _preview = new() { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, MinHeight = 52 };
     private readonly TextBox _log = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 160 };
-    private readonly ObservableCollection<string> _queueItems = [];
+    private readonly ObservableCollection<string> _queueItems = new();
     private readonly Queue<EncodingSettings> _jobs = new();
     private readonly ListBox _queueView = new() { MinHeight = 90 };
     private readonly Button _startButton = new() { Content = "Start queue", Classes = { "primary" } };

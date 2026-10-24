@@ -49,6 +49,8 @@ public partial class MainWindow : Window
         TextWrapping = TextWrapping.Wrap,
         Foreground = Brush("#A4A9B6")
     };
+    private HashSet<string> _availableVideoEncoders = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _availableAudioEncoders = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly TextBox _minVideoBitrate = new() { PlaceholderText = "optional, e.g. 500k", Width = 150 };
     private readonly TextBox _maxVideoBitrate = new() { PlaceholderText = "optional, e.g. 3M", Width = 150 };
@@ -507,18 +509,12 @@ public partial class MainWindow : Window
 
         // Report rather than hide a codec mismatch: actual encoder availability depends on
         // the imported binary, and profile selection must not imply that it is guaranteed.
-        if (profile.VideoCodec is not ("copy" or ""))
-        {
-            var availableVideo = _videoCodec.ItemsSource as IEnumerable<string> ?? Array.Empty<string>();
-            if (!availableVideo.Contains(profile.VideoCodec, StringComparer.OrdinalIgnoreCase))
-                AppendLog($"Profile note: {profile.VideoCodec} is not listed by the currently imported FFmpeg build. The profile remains editable, but a job may fail until a compatible encoder is imported.");
-        }
-        if (profile.AudioCodec is not ("copy" or ""))
-        {
-            var availableAudio = _audioCodec.ItemsSource as IEnumerable<string> ?? Array.Empty<string>();
-            if (!availableAudio.Contains(profile.AudioCodec, StringComparer.OrdinalIgnoreCase))
-                AppendLog($"Profile note: {profile.AudioCodec} is not listed by the currently imported FFmpeg build. The profile remains editable, but a job may fail until a compatible encoder is imported.");
-        }
+        if (profile.VideoCodec is not ("copy" or "")
+            && !_availableVideoEncoders.Contains(profile.VideoCodec))
+            AppendLog($"Profile note: {profile.VideoCodec} is not listed by the currently imported FFmpeg build. The profile remains editable, but a job may fail until a compatible encoder is imported.");
+        if (profile.AudioCodec is not ("copy" or "")
+            && !_availableAudioEncoders.Contains(profile.AudioCodec))
+            AppendLog($"Profile note: {profile.AudioCodec} is not listed by the currently imported FFmpeg build. The profile remains editable, but a job may fail until a compatible encoder is imported.");
     }
 
     private async Task OpenOptionComposerAsync()
@@ -706,6 +702,8 @@ public partial class MainWindow : Window
         {
             AppendLog("Discovering encoder, demuxer and muxer options from: " + executable);
             var capabilities = await FFmpegCapabilityService.LoadAsync(executable);
+            _availableVideoEncoders = new HashSet<string>(capabilities.VideoEncoders, StringComparer.OrdinalIgnoreCase);
+            _availableAudioEncoders = new HashSet<string>(capabilities.AudioEncoders, StringComparer.OrdinalIgnoreCase);
             SetChoices(_videoCodec, new[] { "copy" }.Concat(capabilities.VideoEncoders), "libx264");
             SetChoices(_audioCodec, new[] { "copy" }.Concat(capabilities.AudioEncoders), "aac");
             SetChoices(_inputFormat, new[] { "auto" }.Concat(capabilities.Demuxers), "auto");

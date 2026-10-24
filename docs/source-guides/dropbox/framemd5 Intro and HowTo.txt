@@ -1,0 +1,149 @@
+= Introduction =
+
+Within digital preservation environments, the generation and verification of checksums against digital files can aid the confirmation or denial of digital authenticity over time. A checksum mismatch is an alert that a file under care has changed from a prior state; potentially triggering retrieval of backups, review of hardware, or migration of content. Generally, if a given checksum algorithm is applied to a file, then as long as the same checksum can be regenerated from the file then the data is verified, else a mismatched checksum reveals a digital change. Further details such as the whereabouts, extent, or significance of the change in data are not revealed by the checksum mismatch but only that the data examined now is not the same as the data examined before.
+
+The FFmpeg [http://ffmpeg.org/ffmpeg-formats.html#framemd5 framemd5] format and [http://ffmpeg.org/ffmpeg-formats.html#framecrc framecrc] format as used to decode input audiovisual data to produce one checksum per frame. These formats facilitate testing functions such as verifying that an adjusted decoder maintains intended results or that an FFmpeg decoder decodes a stream to the same data as another decoder.
+
+By producing checksums on a more granular level, such as per frame, it is more feasible to assess the extent or location of digital change in the event of a checksum mismatch. By decoding a file and processing the decoded data to generate a framemd5 document, each decoded audio and video frame is documented according to its timestamp, digital size, and MD5 checksum. For the first three frames of video, the framemd5 output could be:
+
+{{{
+#tb 0: 1001/24000
+0, 0, 0, 1, 518400, 5bc19af1a75adb8bda9d79390981a0ea
+0, 1, 1, 1, 518400, bb485b0d6fd001358aa7dbe76031ff4d
+0, 2, 2, 1, 518400, 30dc414cd4487dd58b0d16a5ddafba35
+}}}
+
+In this output the columns refer to the stream number, counting from zero, (column 1), the decoding and presentation timestamps (column 2 and 3), the samples duration (column 4), the size of the data checksummed in bytes14 (column 5), and the MD5 checksum for that data.
+
+Storing a framemd5 file along with each audiovisual file does not replace the function of a traditional whole-file checksum. It is still possible for a file to be changed in a way that would result in a mismatch for a future whole-file checksum analysis, but not create any difference between a stored framemd5 output and a newly created framemd5 output. This could occur when embedded metadata is edited but the stored audiovisual data remains the same.
+
+For audiovisual data, storing both a whole-file checksum and a framemd5 output enables greater awareness of digital change in managed files, a more strategic and aware response to change, and the ability to verify lossless transcoding. If an audiovisual file is found to have a mismatch between a newly generated whole-file checksum and one generated previously, indicative of digital change, then comparison between a stored framemd5 document and a newly generated one could facilitate in pinpointing the digital change as it affects audiovisual presentation if at all.
+
+= How to Create a framemd5 =
+
+A framemd5 report can be generated with this command:
+{{{
+ffmpeg -i MOVIE.mov -f framemd5 MOVIE.framemd5
+}}}
+
+For this example the output is:
+{{{
+#tb 0: 1001/30000
+0,          0,          0,        1,  1669440, 1fb241f71b9b14abdf88ad5034b6dc21
+0,          1,          1,        1,  1669440, 38310375ae195c17019e26da9d99e3d0
+0,          2,          2,        1,  1669440, c154e232f7f5cb74a60afc06e11cabae
+0,          3,          3,        1,  1669440, 508b0d017ffa6f4694541762ed5fae6a
+0,          4,          4,        1,  1669440, 36f5da2bceef0973550585e91f748d1a
+0,          5,          5,        1,  1669440, d36fd15efdf503c1ef25640d890917b3
+0,          6,          6,        1,  1669440, 31b7232bf8e6fd2337e2beddc480dc42
+0,          7,          7,        1,  1669440, 7ab5486e5999d86dd016ae0b8df13a70
+0,          8,          8,        1,  1669440, 47b2a83dd6801d2c2bd414f57af8eff5
+0,          9,          9,        1,  1669440, b883d73e78c230b220f311e8fb34e6ee
+0,         10,         10,        1,  1669440, 4171860688591526ad3c9c3780eb044f
+0,         11,         11,        1,  1669440, ad8df2d43442eb45155300965e4f59d0
+0,         12,         12,        1,  1669440, 9bf60490424ebc2b5209d5d2ba3398d9
+0,         13,         13,        1,  1669440, 7184bf36a237199e68afe9b51ef23e5e
+0,         14,         14,        1,  1669440, 905b35a7638b53566cd5235d1dedfdc0
+0,         15,         15,        1,  1669440, e0f3577df7cbe6420d712be67abc1733
+0,         16,         16,        1,  1669440, d20aa192b1a8da3ffa26d16464ef4ef5
+0,         17,         17,        1,  1669440, 84bf9143b1e1d33fa60dd04fdcdf6d2e
+0,         18,         18,        1,  1669440, f18784efb0da45b418d763857a616ec6
+0,         19,         19,        1,  1669440, d86e92e1046c5190b9582fc527c36c69
+0,         20,         20,        1,  1669440, cd37e29476412d8ff2a7effdbb538d60
+0,         21,         21,        1,  1669440, 78fda53e3b2e88029fc42b347c4045fc
+0,         22,         22,        1,  1669440, 3f4718d7d93899497c314a7b65ec2f95
+0,         23,         23,        1,  1669440, 3650ecff2013c0bac2d8a9006972f842
+0,         24,         24,        1,  1669440, de9b78e46be1ed555dfbd16d73773dd4
+0,         25,         25,        1,  1669440, 3ab9ab618d930b79e9f2396d95de5ca9
+0,         26,         26,        1,  1669440, e40524fab40c44811a8d21b641b4af16
+0,         27,         27,        1,  1669440, d44cc0cfea82fb7b14a9b62c713c9500
+0,         28,         28,        1,  1669440, 29f6ca7e17a378f939a4b4153bb258de
+0,         29,         29,        1,  1669440, 7db13c711801b7a90b17e3a891035088
+}}}
+
+This output reflects the default handling of framemd5 where each frame is decoded (to rawvideo for video or pcm_s16le for audio) and then the checksum is generated from that decoded data.
+
+The following command adds `-c copy` which causes the framemd5 to generate checksums of the data as it is stored.
+{{{
+ffmpeg -i MOVIE.mov -c copy -f framemd5 MOVIE.framemd5
+}}}
+
+And provides an output like this:
+{{{
+#tb 0: 1/30000
+0,          0,          0,     1001,  1155072, 18c65f0cf1d25815f41f19bfe1ad16ea
+0,       1001,       1001,     1001,  1155072, 0540479caa59a00d7a4d2b5ddcb3c70e
+0,       2002,       2002,     1001,  1155072, 7214ebe9847ea1a224b734f3317fb980
+0,       3003,       3003,     1001,  1155072, 450ce3af9f85e98a21db569f29df184d
+0,       4004,       4004,     1001,  1155072, d3063786f3355699154c174d3f52d54c
+0,       5005,       5005,     1001,  1155072, 76e8dc51b5a6f49e37c14a7660e06ae0
+0,       6006,       6006,     1001,  1155072, edfd873a649cc6463df22a8c9d87493a
+0,       7007,       7007,     1001,  1155072, 7352af40fdf56c0b8f798cb2a95d4141
+0,       8008,       8008,     1001,  1155072, 4c21ae542a26e1ef42f85af19a79471f
+0,       9009,       9009,     1001,  1155072, ebe6f24bb21989bc84c2797fdab28d67
+0,      10010,      10010,     1001,  1155072, 6ce5b2571b8d4be953ec9607b27fa564
+0,      11011,      11011,     1001,  1155072, 1f6dca06745e344edd76ac27ea079da3
+0,      12012,      12012,     1001,  1155072, 570e250f5617691417289e6f956bf97c
+0,      13013,      13013,     1001,  1155072, 3dfe8bfc3828ce5a9d86c44ce9d8378f
+0,      14014,      14014,     1001,  1155072, 9e4132e2fad274ef4a875acb77878d3d
+0,      15015,      15015,     1001,  1155072, 3d50b1e97c725ad25800c6244e22072e
+0,      16016,      16016,     1001,  1155072, da036f6c0ce94283970c4b0f4c44eaa3
+0,      17017,      17017,     1001,  1155072, 329fcba7b70ca6a9647975a801d3b390
+0,      18018,      18018,     1001,  1155072, d86fe8db4ee8b9fa0380e69674d98a6d
+0,      19019,      19019,     1001,  1155072, b2fcf3c3f2c66cec41a959d63b7dc95d
+0,      20020,      20020,     1001,  1155072, 8b78ee58e8161db9e40bdd99fc9137f8
+0,      21021,      21021,     1001,  1155072, 8f6e6993086b86d534f742598135e02f
+0,      22022,      22022,     1001,  1155072, 878249bef272e69148edd00ba4447a71
+0,      23023,      23023,     1001,  1155072, 7ab8bb4f1e5f7bf5f86299c3117d90f8
+0,      24024,      24024,     1001,  1155072, 2387e95460bc7df88c6fb0a50f8922e6
+0,      25025,      25025,     1001,  1155072, eb22fa1cce797ebd06c6f71b556b69b1
+0,      26026,      26026,     1001,  1155072, 052fa3220b17d8d002b5c2d28938e871
+0,      27027,      27027,     1001,  1155072, 791c1305e0c4a8bba0979c2e4e6c6d17
+0,      28028,      28028,     1001,  1155072, 61ee1eb3286a98f92872d511f0a8f096
+0,      29029,      29029,     1001,  1155072, c781b259ba904daf90696334a8f506d9
+}}}
+
+Where this command will transcode the source video using libx264 before transcoding:
+{{{
+ffmpeg -i MOVIE.mov -c:v libx264  -f framemd5 MOVIE.framemd5
+}}}
+
+And result in:
+
+{{{
+#tb 0: 1001/30000
+0,         -2,          0,        1,    38161, 272fafcd38265acce8b02cb590b69559
+0,         -1,          4,        1,    10410, 052e6adace04adaca704e8bccc852dee
+0,          0,          2,        1,     4227, 25346354a026ef9498844311a33a62bb
+0,          1,          1,        1,     3091, c5c3158c264ba09bcf5141ee65a36cb3
+0,          2,          3,        1,     4192, ba1d9de7eb4d8101e58b96c24e332788
+0,          3,          8,        1,    14656, 850172c2c3b7623158dd7b42ff281701
+0,          4,          6,        1,     7982, 1b5b4639616759bb953b4b01ed28b2b0
+0,          5,          5,        1,     5974, 085c1851cb3984db4b078fb8844bb00b
+0,          6,          7,        1,     7392, e0b2a76a991e63cfba0e56524252fc51
+0,          7,         12,        1,    17644, cc9d032cf8b0017836cc39af1ec33cfd
+0,          8,         10,        1,    10404, 429ded16a5a85dd3da00df1b0aa07b82
+0,          9,          9,        1,     8485, f743d53faafe7eb59be3b05ff1ab9e0e
+0,         10,         11,        1,     9622, e8e77ddce2a9329356913999c1cbf4e9
+0,         11,         16,        1,    19081, 63c28d4cdd243041d7bcae1449016af8
+0,         12,         14,        1,    12047, f35d27177960b7cb7b3d4e514f1a51cf
+0,         13,         13,        1,    10217, 714677c7bb869de9fe1a98d85286c45d
+0,         14,         15,        1,    10747, 82cfc85a788cb2eba447891425e0dbf8
+0,         15,         20,        1,    19274, ffe0053f39a1f849374c9926b942ceb2
+0,         16,         18,        1,    13048, 77712a1575f0c7f0c07aa81fe60c67d2
+0,         17,         17,        1,    10476, a00e034b6bceba81e2dfe786c2312c57
+0,         18,         19,        1,    11214, f4c6a71c57aae863717a758965687483
+0,         19,         24,        1,    18897, 0d2d1fa21bc293228121dd24dc75a370
+0,         20,         22,        1,    13838, 7edbce7c3f7d3d97d89c31e7d5a1e7d7
+0,         21,         21,        1,    11192, e99a2b608e24972735a640f3e777cb1b
+0,         22,         23,        1,    11690, 238389c5f264ff0bfb2fa17d7a3c0ddc
+0,         23,         28,        1,    16311, 266f1eda562d564f1c326728c5285fdd
+0,         24,         26,        1,    14418, aa0dc36d3260c0b931bf2ff0755053d2
+0,         25,         25,        1,    12092, 0ce39d2b5a3b4ba9fa4d48777d277708
+0,         26,         27,        1,    12157, 33815201ed1584892c31cfe743040094
+0,         27,         29,        1,    13077, a101c639a349fc277d3299d93795ad34
+}}}
+
+= See also =
+
+See also [http://dericed.com/papers/reconsidering-the-checksum-for-audiovisual-preservation/ Article on framemd5 use in digital preservation] 

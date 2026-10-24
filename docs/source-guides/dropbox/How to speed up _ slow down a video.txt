@@ -1,0 +1,81 @@
+= Speeding up/slowing down video =
+
+The speed of a video stream can be changed by changing the presentation timestamp (PTS) of each video frame. This can be done via two methods: using the [http://ffmpeg.org/ffmpeg-all.html#setpts_002c-asetpts setpts] video filter (which requires re-encoding) or by erasing the timestamps by exporting the video to a raw bitstream format and muxing to a container while creating new timestamps.
+
+Note that in the following examples, the audio stream is not changed, so it should ideally be disabled with `-an`.
+
+== raw bitstream method ==
+
+This method is lossless and apart from changing the timestamps, copies the video stream as-is. Use this if you require no other changes to your input video.
+
+First, copy the video to a raw bitstream format.
+
+For H.264:
+{{{
+ffmpeg -i input.mp4 -map 0:v -c:v copy -bsf:v h264_mp4toannexb raw.h264
+}}}
+
+For H.265:
+{{{
+ffmpeg -i input.mp4 -map 0:v -c:v copy -bsf:v hevc_mp4toannexb raw.h265
+}}}
+
+Then generate new timestamps while muxing to a container:
+{{{
+ffmpeg -fflags +genpts -r 30 -i raw.h264 -c:v copy output.mp4
+}}}
+
+Change the value of `-r` to the desired playback frame rate.
+
+== setpts filter ==
+
+To double the speed of the video with the setpts filter, you can use:
+{{{
+ffmpeg -i input.mkv -filter:v "setpts=0.5*PTS" output.mkv
+}}}
+
+The filter works by changing the presentation timestamp (PTS) of each video frame. For example, if there are two succesive frames shown at timestamps 1 and 2, and you want to speed up the video, those timestamps need to become 0.5 and 1, respectively. Thus, we have to multiply them by 0.5.
+
+Note that this method will drop frames to achieve the desired speed.  You can avoid dropped frames by specifying a higher output frame rate than the input. For example, to go from an input of 4 FPS to one that is sped up to 4x that (16 FPS):
+{{{
+ffmpeg -i input.mkv -r 16 -filter:v "setpts=0.25*PTS" output.mkv
+}}}
+
+To slow down your video, you have to use a multiplier greater than 1:
+{{{
+ffmpeg -i input.mkv -filter:v "setpts=2.0*PTS" output.mkv
+}}}
+
+=== Smooth ===
+
+You can smooth out slow/fast video with the [http://ffmpeg.org/ffmpeg-filters.html#minterpolate minterpolate] video filter. This is also known as "motion interpolation" or "optical flow".
+
+{{{
+ffmpeg -i input.mkv -filter:v "minterpolate='mi_mode=mci:mc_mode=aobmc:vsbmc=1:fps=120'" output.mkv
+}}}
+
+Other options include [https://github.com/slowmoVideo/slowmoVideo/ slowmoVideo] and [https://github.com/dthpham/butterflow Butterflow].
+
+= Speeding up/slowing down audio =
+
+You can speed up or slow down audio with the [http://ffmpeg.org/ffmpeg-all.html#atempo atempo] audio filter. To double the speed of audio:
+{{{
+ffmpeg -i input.mkv -filter:a "atempo=2.0" -vn output.mkv
+}}}
+
+The atempo filter is limited to using values between 0.5 and 100.0 (so it can slow it down to no less than half the original speed, and speed up to no more than 100x the input). If you need to, you can get around this limitation by stringing multiple atempo filters together. The following with quadruple the audio speed:
+{{{
+ffmpeg -i input.mkv -filter:a "atempo=2.0,atempo=2.0" -vn output.mkv
+}}}
+
+Using a complex filtergraph, you can speed up video and audio at the same time:
+{{{
+ffmpeg -i input.mkv -filter_complex "[0:v]setpts=0.5*PTS[v];[0:a]atempo=2.0[a]" -map "[v]" -map "[a]" output.mkv
+}}}
+
+
+With the raw bitstream method example from above, there is no need for a complex filtergraph. You can slow down a 30 fps video and audio at the same time with:
+{{{
+ffmpeg -fflags +genpts -r 15 -i raw.h264 -i input.mp4 -map 0:v -c:v copy -map 1:a -af atempo=0.5 -movflags faststart output.mp4
+}}}
+

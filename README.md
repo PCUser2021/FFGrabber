@@ -10,8 +10,8 @@
 
 - **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.8.exe`
 - **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.8.exe`
-- **Linux x64:** `FFGrabber-0.5.8-linux-x64.deb`, `.rpm`, `.AppImage`, and `.tar.gz`
-- **Linux ARM64:** `FFGrabber-0.5.8-linux-arm64.deb`, `.rpm`, `.AppImage`, and `.tar.gz`
+- **Linux x64:** `FFGrabber-0.5.8-linux-x64.deb`, `FFGrabber-0.5.8-linux-x64.rpm`, `FFGrabber-0.5.8-linux-x64.AppImage`, and `FFGrabber-0.5.8-linux-x64.tar.gz`
+- **Linux ARM64:** `FFGrabber-0.5.8-linux-arm64.deb`, `FFGrabber-0.5.8-linux-arm64.rpm`, `FFGrabber-0.5.8-linux-arm64.AppImage`, and `FFGrabber-0.5.8-linux-arm64.tar.gz`
 - **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each package
 - **Release notes:** [FFGrabber v0.5.8](docs/RELEASE-NOTES-0.5.8.md)
 

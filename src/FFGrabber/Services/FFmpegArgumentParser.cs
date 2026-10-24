@@ -22,6 +22,21 @@ public static class FFmpegArgumentParser
         for (var i = 0; i < text.Length; i++)
         {
             char c = text[i];
+
+            // A UNC path (\\server\share\file) starts with two literal backslashes. Treating
+            // them as an escaped backslash would silently turn it into a drive-relative
+            // path (\server\share\file), so keep a leading "\\" literal when it begins a
+            // token or a quoted value and is followed by an ordinary path character.
+            if (c == '\\' && current.Length == 0 && i + 2 < text.Length &&
+                text[i + 1] == '\\' && text[i + 2] is not ('\\' or '"' or '\'') &&
+                !char.IsWhiteSpace(text[i + 2]))
+            {
+                current.Append("\\\\");
+                i++;
+                tokenStarted = true;
+                continue;
+            }
+
             if (c == '\\' && i + 1 < text.Length &&
                 (text[i + 1] == '"' || text[i + 1] == '\'' || text[i + 1] == '\\'))
             {

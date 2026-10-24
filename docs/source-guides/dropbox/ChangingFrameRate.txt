@@ -1,0 +1,60 @@
+{{{
+#!html
+<h1 style="font-size: 22px;">
+Changing the frame rate
+</h1>
+}}}
+
+[[PageOutline(1, Contents)]]
+
+ffmpeg can be used to change the frame rate of an existing video, such that the output frame rate is lower or higher than the input frame rate. The output duration of the video will stay the same.
+
+This is useful when working with, for example, high-framerate input video that needs to be temporally scaled down for devices that do not support high FPS.
+
+When the frame rate is changed, ffmpeg will drop or duplicate frames as necessary to achieve the targeted output frame rate. A detailed explanation of how the fps filter in ffmpeg decides to drop/duplicate frames is [https://superuser.com/a/843363/48078 given in this post].
+
+{{{
+#!div style="border: 1px solid #e5e5c7; margin: 1em; background-color: #ffd;"
+'''Note:''' Changing frame rates requires the video to be re-encoded. Without setting appropriate output quality or bit rate, the video quality may be degraded. Please look at the respective encoding guides for the codec you've chosen.
+}}}
+
+If you are interested in keeping the number of frames, but squeezing / stretching the video, see: [[How to speed up / slow down a video]]
+
+= How to change the frame rate =
+
+There are two ways to change the output frame rate:
+
+1. With the `-r` option used as an output option
+2. With the [http://ffmpeg.org/ffmpeg-filters.html#fps fps filter]
+
+There are differences in implementation of those two:
+
+*  `-r` takes effect after all filtering, but before encoding of the video stream has taken place.
+* The `-r` logic depends on the video sync method set (`-vsync`).
+* For an output format like MP4, which defaults to constant frame rate (CFR), `-r` will generate a CFR stream. For variable frame rate formats, like Matroska, the `-r` value acts as a ceiling, so that a lower frame rate input stream will pass through, and a higher frame rate stream, will have frames dropped, in order to match the target rate.
+* The `-r` value also acts as an indication to the encoder of how long each frame is, and can affect the ratecontrol decisions made by the encoder.
+* `fps`, as a filter, needs to be inserted in a filtergraph, and will always generate a CFR stream. It offers five rounding modes that affect which source frames are dropped or duplicated in order to achieve the target framerate. See the [http://ffmpeg.org/ffmpeg-filters.html#fps documentation] of the fps filter for details.
+
+In the following we will focus on using the `fps` filter, as it is more configurable.
+
+== Example ==
+
+To change the output frame rate to 30 fps, use the following command:
+
+{{{
+ffmpeg -i <input> -filter:v fps=30 <output>
+}}}
+
+If the input video was 60 fps, ffmpeg would drop every other frame to get 30 fps output.
+
+= Verifying frame rate changes =
+
+In order to verify which frames are duplicated or dropped by a frame rate change, you can first generate a sample video:
+
+{{{
+ffmpeg -f lavfi -i testsrc=duration=10:size=854x480:rate=60 \
+-vf "drawtext=text=%{n}:fontsize=72:r=60:x=(w-tw)/2: y=h-(2*lh):fontcolor=white:box=1:boxcolor=0x00000099" test.mp4
+}}}
+
+This 10 second, 60 fps video called `test.mp4` will show the frame count at the bottom, and a second counter in the middle of the frame. By playing the output in a player that allows seeking frame-by-frame, you can inspect which frames have been dropped or duplicated.
+

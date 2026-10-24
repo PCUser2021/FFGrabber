@@ -1,0 +1,48 @@
+{{{
+#!html
+<h1 style="font-size: 22px;">
+Chroma Subsampling
+</h1>
+}}}
+
+Since the human visual system is not as sensitive to color information compared to luminance information, most video codecs default to encoding the luma plane (Y') at full resolution, while using half or even quarter resolution for the chroma planes (Cb', Cr'). While slightly sacrificing video quality, this will result in data reduction.
+
+Typical chroma subsampling approaches have the following names:
+
+- 4:4:4: There is no chroma subsampling
+- 4:2:2: Cb' and Cr' are sampled at half the sample rate of luma, the horizontal chroma resolution is halved
+- 4:2:0: Cb' and Cr' are each subsampled at a factor of two, both horizontally and vertically
+
+For more information, refer to [https://en.wikipedia.org/wiki/Chroma_subsampling Wikipedia].
+
+= Setting Chroma Subsampling in ffmpeg =
+
+In ffmpeg, chroma subsampling is performed by setting the corresponding ''pixel format'' of the output video stream. If you have an original source with full color information, ffmpeg will try to retain this information by choosing a matching output pixel format.
+
+Depending on your use case, you may want to use a different pixel format, e.g., when you have a high-quality source that you are encoding for video streaming clients that do not support 4:2:2. In this case, you want to use 4:2:0 subsampling instead.
+
+If you want to set different chroma subsampling formats, you have two options:
+
+- `-pix_fmt <pix_fmt>`
+- `-vf format=<pix_fmt>`
+
+where `<pix_fmt>` is the targeted pixel format. See `ffmpeg -pix_fmts` for a list of supported pixel formats.
+
+Among the most commonly used formats are:
+
+- 8-bit 4:2:0: `yuv420p`
+- 8-bit 4:2:2: `yuv422p`
+- 8-bit 4:4:4: `yuv444p`
+- 10-bit 4:2:0: `yuv420p10le`
+- 10-bit 4:2:2: `yuv422p10le`
+- 10-bit 4:4:4: `yuv444p10le`
+
+= Example =
+
+For example, if you want to encode to 8-bit 4:2:0:
+
+{{{
+ffmpeg -i input.mp4 -c:v libx264 -vf format=yuv420p output.mp4
+}}}
+
+

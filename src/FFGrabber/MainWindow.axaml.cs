@@ -197,7 +197,7 @@ public partial class MainWindow : Window
         root.Children.Add(_queueView);
         root.Children.Add(Heading("Live log preview (complete log is retained separately)"));
         root.Children.Add(_log);
-        Content = new ScrollViewer { Content = root, Background = Brushes.Transparent };
+        Content = new ScrollViewer { Content = root, Background = Brush("#FF111319") };
 
         _sessionLog.Write($"FFGrabber main window initialized; OS={RuntimeInformation.OSDescription}; architecture={RuntimeInformation.ProcessArchitecture}; appVersion={typeof(MainWindow).Assembly.GetName().Version}");
         _sessionLog.Write($"Tool paths: ffmpeg={FFmpegLocator.Find("ffmpeg") ?? "(not found)"}; ffprobe={FFmpegLocator.Find("ffprobe") ?? "(not found)"}; ffplay={FFmpegLocator.Find("ffplay") ?? "(not found)"}");
@@ -207,7 +207,7 @@ public partial class MainWindow : Window
     }
 
     private static ComboBox Combo(string[] values) => new() { ItemsSource = values, SelectedIndex = 0, MinWidth = 180 };
-    private static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color));
+    private static IBrush Brush(string color) => ThemePreferences.Brush(color);
     private static TextBlock Heading(string text) => new() { Text = text, Foreground = Brush("#C2F970"), FontWeight = FontWeight.SemiBold, FontSize = 15 };
     private static TextBlock Label(string text, double width) => new() { Text = text, Width = width, VerticalAlignment = VerticalAlignment.Center, Foreground = Brush("#C9CED9") };
 

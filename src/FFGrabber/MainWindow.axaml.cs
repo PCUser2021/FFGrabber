@@ -931,20 +931,56 @@ public partial class MainWindow : Window
                 AppendLog("Starting output: " + job.OutputPath);
                 try
                 {
-                    var args = FFmpegCommandBuilder.Build(job);
+                    var twoPassPlan = job.TwoPass ? FFmpegCommandBuilder.BuildTwoPass(job) : null;
+                    var args = twoPassPlan?.FirstPassArguments ?? FFmpegCommandBuilder.Build(job);
                     AppendLog("Running: " + FFmpegCommandBuilder.ToDisplayCommand(executable, args));
-                    var temporaryFileScope = FFmpegTemporaryFileCleanupScope.Begin(job.OutputPath, args);
+
+                    // Track the final output's temporary files across the whole job. Pass 1
+                    // writes to the null muxer, so cleanup is scoped to the requested output.
+                    var cleanupArguments = twoPassPlan?.SecondPassArguments ?? args;
+                    var temporaryFileScope = FFmpegTemporaryFileCleanupScope.Begin(job.OutputPath, cleanupArguments);
                     try
                     {
-                        var result = await FFmpegProcessRunner.RunAsync(
-                            executable,
-                            args,
-                            onStandardOutput: line => LogProcessLine("FFMPEG STDOUT", line),
-                            onStandardError: line => LogProcessLine("FFMPEG STDERR", line),
-                            cancellationToken: _cancellation.Token);
-                        AppendLog(result.ExitCode == 0
-                            ? "Completed: " + job.OutputPath
-                            : $"Failed (exit {result.ExitCode}): {job.OutputPath}");
+                        if (twoPassPlan is null)
+                        {
+                            var result = await FFmpegProcessRunner.RunAsync(
+                                executable,
+                                args,
+                                onStandardOutput: line => LogProcessLine("FFMPEG STDOUT", line),
+                                onStandardError: line => LogProcessLine("FFMPEG STDERR", line),
+                                cancellationToken: _cancellation.Token);
+                            AppendLog(result.ExitCode == 0
+                                ? "Completed: " + job.OutputPath
+                                : $"Failed (exit {result.ExitCode}): {job.OutputPath}");
+                        }
+                        else
+                        {
+                            AppendLog("Two-pass job: starting pass 1/2 (analysis output is discarded).");
+                            var firstPass = await FFmpegProcessRunner.RunAsync(
+                                executable,
+                                twoPassPlan.FirstPassArguments,
+                                onStandardOutput: line => LogProcessLine("FFMPEG PASS 1 STDOUT", line),
+                                onStandardError: line => LogProcessLine("FFMPEG PASS 1 STDERR", line),
+                                cancellationToken: _cancellation.Token);
+
+                            if (firstPass.ExitCode != 0)
+                            {
+                                AppendLog($"Two-pass pass 1 failed with exit code {firstPass.ExitCode}; pass 2 was not started.");
+                            }
+                            else
+                            {
+                                AppendLog("Two-pass pass 1 succeeded; starting pass 2/2 (final output).");
+                                var secondPass = await FFmpegProcessRunner.RunAsync(
+                                    executable,
+                                    twoPassPlan.SecondPassArguments,
+                                    onStandardOutput: line => LogProcessLine("FFMPEG PASS 2 STDOUT", line),
+                                    onStandardError: line => LogProcessLine("FFMPEG PASS 2 STDERR", line),
+                                    cancellationToken: _cancellation.Token);
+                                AppendLog(secondPass.ExitCode == 0
+                                    ? "Two-pass encoding completed: " + job.OutputPath
+                                    : $"Two-pass pass 2 failed (exit {secondPass.ExitCode}): {job.OutputPath}");
+                            }
+                        }
                     }
                     finally
                     {
@@ -960,6 +996,9 @@ public partial class MainWindow : Window
                             if (cleanup.DeletedCount > 0)
                                 AppendLog($"Automatic temporary-file cleanup removed {cleanup.DeletedCount} file(s).");
                         }
+
+                        if (twoPassPlan is { IsAutoManagedPassLog: true })
+                            CleanupManagedPassLogs(twoPassPlan.PassLogPrefix);
                     }
                 }
                 catch (OperationCanceledException)
@@ -982,6 +1021,34 @@ public partial class MainWindow : Window
             _startButton.IsEnabled = true;
             _cancelButton.IsEnabled = false;
             AppendLog("Queue processing ended.");
+        }
+    }
+
+    private void CleanupManagedPassLogs(string passLogPrefix)
+    {
+        var directory = Path.GetDirectoryName(passLogPrefix);
+        var prefix = Path.GetFileName(passLogPrefix);
+        if (string.IsNullOrWhiteSpace(directory) || string.IsNullOrWhiteSpace(prefix) || !Directory.Exists(directory))
+            return;
+
+        try
+        {
+            foreach (var file in Directory.GetFiles(directory, prefix + "*", SearchOption.TopDirectoryOnly))
+            {
+                try
+                {
+                    File.Delete(file);
+                    AppendLog("Removed FFmpeg two-pass log: " + file);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    AppendLog("Could not remove FFmpeg two-pass log: " + file + " — " + ex.Message);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AppendLog("Could not inspect managed two-pass logs: " + ex.Message);
         }
     }
 

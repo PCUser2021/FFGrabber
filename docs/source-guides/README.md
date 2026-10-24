@@ -1,19 +1,96 @@
 # Preserved source guides
 
-The app embeds every `.txt` file in this directory at build time and the in-app **Source Guide Library** displays and searches each complete embedded document.
+FFGrabber embeds every `.txt` file in `docs/source-guides/dropbox/` through the wildcard in `src/FFGrabber/FFGrabber.csproj`. The **Source Guide Library** lists and searches the embedded documents and displays their complete source text. It does not prepend editorial text to a source body; a historical note such as the `ffserver.txt` warning is shown separately in the source metadata label.
 
-## Complete source snapshots available in this repository
+## Verbatim Dropbox source snapshot manifest
 
-- Capture and hardware references: `DirectShow.txt`, `HWAccelIntro.txt`, `Capture_ALSA.txt`, `Capture_Desktop.txt`, `Capture_Webcam.txt` and `Capture_Lightning.txt`.
-- Streaming references recovered from the connected Dropbox: `EncodingForStreamingSites.txt` and `StreamingGuide.txt`. These are full text snapshots, not the shorter reconstructed profile payloads.
-- `ffserver.txt` is preserved as a historical archive only. **ffserver is obsolete and was removed from modern FFmpeg releases.** Its config is searchable in the library but it is not offered as a one-click workflow and should not be treated as current operating guidance.
+The following **78 original `.txt` files** were present in the connected Dropbox root when this integration was performed. Their original filenames are retained under `docs/source-guides/dropbox/`, with no editorial rewrites of their text.
 
-These complete sources are research inputs for the searchable settings index and profiles. Historical examples may use Linux/macOS devices, removed options, old FFmpeg syntax, or external utilities. The UI marks `ffserver.txt` as archival. For current support, the imported executable's own `-h full` catalogue and discovered capability lists remain authoritative.
+- `AfadeCurves.txt`
+- `audio types.txt`
+- `AudioChannelManipulation.txt`
+- `AudioVolume.txt`
+- `Blend.txt`
+- `BouncingOverlay.txt`
+- `Bump59.txt`
+- `Capture_ALSA.txt`
+- `Capture_Desktop.txt`
+- `Capture_Lightning.txt`
+- `Capture_Webcam.txt`
+- `ChangingFrameRate.txt`
+- `Chroma Subsampling.txt`
+- `Cleanup.txt`
+- `colorspace.txt`
+- `Concatenate.txt`
+- `Create a mosaic out of several input videos using xstack.txt`
+- `Create a mosaic out of several input videos.txt`
+- `Create a thumbnail image every X seconds of the video.txt`
+- `Creating multiple outputs.txt`
+- `CroppingVideo.txt`
+- `Debug_MacroblocksAndMotionVectors.txt`
+- `DenoiseExamples.txt`
+- `DirectShow.txt`
+- `Eclipse.txt`
+- `Encode_AV1.txt`
+- `Encode_FFV1.txt`
+- `Encode_H.264.txt`
+- `Encode_H.265.txt`
+- `Encode_HighQualityAudio.txt`
+- `Encode_MPEG-4.txt`
+- `Encode_VFX.txt`
+- `Encode_VP8.txt`
+- `Encode_VP9.txt`
+- `Encode_YouTube.txt`
+- `EncodingForStreamingSites.txt`
+- `Errors.txt`
+- `ExtractSubtitles.txt`
+- `FancyFilteringExamples.txt`
+- `FATE.txt`
+- `FFmpeg and the SoX Resampler.txt`
+- `FFprobeTips.txt`
+- `ffserver.txt`
+- `FilteringGuide.txt`
+- `framemd5 Intro and HowTo.txt`
+- `Histogram.txt`
+- `How to speed up _ slow down a video.txt`
+- `How to take multiple screenshots to an image (tile, mosaic).txt`
+- `HowToBurnSubtitlesIntoVideo.txt`
+- `HowToCheckIfFaststartIsEnabledForPlayback.txt`
+- `HowToConvertSubtitleToASS.txt`
+- `HowToConvertYouTubeSBVtoSRT.txt`
+- `HowToExtractAndRemoveClosedCaptions.txt`
+- `HowToFixTvPlaybackIssues.txt`
+- `HowToRemoveAdvertising.txt`
+- `HWAccelIntro.txt`
+- `Including FFmpeg headers in a C++ application.txt`
+- `Limiting the output bitrate.txt`
+- `MaintainingFFmpeg.txt`
+- `ManagingOtherLanguagesThanEnglish.txt`
+- `Map.txt`
+- `Null.txt`
+- `PHP.txt`
+- `Postprocessing.txt`
+- `RemapFilter.txt`
+- `Scaling.txt`
+- `Seeking.txt`
+- `Slideshow.txt`
+- `Stereoscopic.txt`
+- `StreamingGuide.txt`
+- `TheoraVorbisEncodingGuide.txt`
+- `UnderstandingItsoffset.txt`
+- `Using libav_.txt`
+- `Vectorscope.txt`
+- `ViterbiAlgorithm.txt`
+- `Waveform.txt`
+- `WaveformMonitor.txt`
+- `Xfade.txt`
 
-## Reconstructed encoder profile payloads
+## Reconstructed profile payloads
 
-The 14 lower-case files (for example, `h264_master_guide.txt` and `streaming_live_delivery.txt`) preserve the supplied recommended-flags line, application stage and description. They are **reconstructed summaries, not verbatim copies of the missing original historical encoder-guide documents**. Each has a matching one-click profile in the workspace.
+The separate lower-case companion profile `.txt` files already present in this folder remain clearly identified as reconstructed summaries. They provide editable one-click settings but are not substitutes for the full source-guide texts listed above.
 
-The full streaming guides also link to three additional workflows: file-to-RTMP (uses `-re` to pace file input), live-input-to-RTMP (does not use `-re`), and RTMP plus a local recording via the tee muxer. These profiles expose their settings in the ordinary editable controls; replace example inputs/outputs, inspect the generated command and verify the imported FFmpeg build's capabilities before queueing a job.
+## Historical and platform-specific examples
 
-The full encoder source documents referenced in `EncodingGuideOptionIndex.cs` that are not listed among the complete snapshots above have not been recovered into this repository. Their curated option index and the 14 supplied profile summaries remain available, but that is not equivalent to recovering those original full texts.
+`ffserver.txt` is preserved as a historical archive only. **ffserver is obsolete and was removed from modern FFmpeg releases.** The GUI identifies this status outside the source text itself and does not offer the file as a runnable one-click workflow.
+
+Source material may include historical syntax, platform-specific devices, external utilities, or options unavailable in a user's imported FFmpeg build. Treat examples as reference material and use the imported executable's current `-h full` output and discovered capability lists to confirm support.

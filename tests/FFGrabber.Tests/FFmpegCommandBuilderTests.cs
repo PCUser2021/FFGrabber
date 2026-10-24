@@ -150,12 +150,54 @@ public sealed class FFmpegCommandBuilderTests
             "EncodingForStreamingSites.txt", "StreamingGuide.txt", "ffserver.txt"
         ];
 
-        Assert.IsTrue(resources.Length >= 23,
-            "Six capture/hardware references, two full streaming guides, the archival ffserver guide, and fourteen reconstructed profile payloads must all be embedded.");
+        Assert.IsTrue(resources.Length >= 92,
+            "All 78 Dropbox source texts and the reconstructed profile payloads must be embedded.");
         foreach (var source in preservedReferences)
             Assert.IsTrue(resources.Contains(
                 "FFGrabber.source-guides.dropbox." + source,
                 StringComparer.OrdinalIgnoreCase), $"The full reference {source} must be embedded.");
+    }
+
+
+    [TestMethod]
+    public void EmbeddedSourceGuideText_MatchesEveryTrackedTxtFileExactly()
+    {
+        var repositoryRoot = FindRepositoryRootForGuideSources();
+        var sourceDirectory = System.IO.Path.Combine(repositoryRoot, "docs", "source-guides", "dropbox");
+        var sourceFiles = Directory.GetFiles(sourceDirectory, "*.txt", SearchOption.TopDirectoryOnly);
+        Assert.IsTrue(sourceFiles.Length >= 78,
+            "The complete set of 78 original Dropbox source texts must be tracked.");
+
+        var assembly = typeof(EncodingGuideProfiles).Assembly;
+        foreach (var filePath in sourceFiles)
+        {
+            var fileName = System.IO.Path.GetFileName(filePath);
+            var resourceName = "FFGrabber.source-guides.dropbox." + fileName;
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            Assert.IsNotNull(stream, $"Missing embedded resource for {fileName}.");
+            using var reader = new StreamReader(stream!);
+            var sourceText = File.ReadAllText(filePath);
+            var embeddedText = reader.ReadToEnd();
+            Assert.AreEqual(sourceText, embeddedText,
+                $"Embedded resource {fileName} must match its tracked .txt source character for character.");
+        }
+    }
+
+    private static string FindRepositoryRootForGuideSources()
+    {
+        foreach (var start in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
+        {
+            DirectoryInfo? directory = new(start);
+            while (directory is not null)
+            {
+                if (Directory.Exists(System.IO.Path.Combine(directory.FullName, "docs", "source-guides", "dropbox")))
+                    return directory.FullName;
+                directory = directory.Parent;
+            }
+        }
+
+        Assert.Fail("Unable to find docs/source-guides/dropbox from the test runner directories.");
+        return string.Empty;
     }
 
     private static EncodingSettings CreateTwoPassSettings(string output, string passLogPrefix) => new(

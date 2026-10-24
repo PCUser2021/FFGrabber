@@ -27,7 +27,7 @@ Use a build that matches your CPU architecture. Until a valid import exists, enc
 ## Features
 
 - Standard controls for transcode, stream-copy/remux, audio extraction and video-only output.
-- **49 encoder/audio profiles**: the 35 existing profiles plus 14 one-click profiles mapped to the supplied/reconstructed text payloads. These 14 short payloads are identified as reconstructions, not as the original historical full encoder guides.
+- **52 encoding/audio/streaming profiles**: the original 35 profiles, 14 supplied/reconstructed profile payloads, and three full-guide-based streaming workflows (file-to-RTMP, live-input-to-RTMP, and RTMP plus local recording through the tee muxer). The 14 short payloads remain identified as reconstructions, not original historical full encoder guides.
 - Dedicated guide-specific controls for minimum/maximum video bitrate, VBV buffer, GOP/keyframe interval, encoder tune/profile, video Qscale/QP, audio Qscale/VBR/profile/cutoff, sample rate/channels, and HDR color primaries/transfer/colorspace.
 - Searchable **Source Guide Library** that reads every embedded `.txt` document in full, searches across the document bodies, and applies associated encoder/audio/capture profiles back to the main workspace.
 - **Automated two-pass encoding** for libx264, native MPEG-4, libvpx/VP9, libaom-av1 and FFV1 profiles. Pass 1 uses the null muxer, pass 2 writes the requested output; managed pass logs are removed after the job. Encoder-private workflows such as x265 pass parameters remain editable in advanced options.
@@ -61,7 +61,11 @@ Prerequisites: .NET 10 SDK and PowerShell 7. Inno Setup 7.1.0+ only for local in
 
 ## GitHub Actions
 
-`.github/workflows/build.yml` builds the x64 and ARM64 apps, checks the PE machine type, **fails if any FFmpeg executable or `tools/ffmpeg` folder is present in the payload**, compiles the installers with a signature- and SHA-256-verified Inno Setup, and writes installer checksums. Pushes to `main` and `v*` tags publish a GitHub Release for the configured version; an existing release is never overwritten.
+`.github/workflows/build.yml` builds and tests on pull requests and pushes to `main`, and on `v*` tags; it checks the PE machine type, **fails if any FFmpeg executable or `tools/ffmpeg` folder is present in the payload**, compiles installers with signature- and SHA-256-verified Inno Setup, and writes installer checksums. A `v*` tag also publishes a permanent GitHub Release for the configured version; an existing release is never overwritten. `.github/workflows/auto-backup.yml` creates a verified Git bundle, source ZIP, and SHA-256 manifest on every push to `main`, every pull request to `main`, and once daily, with manual dispatch supported.
+
+## Automatic backups
+
+The automatic backup workflow uploads the Git bundle, source archive, and checksum manifest as a GitHub Actions artifact retained for **90 days**. Download the artifact from the workflow run to keep an offline copy beyond that retention window. A pre-change safety branch was also created: `backup/2026-10-24-pre-auto-backup`. GitHub Actions artifacts are rolling backups, not a substitute for an independently stored long-term copy.
 
 ## FFmpeg licensing
 

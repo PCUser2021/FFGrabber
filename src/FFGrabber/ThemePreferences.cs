@@ -43,7 +43,7 @@ public static class ThemePreferences
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // If the preference cannot be read, follow the Windows theme without blocking startup.
+            // If the preference cannot be read, follow the system theme without blocking startup.
         }
 
         return "System";

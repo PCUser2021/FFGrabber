@@ -25,6 +25,20 @@ Quote values containing spaces. These fields are passed as individual process ar
 
 Use **Options… → Browse all FFmpeg options and capabilities…** to inspect basic help, advanced tool help, and the complete option catalogue from **-h full**. This is the authoritative list for the exact executable you imported, including private options exposed by its encoders, decoders, demuxers, muxers and filters. The browser supports live text filtering, copying displayed text, and exporting the complete help output to a UTF-8 text file. It also includes the installed tool's encoder, decoder, codec, format, muxer, demuxer, filter, bitstream-filter, protocol, device, hardware-acceleration, pixel-format, sample-format and channel-layout lists.
 
+The **Encoding settings editor** combines two searchable sources:
+- The local imported executable's live `-h full` catalogue and component-specific help.
+- A guide index covering 124 distinct option switches and aliases extracted from the 14 supplied encoding-guide text files. Entries include descriptions and source-file names. Build-time configure flags and help-display commands are explicitly marked reference-only, rather than being appended to an encode command.
+
+Use the **Encoding guide profile** dropdown in the main Encoding settings panel to populate a concrete starting recipe. The 35 profiles cover H.264/H.265, AV1, VP8/VP9, FFV1, ProRes/MJPEG VFX, MPEG-4/Xvid, Theora/Vorbis, AAC, MP3, Opus, FLAC, and YouTube/streaming workflows. Applying a profile fills the ordinary codec, rate-control, pixel-format, audio settings, advanced flags, and guide-specific controls; it does not change the user's input or output path. If an encoder is absent from the imported build, FFGrabber logs a warning rather than pretending that the encoder is available.
+
+Dedicated guide-specific controls include min/max bitrate and VBV buffer, GOP/keyframe interval, encoder tune/profile, video Qscale/QP, audio Qscale/VBR/profile/cutoff, audio sample rate/channels, HDR color primaries/transfer/colorspace, additional input sources, and optional automated two-pass encoding. The pass-log prefix may be left blank for a unique managed log path. Automated two-pass mode runs pass 1 to the null muxer then pass 2 to the requested output, for the generic-pass encoders documented in the profiles (libx264, native MPEG-4, libvpx/VP9, libaom-av1, and FFV1). Encoder-specific pass/stats options such as x265 private parameters remain available through the advanced editor.
+
+The searchable editor routes an option to a recommended argument stage, but FFmpeg option scope still matters. `-f`, for example, can choose an input demuxer or an output muxer; check the command preview and adjust the stage when necessary. Component help from the imported binary remains authoritative for the values supported by that exact build.
+
+### Output temporary-file cleanup
+
+FFGrabber now snapshots the matching temp-file names before each job and, after FFmpeg exits (including after cancellation), removes only newly created `.tmp` files matching the output-specific filename or known HLS/DASH segment patterns. Existing files are never removed automatically. **Clean output .tmp files…** lists older output-related matches in a confirmation dialog and deletes only after the user confirms. It does not recursively sweep arbitrary temporary files from the output directory.
+
 The main window's advanced fields collectively let you supply any documented FFmpeg command-line option at the appropriate command-line stage, including options not represented by a dedicated dropdown. FFmpeg's option set changes with the imported build, so the GUI intentionally discovers options live instead of shipping a static codec-specific catalogue.
 
 Some switches appear only when a component was compiled into FFmpeg. Hardware encoding additionally requires a supported GPU, driver and backend. Which codecs are available depends entirely on the FFmpeg build you import.

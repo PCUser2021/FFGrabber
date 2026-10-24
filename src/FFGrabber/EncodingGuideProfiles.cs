@@ -26,6 +26,8 @@ public sealed record EncodingGuideProfile
     public string OutputFormat { get; init; } = "auto";
     public bool PreserveMetadata { get; init; } = true;
     public bool FastStart { get; init; }
+    public bool TwoPass { get; init; }
+    public string PassLogFile { get; init; } = "";
 
     public string GlobalOptions { get; init; } = "-threads 0";
     public string InputOptions { get; init; } = "";
@@ -78,6 +80,15 @@ public static class EncodingGuideProfiles
             VideoCodec = "libx264", AudioCodec = "aac", Preset = "slow",
             RateControl = "CRF quality", Crf = "18", PixelFormat = "yuv420p",
             AudioBitrate = "192k", FastStart = true
+        },
+        new()
+        {
+            Name = "H.264 — two-pass target bitrate",
+            SourceFile = "Encode_H.264.txt; Encode_YouTube.txt",
+            Description = "Automated two-pass libx264 at a 2 Mbit/s target, slow preset, yuv420p and AAC 128k. FFGrabber runs pass 1 to the null muxer, then pass 2 to the chosen output; generated pass logs are cleaned up afterward.",
+            VideoCodec = "libx264", AudioCodec = "aac", Preset = "slow",
+            RateControl = "Target bitrate", VideoBitrate = "2000k", PixelFormat = "yuv420p",
+            AudioBitrate = "128k", TwoPass = true, FastStart = true
         },
         new()
         {
@@ -176,6 +187,16 @@ public static class EncodingGuideProfiles
         },
         new()
         {
+            Name = "VP9 — two-pass target bitrate",
+            SourceFile = "Encode_VP9.txt",
+            Description = "Automated two-pass libvpx-vp9 at 2 Mbit/s with WebM/Opus. FFGrabber manages the null-muxer analysis pass and reuses its pass log for the final output.",
+            VideoCodec = "libvpx-vp9", AudioCodec = "libopus", Preset = "encoder default",
+            RateControl = "Target bitrate", VideoBitrate = "2000k", AudioBitrate = "128k",
+            OutputFormat = "webm", TwoPass = true,
+            VideoEncoderOptions = "-deadline good -cpu-used 1 -row-mt 1"
+        },
+        new()
+        {
             Name = "VP9 — constrained quality / bitrate cap",
             SourceFile = "Encode_VP9.txt",
             Description = "VP9 CRF 30 constrained by target and maximum bitrates. Adjust values to the actual bandwidth/file-size target.",
@@ -212,6 +233,15 @@ public static class EncodingGuideProfiles
             VideoCodec = "libvpx", AudioCodec = "copy", Preset = "encoder default",
             RateControl = "Target bitrate", VideoBitrate = "1M", PixelFormat = "yuva420p",
             OutputFormat = "webm", OutputOptions = "-metadata:s:v:0 alpha_mode=1"
+        },
+        new()
+        {
+            Name = "FFV1 — two-pass archival",
+            SourceFile = "Encode_FFV1.txt",
+            Description = "Two-pass lossless FFV1 v3 archival encode with range coder, large context, GOP 1 and slice CRC. FFmpeg uses a managed pass log; no bitrate target is required by this profile.",
+            VideoCodec = "ffv1", AudioCodec = "copy", Preset = "encoder default",
+            RateControl = "Encoder-specific options", OutputFormat = "matroska", TwoPass = true,
+            VideoEncoderOptions = "-level 3 -coder 1 -context 1 -g 1 -slices 24 -slicecrc 1"
         },
         new()
         {
@@ -256,6 +286,15 @@ public static class EncodingGuideProfiles
             FrameRate = "48", PixelFormat = "yuvj422p",
             InputFormat = "image2", OutputFormat = "mov", InputOptions = "-r 48 -force_fps",
             VideoEncoderOptions = "", VideoQscale = "1"
+        },
+        new()
+        {
+            Name = "MPEG-4 Part 2 — two-pass AVI",
+            SourceFile = "Encode_MPEG-4.txt",
+            Description = "Automated two-pass native MPEG-4 Part 2 at a 1.5 Mbit/s target, with Xvid FourCC for legacy AVI compatibility.",
+            VideoCodec = "mpeg4", AudioCodec = "libmp3lame", Preset = "encoder default",
+            RateControl = "Target bitrate", VideoBitrate = "1500k", OutputFormat = "avi",
+            VideoEncoderOptions = "-vtag xvid", AudioBitrate = "128k", TwoPass = true
         },
         new()
         {

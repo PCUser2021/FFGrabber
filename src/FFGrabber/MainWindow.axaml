@@ -4,7 +4,5 @@
         Title="FFGrabber"
         Width="1260" Height="1000"
         MinWidth="900" MinHeight="700"
-        TransparencyLevelHint="AcrylicBlur, Mica, Transparent"
-        TransparencyBackgroundFallback="#FF111319"
-        Background="Transparent">
+        Background="{DynamicResource AppBackgroundBrush}">
 </Window>

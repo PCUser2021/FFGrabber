@@ -1,0 +1,40 @@
+= Introduction =
+
+Limiting the output bit rate to a certain range makes sense if you are live streaming or need to be constrained to a certain specification (such as Blu-ray encoding), where the decoder might not be able to handle large bitrate spikes.
+
+There are several options you can use to steer the encoder's bitrate:
+
+- `-b:v`: specifies the target (average) bit rate for the encoder to use
+- `-minrate` specifies a minimum tolerance to be used
+- `-maxrate` specifies a maximum tolerance. this is only used in conjunction with `bufsize`
+- `-bufsize` specifies the decoder buffer size, which determines the variability of the output bitrate
+
+{{{
+#!div style="border: 1px solid #e5e5c7; margin: 1em; background-color: #ffd;"
+'''Note:'''  Constraining the bitrate might result in low quality output if the video is hard to encode. In most cases (such as storing a file for archival), letting the encoder choose the proper bitrate is the  constant quality or CRF-based encoding.
+}}}
+
+= Example: Creating a live stream with limited bit rate =
+
+In this case, you want to have a live stream with more/less constant bit rate (using the option `-b:v`), to be able to control the bandwidth used.
+
+We will instruct the libx264 encoder to simulate a stream transmission with a virtual buffer (just like the real buffer at the decoding side). The technique will constrain the bit rate in order not to exceed a certain threshold value which would take more time to transmit and would cause the decoding buffer to underflow waiting for the new data to arrive.
+
+The typical example would be something like this:
+
+{{{
+ffmpeg -i input -c:v libx264 -b:v 2M -maxrate 2M -bufsize 1M output.mp4
+}}}
+
+The key option here is `-bufsize` which tells the encoder how often to calculate the average bit rate and check to see if it conforms to the average bit rate specified on the command line (`-b:v 2M`).
+
+= What does `-bufsize` do? =
+
+Based on the `-bufsize` option, ffmpeg will calculate and correct the average bit rate produced. If we didn't specify `-bufsize`, these intervals could be significantly longer than we would want. This would cause the current bit rate to frequently jump a lot over and below the specified average bit rate and would cause an unsteady output bit rate.
+
+If we specify a smaller `-bufsize`, ffmpeg will more frequently check for the output bit rate and constrain it to the specified average bit rate from the command line. Hence, lowering `-bufsize` lowers the bitrate variation that the encoder can produce.
+
+Specifying too small `-bufsize` would cause ffmpeg to degrade the output image quality, because it would have to (frequently) conform to the limitations and would not have enough of a free space to use some optimizations (for example, optimizations based on the frame repetitions and similar), because the buffer would not contain enough frames for the optimizations to be effective.
+
+The suggestion is to play around with the combinations of `-bufsize`, starting from the same value like the one specified for the `-b:v` option (or even half of it) and increasing it until your output bit rate starts jumping too much above/below the specified average bit rate. Then you know you've reached the limit and should lower the `-bufsize` value a little bit in order to get back on the safe side.
+

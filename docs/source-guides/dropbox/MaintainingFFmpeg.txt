@@ -1,0 +1,39 @@
+= Notes on Maintaining FFmpeg Source Code =
+
+== Introduction ==
+Like many open source projects FFmpeg code base is maintained by a group of volunteers.
+Given the size and diversity of the code contained in FFmpeg it is clear that it is not
+a fit for a single person to maintain all of the code.
+
+Who maintains what gets tracked in the [https://github.com/FFmpeg/FFmpeg/blob/master/MAINTAINERS MAINTAINERS text file] in the [https://github.com/FFmpeg/FFmpeg/ FFmpeg source tree].
+
+== Qualifying as a Maintainer ==
+Original authors of a piece of code (can be anything from a function to an encoder to a
+build system feature) or contributors/reviewers that have shown a good understanding of
+the code are considered candidates for maintaining that code. Usually they will be asked
+by an FFmpeg developer on the ffmpeg-devel mailing list if they want to maintain it. But
+it is also possible to actively apply as a maintainer on the list.
+
+There is also a different kind of maintenance that is dependent on the target platform
+(architecture/operating system/compiler). Obviously someone who wants to maintain a
+platform must have access to that platform.
+
+== Tasks of a Maintainer ==
+Maintenance for software is a very different kind of maintenance then say for machines. So
+even though the term is probably a misnomer it is widely used amongst software developers.
+In FFmpeg maintainers should take care of the following tasks:
+
+* reviewing patches on the ffmpeg-devel mailing list that touch their area of maintenance
+* testing and integrating patches that pass review, into the maintainers git repository
+* keeping their code in working condition as FFmpeg evolves and new versions of hardware, operating systems, libraries and compilers appear
+* refactoring their code to enable further development or to reduce maintenance burden
+
+The addition of new features or optimization of the code is not a maintenance task. It is
+perfectly fine for a maintainer to not do any active development (though most often maintainers
+are also active contributors).
+
+== Additional Hints ==
+It has proven to be quite handy for a maintainer to have a public Git clone of FFmpeg where
+she can publish experimental changes or accumulate patches for integration testing which will
+eventually get merged into the main line of development in the official FFmpeg Git repository.
+

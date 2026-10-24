@@ -1,0 +1,15 @@
+FFmpeg is written in C99, thus some features may not be compilable or usable in C++.
+
+Anyway, for most purposes, including FFmpeg headers in a C++ application should be rather straightforward.
+
+First, to include the FFmpeg headers within your C++ application you need to explicitly state that you are including C code. You can do this by encompassing your FFmpeg includes using {{{extern "C"}}}, like in:
+{{{
+extern "C" {
+#include <libavutil/imgutils.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+}
+}}}
+
+Second, you may need to append {{{-D__STDC_CONSTANT_MACROS}}} to your CXXFLAGS flags, if the compiler complains about ’UINT64_C’ was not declared in this scope.
+ 

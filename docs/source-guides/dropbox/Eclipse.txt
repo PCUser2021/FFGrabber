@@ -1,0 +1,30 @@
+= How to setup Eclipse IDE for FFmpeg development =
+
+== Eclipse Classic ==
+[http://www.eclipse.org/downloads/ Download basic "Eclipse Classic"]. Some of you might say "Oh, you could download 'Eclipse IDE for C/C++ Developers' all in one installation", but the point is a lot of developers are already using their own version of Eclipse, with various plugins/addons installed, so it is better to show in this tutorial how to do all that in the modular way. That way developers, who already have Eclipse installed with Java, C++, Lua, PHP, or custom addons, can just skip this first step and continue, without the need to search on Google how to do all this without breaking their currently installed version of Eclipse.
+
+== Uncompress and run the Eclipse ==
+After uncompressing (usually with `tar xzf eclipse.<version info here>.tar.gz`), you can simply enter the eclipse directory (with `cd eclipse`) and run the Eclipse (usually using `./eclipse`). After you start the Eclipse for the first time, it will ask you for the `workspace` directory. This directory will contain your future projects in subdirectories. You can also switch between workspaces if you work for example in Java, Lua, PHP, or C++ (as I do) and that way you can organize your projects better, by making separate directories for each programming language, with subdirectories for each new project you work on. Also, you can close the ''Welcome'' tab, to be able to see the workspace behind it.
+
+== Install "Eclipse CDT project plugin" (C/C++ Development Tools) ==
+The usual way to do this is to start the Eclipse and go to the ''Help - Install New Software'' menu option. When the new dialog window shows, you'll have to do 2 things. The first thing is to tell Eclipse from where do you want to download and install stuff. In the latest Eclipse, the field name is named ''Work with'' and you should select the latest Eclipse version there. In my case, the option was named "Indigo - http://download.eclipse.org/releases/indigo". After that, you should type ''C/C++ Development Tools'' in the search filter field, below the ''Work with'' field. The results will appear depending on your Eclipse version, so select all CDT related packages and click ''Next'', accept the license agreement and install all that. Restart Eclipse if asked.
+
+  [[Image(snapshot1.png)]]
+
+If there were any errors during the installation, you can view the error log by going to ''Help - About Eclipse SDK'', then press the button ''Installation Details'', switch to the ''Configuration'' tab and press ''View error log'' :) Simple, right? :))) I had some issues with certificates, because I was using Debian ([https://bugs.eclipse.org/bugs/show_bug.cgi?id=258301 more info]). If that's the case with you too, you can solve that issue by typing in console the following command: `update-ca-certificates -f -v` and repeating the installation process for CDT. Restart Eclipse if asked.
+
+== Install EGit plugin ==
+EGit allows you to use Git inside Eclipse. You can use [http://www.vogella.de/articles/EGit/article.html this tutorial] or you can just repeat the same installation process as for CDT but instead of ''C/C++ Development Tools'' you need to type ''egit''. The rest is the same. Restart Eclipse if asked.
+
+  [[Image(snapshot2.png)]]
+
+== Clone the FFmpeg's git repository ==
+In Eclipse, go to main menu option ''File - Import - Git - Projects From Git'', paste the git url `git://source.ffmpeg.org/ffmpeg.git` and press the ''Clone'' button.
+
+== Create new C++ project using existing FFmpeg's source code ==
+In the Eclipse, go to main menu option ''File - New - Project'', then choose ''C/C++'' and then ''Makefile Project with Existing Code'' and navigate to the FFmpeg's source code directory you have cloned in the previous step (usually `/home/<username>/git/ffmpeg`).
+
+== Compile the source code ==
+First of all, make sure you have c++, g++, make and other build tools installed. If you are using Debian or Ubuntu, you can type `apt-get install build-essential`. Before you compile the source code for the first time, you'll have to go to your local git directory (`/home/<username>/git/ffmpeg`) and type "`./configure`. After it finishes, go back to Eclipse and use the main menu option ''Project - Build All''.
+
+  [[Image(snapshot3.png)]]

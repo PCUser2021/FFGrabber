@@ -349,6 +349,15 @@ public sealed class FFmpegOptionComposerWindow : Window
         _status.Text = $"Loaded {_allOptions.Count:N0} unique option entries extracted from {EncodingGuideOptionIndex.SourceFiles.Count:N0} Dropbox .txt guides. Build-time flags are explanatory only.";
     }
 
+    private static bool IsNonRunnableOption(string optionName) =>
+        optionName.Equals("-h", StringComparison.OrdinalIgnoreCase)
+        || optionName.Equals("-help", StringComparison.OrdinalIgnoreCase)
+        || optionName.Equals("-fullhelp", StringComparison.OrdinalIgnoreCase)
+        || optionName.Equals("-codecs", StringComparison.OrdinalIgnoreCase)
+        || optionName.Equals("-encoders", StringComparison.OrdinalIgnoreCase)
+        || optionName.StartsWith("--enable-", StringComparison.OrdinalIgnoreCase)
+        || optionName.StartsWith("-enable-", StringComparison.OrdinalIgnoreCase);
+
     private static string? RecommendScope(string optionName, string group, string description)
     {
         if (string.Equals(group, "Build capability note", StringComparison.OrdinalIgnoreCase)
@@ -425,10 +434,16 @@ public sealed class FFmpegOptionComposerWindow : Window
             if (!name.StartsWith("-", StringComparison.Ordinal) || name.Length < 2)
                 continue;
 
+            var optionEntry = new OptionEntry(
+                name,
+                line.Trim(),
+                !IsNonRunnableOption(name),
+                RecommendScope(name, string.Empty, line));
+
             if (!entries.ContainsKey(name))
-                entries.Add(name, new OptionEntry(name, line.Trim()));
+                entries.Add(name, optionEntry);
             else if (tail.Length > 0 && entries[name].HelpLine.Length < line.Trim().Length)
-                entries[name] = new OptionEntry(name, line.Trim());
+                entries[name] = optionEntry;
         }
 
         return entries.Values
@@ -486,6 +501,12 @@ public sealed class FFmpegOptionComposerWindow : Window
         if (!_selectedOptionIsRunnable)
         {
             _status.Text = "This guide entry is a build-time configure flag, not a runtime ffmpeg option. It cannot be added to an encode command.";
+            return;
+        }
+
+        if (!_selectedOptionIsRunnable || IsNonRunnableOption(optionName))
+        {
+            _status.Text = "This is a help-display, build-configuration, or external-tool flag rather than a normal FFmpeg encoding setting. It is listed for reference but cannot be inserted into an encoding command.";
             return;
         }
 

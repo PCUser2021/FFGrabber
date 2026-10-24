@@ -371,8 +371,28 @@ public sealed class FFmpegOptionComposerWindow : Window
 
         if (group.Contains("Stream selection", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Metadata / stream", StringComparison.OrdinalIgnoreCase)
-            || optionName is "-map" or "-map_metadata" or "-map_chapters" or "-an")
+            || optionName is "-map" or "-map_metadata" or "-map_chapters" or "-an" or "-vn" or "-sn" or "-dn")
             return "Stream mapping / selection";
+
+        // The runtime -h full catalogue does not carry our guide-category metadata, so
+        // classify common option aliases directly by FFmpeg's stream/option naming.
+        if (optionName.EndsWith(":a", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-c:a", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-codec:a", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-acodec", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-b:a" or "-q:a" or "-qscale:a" or "-aq" or "-ar" or "-ac" or "-vbr" or "-cutoff" or "-profile:a")
+            return "Audio encoder options";
+
+        if (optionName.StartsWith("-vf", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-af", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-filter", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-lavfi" or "-filter_complex")
+            return "Filters / filtergraph";
+
+        if (optionName is "-ss" or "-sseof" or "-t" or "-to" or "-re" or "-framerate"
+            or "-video_size" or "-list_formats" or "-list-formats-ext" or "-hwaccel"
+            or "-probesize" or "-analyzeduration" or "-f" or "-use_wallclock_as_timestamps")
+            return "Input / demuxer options";
 
         if (group.Contains("Audio", StringComparison.OrdinalIgnoreCase)
             || optionName is "-ar" or "-ac" or "-b:a" or "-q:a" or "-qscale:a"
@@ -412,7 +432,24 @@ public sealed class FFmpegOptionComposerWindow : Window
             || group.Contains("Hardware encoding", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Speed", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Profile", StringComparison.OrdinalIgnoreCase)
-            || group.Contains("FFV1", StringComparison.OrdinalIgnoreCase))
+            || group.Contains("FFV1", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-c:v", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-codec:v", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-vcodec", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-x264", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-x265", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-svtav1", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-aom", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-vpx", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-prores", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-ffv1", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-pass", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-crf", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-b:v" or "-qp" or "-qscale:v" or "-q:v" or "-preset"
+                or "-tune" or "-profile:v" or "-pix_fmt" or "-minrate" or "-maxrate"
+                or "-bufsize" or "-g" or "-keyint_min" or "-bf" or "-threads"
+                or "-coder" or "-context" or "-level" or "-slices" or "-slicecrc"
+                or "-force_fps" or "-r" or "-s" or "-vtag" or "-tag:v" or "-vendor")
             return "Video encoder options";
 
         _ = description;

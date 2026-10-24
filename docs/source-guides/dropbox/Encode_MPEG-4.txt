@@ -1,0 +1,54 @@
+= MPEG-4 Encoding Guide =
+
+'''[[wikipedia:MPEG-4 Part 2]]''', aka '''MPEG-4''', '''Xvid''', and '''DivX''', is a video codec that was most widely used before the wide adoption of [[H.264]]. FFmpeg has two encoders to output MPEG-4 video. The external encoding library `libxvid`:
+{{{
+ffmpeg -i input.avi -c:v libxvid output.avi
+}}}
+
+...and the native encoder `mpeg4`:
+{{{
+ffmpeg -i input.avi -c:v mpeg4 -vtag xvid output.avi
+}}}
+
+The native encoder has the advantage of not requiring an external library. Both encoders should provide a similar output, but for lower bitrates/quality (e.g. 1000 kBit/s for 720p content), `libxvid` will deliver better quality than `mpeg4`.
+
+The default FourCC stored in an MPEG-4-coded file will be `FMP4`. If you want a different FourCC, use the `-vtag` option. E.g., `-vtag xvid` will force the FourCC `xvid` to be stored as the video FourCC rather than the default.
+
+{{{
+#!div style="border: 1pt dotted; margin: 1em; background-color: #fffff9;"
+'''Note:''' This guide uses the AVI container files for the examples, as the most common usage of XviD video is currently for older hardware devices. See the [[H.264]] and [[AAC]] encoding guides if you are using modern devices. These codecs will offer better compression efficiency; using modern containers like MP4 or MKV is also recommended.
+}}}
+
+== Variable Bit Rate with `-qscale` ==
+
+You can select a video quality level with `-qscale:v n` (or the alias `-q:v n`), where ''n'' is a number from 1-31, with 1 being highest quality/largest filesize and 31 being the lowest quality/smallest filesize. This is a variable bit rate mode, roughly analogous to using `-qp` (constant QP [quantization parameter]) with x264. Most of the time this should be the preferred method.
+
+You can select an audio quality level with `-qscale:a` (or the alias `-q:a`). The value changes depending on the audio encoder. Since this guide uses libmp3lame see the [[MP3|MP3 Encoding Guide]] for examples and more information.
+
+Example:
+{{{
+ffmpeg -i input.avi -c:v mpeg4 -vtag xvid -qscale:v 3 -c:a libmp3lame -qscale:a 4 output.avi
+}}}
+
+There is rarely a need to use `-qscale:v 1`. Note that if you choose it, libxvid will take much more space than the same video compressed with the native mpeg4 encoder.
+
+== Constant Bit Rate ==
+
+You can target a bitrate with `-b:v`. This is best used with two-pass encoding. Adapting an example from the x264 encoding guide: your video is 10 minutes (600 seconds) long and an output of 50 MB is desired. Since bitrate = file size / duration: 
+
+{{{
+(50 MB * 8192 [converts MB to kilobits]) / 600 seconds = ~683 kilobits/s total bitrate
+683k - 128k (desired audio bitrate) = 555k video bitrate
+}}}
+
+=== Two-pass example ===
+
+{{{
+ffmpeg -y -i input.avi -c:v mpeg4 -vtag xvid -b:v 555k -pass 1 -an -f avi /dev/null
+ffmpeg -i input.avi -c:v mpeg4 -vtag xvid -b:v 555k -pass 2 -c:a libmp3lame -b:a 128k output.avi
+}}}
+
+{{{
+#!div style="border: 1px solid #e5e5c7; margin: 1em; background-color: #ffd;"
+'''Note:''' Windows users should use `NUL` instead of `/dev/null`. 
+}}}

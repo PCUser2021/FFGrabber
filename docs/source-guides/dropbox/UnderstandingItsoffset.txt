@@ -1,0 +1,24 @@
+= Understanding -itsoffset option =
+
+The itsoffset option applies to all streams embedded within the input file. Therefore, adjusting timestamps only for a single stream requires to specify twice the same input file.
+{{{
+ffmpeg -i INPUT -itsoffset 5 -i INPUT -map 0:v -map 1:a OUTPUT
+}}}
+adjusts timestamps of the input audio stream(s) only.
+
+== Understanding a positive offset ==
+{{{
+ffmpeg -itsoffset 5 -i INPUT OUTPUT
+}}}
+delays all the input streams by 5 seconds.
+
+If the input file was 60 seconds long, the output file will be 65 seconds long. The first 5 seconds will be a still image (first frame).
+
+== Understanding a negative offset ==
+{{{
+ffmpeg -itsoffset -5 -i INPUT OUTPUT
+}}}
+advances all the input streams by 5 seconds.
+
+This discards the first five seconds of input. However, if the input file was 60 seconds long, the output file will also be 60 seconds long. The last 5 seconds will be a still image (last frame).
+

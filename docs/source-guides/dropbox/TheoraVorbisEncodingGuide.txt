@@ -1,0 +1,26 @@
+= A Brief Theora and Vorbis Encoding Guide =
+
+The Theora video format, Vorbis audio format, and Ogg container formats were developed by [http://xiph.org/ Xiph.org] as free and open-source media formats. `ffmpeg` can create these formats by using the external encoding libraries libtheora and libvorbis.
+
+To use these encoders make sure your `ffmpeg` build has been compiled with `--enable-libtheora` and `--enable-libvorbis`, or refer to the output of `ffmpeg -codecs`. If you want to compile `ffmpeg` to support these encoders see the various [[CompilationGuide|FFmpeg Compilation Guides]] for detailed instructions.
+
+libvorbis (`-codec:a libvorbis`) is recommended over the very experimental, native FFmpeg Vorbis audio encoder (`-codec:a vorbis -strict experimental`) since it does not provide comparable quality to libvorbis.
+
+{{{
+#!div style="border: 1pt dotted; margin: 1em; background-color: #fffff9;"
+'''Note:''' More modern alternatives like VP9 can often provide better video quality at a lower bitrate. See the [[Encode/VP9|VP9 Encoding Guide]].
+}}}
+
+== Variable Bitrate (VBR) ==
+{{{
+ffmpeg -i input.mkv -codec:v libtheora -qscale:v 7 -codec:a libvorbis -qscale:a 5 output.ogv
+}}}
+
+* `-qscale:v` – video quality. Range is 0–10, where 10 is highest quality. 5–7 is a good range to try. If you omit `-qscale:v` (or the alias `-q:v`) then ffmpeg will use the default `-b:v 200k` which will most likely provide a poor quality output, and libtheora may drop/skip frames if the bitrate is too low.
+
+* `-qscale:a` – audio quality. [https://ffmpeg.org/ffmpeg-codecs.html#libvorbis Range] is -1.0 to 10.0, where 10.0 is highest quality. Default is `-q:a 3` with a target of [https://wiki.hydrogenaud.io/index.php?title=Recommended_Ogg_Vorbis#Recommended_Encoder_Settings 112kbps]. The formula 16×(q+4) is used below '''4''', 32×q is used below '''8''', and 64×(q-4) otherwise. Examples: 112=16×('''3'''+4), 160=32×'''5''', 200=32×'''6.25''', 384=64×('''10'''-4).
+
+== Other Resources ==
+* [https://ffmpeg.org/ffmpeg-codecs.html#libtheora FFmpeg Codecs Documentation: libtheora]
+* [http://ffmpeg.org/ffmpeg-codecs.html#libvorbis FFmpeg Codecs Documentation: libvorbis]
+* [http://wiki.hydrogenaudio.org/index.php?title=Recommended_Ogg_Vorbis#Recommended_Encoder_Settings Hydrogen Audio: Recommended Vorbis Encoder Settings]

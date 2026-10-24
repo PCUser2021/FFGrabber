@@ -4,12 +4,23 @@ namespace FFGrabber.Services;
 
 /// <summary>
 /// Resolves FFmpeg tools. FFGrabber ships no FFmpeg binaries: the only tool source is the complete
-/// ffmpeg.exe / ffprobe.exe / ffplay.exe set that the user imported. Nothing is read from the install
+/// platform-native ffmpeg / ffprobe / ffplay set that the user imported. Nothing is read from the install
 /// folder or from PATH.
 /// </summary>
 public static class FFmpegLocator
 {
     private static readonly object Sync = new();
+
+    /// <summary>Returns the platform-native filename for one supported FFmpeg tool.</summary>
+    public static string GetExecutableFileName(string tool)
+    {
+        if (tool is not ("ffmpeg" or "ffprobe" or "ffplay"))
+            throw new ArgumentOutOfRangeException(nameof(tool));
+        return OperatingSystem.IsWindows() ? tool + ".exe" : tool;
+    }
+
+    public static string GetRequiredToolsDescription() =>
+        string.Join(", ", new[] { "ffmpeg", "ffprobe", "ffplay" }.Select(GetExecutableFileName));
     private static readonly string ImportSettingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FFGrabber",
@@ -46,8 +57,9 @@ public static class FFmpegLocator
         if (HasCompleteToolSet(bin))
             return bin;
 
+        var requiredTools = GetRequiredToolsDescription();
         throw new FileNotFoundException(
-            "The selected folder must contain ffmpeg.exe, ffprobe.exe, and ffplay.exe, either directly or inside its bin subfolder.");
+            $"The selected folder must contain {requiredTools}, either directly or inside its bin subfolder.");
     }
 
     public static void SetImportedDirectory(string directory)
@@ -83,15 +95,15 @@ public static class FFmpegLocator
         if (imported is null)
             return null;
 
-        var candidate = Path.Combine(imported, tool + ".exe");
+        var candidate = Path.Combine(imported, GetExecutableFileName(tool));
         return File.Exists(candidate) ? candidate : null;
     }
 
     private static bool HasCompleteToolSet(string? directory) =>
         !string.IsNullOrWhiteSpace(directory) &&
-        File.Exists(Path.Combine(directory, "ffmpeg.exe")) &&
-        File.Exists(Path.Combine(directory, "ffprobe.exe")) &&
-        File.Exists(Path.Combine(directory, "ffplay.exe"));
+        File.Exists(Path.Combine(directory, GetExecutableFileName("ffmpeg"))) &&
+        File.Exists(Path.Combine(directory, GetExecutableFileName("ffprobe"))) &&
+        File.Exists(Path.Combine(directory, GetExecutableFileName("ffplay")));
 
     private static string? LoadImportedDirectory()
     {

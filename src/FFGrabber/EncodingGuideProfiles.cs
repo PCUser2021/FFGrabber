@@ -533,6 +533,43 @@ public static class EncodingGuideProfiles
             RateControl = "Target bitrate", VideoBitrate = "4000k",
             MaxVideoBitrate = "4000k", BufferSize = "8000k",
             VideoTune = "zerolatency", OutputFormat = "flv"
+        },
+        new()
+        {
+            Name = "Streaming — File to RTMP (full guides)",
+            SourceFile = "EncodingForStreamingSites.txt; StreamingGuide.txt",
+            Description = "For a prerecorded file only. Adds -re so the file is sent in real time; do not use -re on a live capture input. At 30 fps, GOP 60 is a two-second keyframe interval. Tune bitrate against measured upload capacity and the service's ingest limits. Replace the output with your RTMP endpoint; never commit a stream key.",
+            Mode = "Convert / encode", VideoCodec = "libx264", AudioCodec = "aac",
+            Preset = "veryfast", RateControl = "Target bitrate", VideoBitrate = "3000k",
+            FrameRate = "30", PixelFormat = "yuv420p", AudioBitrate = "128k",
+            InputOptions = "-re", MaxVideoBitrate = "3000k", BufferSize = "6000k",
+            GopSize = "60", AudioSampleRate = "44100", AudioChannels = "2",
+            OutputFormat = "flv"
+        },
+        new()
+        {
+            Name = "Streaming — Live input to RTMP (full guides)",
+            SourceFile = "EncodingForStreamingSites.txt; StreamingGuide.txt",
+            Description = "For a live input device or already-live source; do not set -re because that option is intended to pace file input. InputFormat is set to dshow as a Windows starting point. Replace Input with the exact device expression discovered on this PC. Values assume a 30 fps, 3 Mbit/s stream and should be adjusted to the service's current requirements.",
+            Mode = "Convert / encode", InputFormat = "dshow",
+            VideoCodec = "libx264", AudioCodec = "aac", Preset = "veryfast",
+            RateControl = "Target bitrate", VideoBitrate = "3000k",
+            FrameRate = "30", PixelFormat = "yuv420p", AudioBitrate = "128k",
+            MaxVideoBitrate = "3000k", BufferSize = "6000k", GopSize = "60",
+            VideoTune = "zerolatency", AudioSampleRate = "44100", AudioChannels = "2",
+            OutputFormat = "flv"
+        },
+        new()
+        {
+            Name = "Streaming — RTMP plus local recording (tee)",
+            SourceFile = "EncodingForStreamingSites.txt; StreamingGuide.txt",
+            Description = "Advanced multi-destination workflow. Set Output to a tee target such as [f=flv:onfail=ignore]rtmp://YOUR-SERVER/YOUR-STREAM-KEY|local-recording.mkv, with the target in one argument. This encodes once for the stream and local recording. +global_header is included as recommended by the historical tee example; confirm each target's muxer and encoder requirements before running.",
+            Mode = "Convert / encode", VideoCodec = "libx264", AudioCodec = "aac",
+            Preset = "veryfast", RateControl = "Target bitrate", VideoBitrate = "3000k",
+            FrameRate = "30", PixelFormat = "yuv420p", AudioBitrate = "128k",
+            MaxVideoBitrate = "3000k", BufferSize = "6000k", GopSize = "60",
+            AudioSampleRate = "44100", AudioChannels = "2", OutputFormat = "tee",
+            OutputOptions = "-flags +global_header"
         }
     ]);
 

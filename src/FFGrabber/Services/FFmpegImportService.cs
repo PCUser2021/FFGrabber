@@ -20,11 +20,11 @@ public static class FFmpegImportService
         var directory = FFmpegLocator.ResolveToolDirectory(selectedDirectory);
 
         // Verify every executable can actually start and reports a version before changing settings.
-        var ffmpeg = await ValidateToolAsync(Path.Combine(directory, "ffmpeg.exe"), "ffmpeg", DefaultProcessExecutor, cancellationToken)
+        var ffmpeg = await ValidateToolAsync(Path.Combine(directory, FFmpegLocator.GetExecutableFileName("ffmpeg")), "ffmpeg", DefaultProcessExecutor, cancellationToken)
             .ConfigureAwait(false);
-        var ffprobe = await ValidateToolAsync(Path.Combine(directory, "ffprobe.exe"), "ffprobe", DefaultProcessExecutor, cancellationToken)
+        var ffprobe = await ValidateToolAsync(Path.Combine(directory, FFmpegLocator.GetExecutableFileName("ffprobe")), "ffprobe", DefaultProcessExecutor, cancellationToken)
             .ConfigureAwait(false);
-        var ffplay = await ValidateToolAsync(Path.Combine(directory, "ffplay.exe"), "ffplay", DefaultProcessExecutor, cancellationToken)
+        var ffplay = await ValidateToolAsync(Path.Combine(directory, FFmpegLocator.GetExecutableFileName("ffplay")), "ffplay", DefaultProcessExecutor, cancellationToken)
             .ConfigureAwait(false);
 
         // Persist only after all three tool checks pass, so a failed import cannot break the existing setup.
@@ -43,7 +43,7 @@ public static class FFmpegImportService
         ArgumentNullException.ThrowIfNull(processExecutor);
 
         if (!File.Exists(executable))
-            throw new FileNotFoundException($"Required {toolName}.exe was not found.", executable);
+            throw new FileNotFoundException($"Required {Path.GetFileName(executable)} was not found.", executable);
 
         // Keep the import probe behind a seam so tests can exercise success/failure
         // responses without shipping, importing or running native FFmpeg binaries.
@@ -57,7 +57,7 @@ public static class FFmpegImportService
         if (result.ExitCode != 0 || !firstLine.Contains("version", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
-                $"The selected {toolName}.exe did not pass its version test (exit code {result.ExitCode}). " +
+                $"The selected {Path.GetFileName(executable)} did not pass its version test (exit code {result.ExitCode}). " +
                 $"Output: {firstLine}");
         }
 

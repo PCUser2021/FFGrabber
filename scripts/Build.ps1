@@ -3,7 +3,7 @@ param(
     [ValidateSet('x64', 'arm64')]
     [string] $Architecture = 'x64',
     [ValidatePattern('^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$')]
-    [string] $Version = '0.5.1',
+    [string] $Version = '0.5.2',
     [switch] $Installer
 )
 $ErrorActionPreference = 'Stop'

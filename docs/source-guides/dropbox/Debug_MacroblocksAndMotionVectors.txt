@@ -1,0 +1,27 @@
+= Debugging Macroblocks and Motion Vectors =
+
+You can use `ffmpeg` or `ffplay` to analyze motion vectors in a video file. 
+
+Previous versions of ffmpeg (pre-October 2017) allowed you to analyze macroblocks too, but this option was removed.
+
+The [http://ffmpeg.org/ffmpeg-all.html#codecview `codecview` filter] can be used to show motion vectors as small arrows for each macroblock. It takes one option called `mv`, which specifies the type of motion vector to be drawn:
+
+* `pf` – forward predicted motion vectors of P pictures
+* `bf` – forward predicted motion vectors of B pictures
+* `bb` – backward predicted motion vectors of B pictures
+
+For example, you can use:
+{{{
+ffplay -flags2 +export_mvs input.mp4 -vf codecview=mv=pf+bf+bb
+ffmpeg -flags2 +export_mvs -i input.mp4 -vf codecview=mv=pf+bf+bb output.mp4
+}}}
+
+Example:
+
+[[Image(vismv_pf.png)]]
+
+Caveats: 
+* Earlier versions of ffmpeg do not have this filter, but support the now deprecated `-vismv` option.
+* This option does not work for codecs which do not export motion vectors (most non-MPEG based codecs)
+
+

@@ -1,0 +1,15 @@
+= Cropping a video stream =
+== An alternative to cropdetect filter ==
+Sometimes a 16/9 movie is recorded within a 4/3 window. Therefore the video player cannot zoom the video to full screen, even if the Display Aspect Ratio is 16/9. This is due to existing black areas in the upper and lower part of the video.
+
+Standard procedure to eliminate these black areas is to run first the '''cropdetect''' filter and then run the '''crop''' filter. In some cases, the drawback of cropdetect is that it needs a log analysis when a human eye give a better result quicker.
+
+An alternative to this procedure is to run first the '''fillborders''' filter with blue color and evaluate the result in an iterative manner.
+{{{
+ffmpeg -i "INPUT.mp4" -vf fillborders=top=84:bottom=56:mode=fixed:color=blue "OUTPUT.mp4"
+}}}
+The resulting crop filter is then this one :
+{{{
+ffmpeg -i "INPUT.mp4" -vf crop=720:576-84-56:0:84 "OUTPUT.mp4"
+}}}
+

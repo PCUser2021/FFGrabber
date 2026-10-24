@@ -38,6 +38,36 @@ public partial class MainWindow : Window
     private readonly CheckBox _metadata = new() { Content = "Preserve metadata and chapters", IsChecked = true };
     private readonly CheckBox _fastStart = new() { Content = "MP4/MOV fast start", IsChecked = true };
     private readonly CheckBox _overwrite = new() { Content = "Overwrite output", IsChecked = false };
+    private readonly ComboBox _guideProfile = new()
+    {
+        ItemsSource = EncodingGuideProfiles.Names.Prepend("Manual / custom").ToArray(),
+        SelectedIndex = 0,
+        MinWidth = 360
+    };
+    private readonly TextBlock _guideProfileDescription = new()
+    {
+        TextWrapping = TextWrapping.Wrap,
+        Foreground = Brush("#A4A9B6")
+    };
+
+    private readonly TextBox _minVideoBitrate = new() { PlaceholderText = "optional, e.g. 500k", Width = 150 };
+    private readonly TextBox _maxVideoBitrate = new() { PlaceholderText = "optional, e.g. 3M", Width = 150 };
+    private readonly TextBox _bufferSize = new() { PlaceholderText = "optional, e.g. 6M", Width = 150 };
+    private readonly TextBox _gopSize = new() { PlaceholderText = "optional, e.g. 60", Width = 150 };
+    private readonly ComboBox _videoTune = Combo(["auto", "film", "animation", "grain", "stillimage", "fastdecode", "zerolatency", "psnr", "ssim"]);
+    private readonly TextBox _videoProfile = new() { PlaceholderText = "optional, e.g. high, main, 3", Width = 150 };
+    private readonly TextBox _videoQscale = new() { PlaceholderText = "encoder-specific qscale", Width = 150 };
+    private readonly TextBox _videoQp = new() { PlaceholderText = "encoder-specific QP", Width = 150 };
+    private readonly TextBox _audioQscale = new() { PlaceholderText = "encoder-specific qscale", Width = 150 };
+    private readonly TextBox _audioVbr = new() { PlaceholderText = "FDK AAC VBR 1-5", Width = 150 };
+    private readonly ComboBox _audioProfile = Combo(["auto", "aac_low", "aac_he", "aac_he_v2"]);
+    private readonly TextBox _audioCutoff = new() { PlaceholderText = "cutoff Hz, e.g. 18000", Width = 150 };
+    private readonly TextBox _audioSampleRate = new() { PlaceholderText = "Hz, e.g. 44100", Width = 150 };
+    private readonly TextBox _audioChannels = new() { PlaceholderText = "e.g. 2", Width = 150 };
+    private readonly TextBox _colorPrimaries = new() { PlaceholderText = "e.g. bt2020", Width = 150 };
+    private readonly TextBox _colorTransfer = new() { PlaceholderText = "e.g. smpte2084", Width = 150 };
+    private readonly TextBox _colorSpace = new() { PlaceholderText = "e.g. bt2020nc", Width = 150 };
+    private readonly TextBox _additionalInputs = MultiLine("Optional extra FFmpeg inputs, e.g. -i \"right-eye.exr\" -i audio.m4a", 56);
 
     private readonly TextBox _globalOptions = MultiLine("-loglevel verbose -threads 0", 56);
     private readonly TextBox _inputOptions = MultiLine("-ss 00:00:05 -probesize 50M -analyzeduration 100M", 56);
@@ -117,6 +147,8 @@ public partial class MainWindow : Window
         topActions.Children.Add(_importFfmpegButton);
         _importFfmpegButton.Click += async (_, _) => await ImportFFmpegAsync();
         topActions.Children.Add(GlyphButton("\uE71C", "FFmpeg options & capabilities", async (_, _) => await OpenCapabilitiesAsync()));
+        topActions.Children.Add(GlyphButton("\uE713", "Encoding settings editor", async (_, _) => await OpenOptionComposerAsync()));
+        topActions.Children.Add(GlyphButton("\uE74D", "Clean output .tmp files…", async (_, _) => await CleanTemporaryFilesAsync()));
         root.Children.Add(topActions);
         RefreshFFmpegStatus();
         root.Children.Add(new Border { Classes = { "statusPanel" }, Child = _ffmpegStatus });
@@ -136,6 +168,14 @@ public partial class MainWindow : Window
 
         var settingsPanel = Panel("Encoding settings");
         var settings = PanelChildren(settingsPanel);
+
+        var guideProfileRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        guideProfileRow.Children.Add(Label("Encoding guide profile", 150));
+        guideProfileRow.Children.Add(_guideProfile);
+        guideProfileRow.Children.Add(Button("Apply profile", (_, _) => ApplyGuideProfile(), primary: true));
+        settings.Children.Add(guideProfileRow);
+        settings.Children.Add(_guideProfileDescription);
+
         settings.Children.Add(Row("Operation", _mode));
         settings.Children.Add(Row("Video codec / encoder", _videoCodec));
         settings.Children.Add(Row("Encoder preset", _preset));
@@ -165,6 +205,56 @@ public partial class MainWindow : Window
         checks.Children.Add(_fastStart);
         checks.Children.Add(_overwrite);
         settings.Children.Add(checks);
+
+        var guideControls = new StackPanel { Spacing = 10 };
+        guideControls.Children.Add(new TextBlock
+        {
+            Text = "Codec-specific controls extracted from the encoding guides. Blank fields leave the encoder defaults unchanged.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Brush("#A4A9B6")
+        });
+        var videoLimits = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        videoLimits.Children.Add(Label("Min bitrate", 85)); videoLimits.Children.Add(_minVideoBitrate);
+        videoLimits.Children.Add(Label("Max bitrate", 85)); videoLimits.Children.Add(_maxVideoBitrate);
+        guideControls.Children.Add(videoLimits);
+        var videoBufferGop = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        videoBufferGop.Children.Add(Label("VBV buffer", 85)); videoBufferGop.Children.Add(_bufferSize);
+        videoBufferGop.Children.Add(Label("GOP / keyframe", 105)); videoBufferGop.Children.Add(_gopSize);
+        guideControls.Children.Add(videoBufferGop);
+        var videoTuneProfile = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        videoTuneProfile.Children.Add(Label("Video tune", 85)); videoTuneProfile.Children.Add(_videoTune);
+        videoTuneProfile.Children.Add(Label("Video profile", 105)); videoTuneProfile.Children.Add(_videoProfile);
+        guideControls.Children.Add(videoTuneProfile);
+        var videoQuantizers = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        videoQuantizers.Children.Add(Label("Video qscale", 85)); videoQuantizers.Children.Add(_videoQscale);
+        videoQuantizers.Children.Add(Label("Video QP", 105)); videoQuantizers.Children.Add(_videoQp);
+        guideControls.Children.Add(videoQuantizers);
+
+        var audioRate = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        audioRate.Children.Add(Label("Audio qscale", 85)); audioRate.Children.Add(_audioQscale);
+        audioRate.Children.Add(Label("AAC VBR", 105)); audioRate.Children.Add(_audioVbr);
+        guideControls.Children.Add(audioRate);
+        var audioProfileRate = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        audioProfileRate.Children.Add(Label("Audio profile", 85)); audioProfileRate.Children.Add(_audioProfile);
+        audioProfileRate.Children.Add(Label("Audio cutoff", 105)); audioProfileRate.Children.Add(_audioCutoff);
+        guideControls.Children.Add(audioProfileRate);
+        var audioLayout = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        audioLayout.Children.Add(Label("Sample rate", 85)); audioLayout.Children.Add(_audioSampleRate);
+        audioLayout.Children.Add(Label("Channels", 105)); audioLayout.Children.Add(_audioChannels);
+        guideControls.Children.Add(audioLayout);
+
+        var colorRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        colorRow.Children.Add(Label("Color primaries", 100)); colorRow.Children.Add(_colorPrimaries);
+        colorRow.Children.Add(Label("Transfer", 70)); colorRow.Children.Add(_colorTransfer);
+        colorRow.Children.Add(Label("Colorspace", 85)); colorRow.Children.Add(_colorSpace);
+        guideControls.Children.Add(colorRow);
+        settings.Children.Add(new Expander
+        {
+            Header = "Guide-specific controls — VBV, keyframes, encoder tune/profile, audio quality and HDR metadata",
+            IsExpanded = true,
+            Content = guideControls
+        });
+
         root.Children.Add(settingsPanel);
 
         root.Children.Add(BuildAdvancedOptions());
@@ -207,6 +297,39 @@ public partial class MainWindow : Window
     }
 
     private static ComboBox Combo(string[] values) => new() { ItemsSource = values, SelectedIndex = 0, MinWidth = 180 };
+
+    private static string CombineOptionLines(params string?[] values) =>
+        string.Join(Environment.NewLine, values
+            .Select(value => value?.Trim())
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private static string BuildOption(string name, string? value) =>
+        string.IsNullOrWhiteSpace(value) || string.Equals(value.Trim(), "auto", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : name + " " + value.Trim();
+
+    private string BuildVideoGuideOptions() => CombineOptionLines(
+        BuildOption("-minrate", _minVideoBitrate.Text),
+        BuildOption("-maxrate", _maxVideoBitrate.Text),
+        BuildOption("-bufsize", _bufferSize.Text),
+        BuildOption("-g", _gopSize.Text),
+        Selected(_videoTune) is "auto" or "" ? string.Empty : "-tune " + Selected(_videoTune),
+        BuildOption("-profile:v", _videoProfile.Text),
+        BuildOption("-qscale:v", _videoQscale.Text),
+        BuildOption("-qp", _videoQp.Text));
+
+    private string BuildAudioGuideOptions() => CombineOptionLines(
+        BuildOption("-qscale:a", _audioQscale.Text),
+        BuildOption("-vbr", _audioVbr.Text),
+        Selected(_audioProfile) is "auto" or "" ? string.Empty : "-profile:a " + Selected(_audioProfile),
+        BuildOption("-cutoff", _audioCutoff.Text),
+        BuildOption("-ar", _audioSampleRate.Text),
+        BuildOption("-ac", _audioChannels.Text));
+
+    private string BuildColorMetadataOptions() => CombineOptionLines(
+        BuildOption("-color_primaries", _colorPrimaries.Text),
+        BuildOption("-color_trc", _colorTransfer.Text),
+        BuildOption("-colorspace", _colorSpace.Text));
     private static IBrush Brush(string color) => ThemePreferences.Brush(color);
     private static TextBlock Heading(string text) => new() { Text = text, Foreground = Brush("#C2F970"), FontWeight = FontWeight.SemiBold, FontSize = 15 };
     private static TextBlock Label(string text, double width) => new() { Text = text, Width = width, VerticalAlignment = VerticalAlignment.Center, Foreground = Brush("#C9CED9") };
@@ -280,6 +403,7 @@ public partial class MainWindow : Window
         });
         AddOptionEditor(stack, "Global / logging options (before inputs)", _globalOptions);
         AddOptionEditor(stack, "Input / demuxer options (before -i)", _inputOptions);
+        AddOptionEditor(stack, "Additional inputs (one or more -i arguments, e.g. second video/audio/image sequence)", _additionalInputs);
         AddOptionEditor(stack, "Stream mapping / selection", _mappingOptions);
         AddOptionEditor(stack, "Video encoder-specific options", _videoEncoderOptions);
         AddOptionEditor(stack, "Audio encoder-specific options", _audioEncoderOptions);
@@ -322,13 +446,14 @@ public partial class MainWindow : Window
         _globalOptions.Text ?? string.Empty,
         _inputOptions.Text ?? string.Empty,
         _mappingOptions.Text ?? string.Empty,
-        _videoEncoderOptions.Text ?? string.Empty,
-        _audioEncoderOptions.Text ?? string.Empty,
+        CombineOptionLines(_videoEncoderOptions.Text, BuildVideoGuideOptions()),
+        CombineOptionLines(_audioEncoderOptions.Text, BuildAudioGuideOptions()),
         _filterOptions.Text ?? string.Empty,
         _muxerOptions.Text ?? string.Empty,
-        _outputOptions.Text ?? string.Empty,
+        CombineOptionLines(_outputOptions.Text, BuildColorMetadataOptions()),
         Selected(_inputFormat),
-        Selected(_outputFormat));
+        Selected(_outputFormat),
+        _additionalInputs.Text ?? string.Empty);
 
     private async Task LoadAvailableCapabilitiesAsync()
     {

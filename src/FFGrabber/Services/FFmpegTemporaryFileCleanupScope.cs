@@ -61,8 +61,16 @@ public sealed class FFmpegTemporaryFileCleanupScope
         var patterns = new List<TemporaryNamePattern>();
         var outputDirectoryFull = Path.GetFullPath(outputDirectory);
 
-        // Generic atomic output writers may use <output filename>.tmp.
+        // Generic atomic output writers may use <output filename>.tmp. Some muxers
+        // append stream/segment details to the output basename before .tmp; include only
+        // names starting with this output stem and a filename separator, never every .tmp
+        // in the directory. Existing matching files are still protected by the start snapshot.
         patterns.Add(TemporaryNamePattern.Exact(outputDirectoryFull, outputFileName + ".tmp"));
+        patterns.Add(TemporaryNamePattern.Regex(
+            outputDirectoryFull,
+            new Regex(
+                "^" + Regex.Escape(outputStem) + "(?:[._-][^\\\\/]+)?\\.tmp$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled)));
 
         if (isHls)
         {

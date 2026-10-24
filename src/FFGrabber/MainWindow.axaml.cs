@@ -38,6 +38,12 @@ public partial class MainWindow : Window
     private readonly CheckBox _metadata = new() { Content = "Preserve metadata and chapters", IsChecked = true };
     private readonly CheckBox _fastStart = new() { Content = "MP4/MOV fast start", IsChecked = true };
     private readonly CheckBox _overwrite = new() { Content = "Overwrite output", IsChecked = false };
+    private readonly CheckBox _twoPass = new() { Content = "Automated two-pass video encode", IsChecked = false };
+    private readonly TextBox _passLogFile = new()
+    {
+        PlaceholderText = "Pass-log prefix (blank = managed temporary path)",
+        MinWidth = 320
+    };
     private readonly ComboBox _guideProfile = new()
     {
         ItemsSource = EncodingGuideProfiles.Names.Prepend("Manual / custom").ToArray(),
@@ -250,6 +256,20 @@ public partial class MainWindow : Window
         colorRow.Children.Add(Label("Transfer", 70)); colorRow.Children.Add(_colorTransfer);
         colorRow.Children.Add(Label("Colorspace", 85)); colorRow.Children.Add(_colorSpace);
         guideControls.Children.Add(colorRow);
+
+        var passRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        passRow.Children.Add(_twoPass);
+        passRow.Children.Add(Label("Pass-log prefix", 105));
+        passRow.Children.Add(_passLogFile);
+        guideControls.Children.Add(passRow);
+
+        guideControls.Children.Add(new TextBlock
+        {
+            Text = "Two-pass mode is available for documented generic-pass encoders (libx264, MPEG-4, libvpx/VP9, libaom-av1, FFV1). FFGrabber runs pass 1 to the null muxer, then pass 2 to the selected output. Leave the pass-log prefix blank to use and clean a unique FFGrabber-managed path.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Brush("#A4A9B6")
+        });
+
         settings.Children.Add(new Expander
         {
             Header = "Guide-specific controls — VBV, keyframes, encoder tune/profile, audio quality and HDR metadata",
@@ -492,6 +512,8 @@ public partial class MainWindow : Window
         _audioCutoff.Text = profile.AudioCutoff;
         _audioSampleRate.Text = profile.AudioSampleRate;
         _audioChannels.Text = profile.AudioChannels;
+        _twoPass.IsChecked = profile.TwoPass;
+        _passLogFile.Text = profile.PassLogFile;
         _colorPrimaries.Text = profile.ColorPrimaries;
         _colorTransfer.Text = profile.ColorTransfer;
         _colorSpace.Text = profile.ColorSpace;
@@ -687,7 +709,9 @@ public partial class MainWindow : Window
         CombineOptionLines(_outputOptions.Text, BuildColorMetadataOptions()),
         Selected(_inputFormat),
         Selected(_outputFormat),
-        _additionalInputs.Text ?? string.Empty);
+        _additionalInputs.Text ?? string.Empty,
+        _twoPass.IsChecked == true,
+        _passLogFile.Text?.Trim() ?? string.Empty);
 
     private async Task LoadAvailableCapabilitiesAsync()
     {
@@ -738,9 +762,23 @@ public partial class MainWindow : Window
         {
             var settings = GetSettings();
             var executable = FFmpegLocator.Find("ffmpeg") ?? "ffmpeg.exe";
-            var command = FFmpegCommandBuilder.ToDisplayCommand(executable, FFmpegCommandBuilder.Build(settings));
-            _preview.Text = command;
-            AppendLog("Command preview: " + command);
+            if (settings.TwoPass)
+            {
+                var plan = FFmpegCommandBuilder.BuildTwoPass(settings);
+                var firstCommand = FFmpegCommandBuilder.ToDisplayCommand(executable, plan.FirstPassArguments);
+                var secondCommand = FFmpegCommandBuilder.ToDisplayCommand(executable, plan.SecondPassArguments);
+                _preview.Text = "PASS 1 — analysis to null output:" + Environment.NewLine
+                    + firstCommand + Environment.NewLine + Environment.NewLine
+                    + "PASS 2 — final output:" + Environment.NewLine + secondCommand;
+                AppendLog("Two-pass command preview (pass 1): " + firstCommand);
+                AppendLog("Two-pass command preview (pass 2): " + secondCommand);
+            }
+            else
+            {
+                var command = FFmpegCommandBuilder.ToDisplayCommand(executable, FFmpegCommandBuilder.Build(settings));
+                _preview.Text = command;
+                AppendLog("Command preview: " + command);
+            }
         }
         catch (Exception ex)
         {
@@ -753,9 +791,13 @@ public partial class MainWindow : Window
         try
         {
             var settings = GetSettings();
-            _ = FFmpegCommandBuilder.Build(settings);
+            if (settings.TwoPass)
+                _ = FFmpegCommandBuilder.BuildTwoPass(settings);
+            else
+                _ = FFmpegCommandBuilder.Build(settings);
             _jobs.Enqueue(settings);
-            var label = $"{_queueItems.Count + 1}. {Path.GetFileName(settings.InputPath)} → {Path.GetFileName(settings.OutputPath)} [{settings.Mode}]";
+            var passLabel = settings.TwoPass ? " [two-pass]" : string.Empty;
+            var label = $"{_queueItems.Count + 1}. {Path.GetFileName(settings.InputPath)} → {Path.GetFileName(settings.OutputPath)} [{settings.Mode}]{passLabel}";
             _queueItems.Add(label);
             AppendLog("Queued: " + label);
             PreviewCommand(sender, e);

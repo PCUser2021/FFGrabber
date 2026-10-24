@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=FFGrabber
+Comment=Graphical frontend for your own FFmpeg tools
+Exec=ffgrabber
+Icon=ffgrabber
+Terminal=false
+StartupNotify=true
+Categories=AudioVideo;Video;Audio;Utility;

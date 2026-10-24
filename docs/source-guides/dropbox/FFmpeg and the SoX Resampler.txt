@@ -1,0 +1,12 @@
+With FFmpeg version 1.1 comes the option of high-quality audio resampling using [http://soxr.sourceforge.net The SoX Resampler library] ('libsoxr').
+
+To build FFmpeg with libsoxr, it must first be installed. On unix-like systems, it may be available as an installable package from your OS provider; otherwise, libsoxr should be installed from source code downloaded from [http://sourceforge.net/projects/soxr/ here]—either a versioned tar-file, or a git 'clone'.  Once downloaded (and unpacked, in the case of a tar file), it should be built and installed according to the instructions in the INSTALL file (included in the source distribution).
+
+With libsoxr installed, '''`./configure --enable-libsoxr`''' instructs the FFmpeg build system to use libsoxr.
+
+To invoke ffmpeg with the SoX Resampler, the option '''`-af aresample=resampler=soxr`''' should be given; e.g.
+
+{{{
+ffmpeg -i my-48000.wav -af aresample=resampler=soxr -ar 44100 my-44100.wav
+}}}
+Further options may be given to change the default resampling bit precision and preserved bandwidth—see the manual page [http://ffmpeg.org/ffmpeg-resampler.html ffmpeg-resampler] for details.

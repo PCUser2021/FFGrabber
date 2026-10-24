@@ -39,8 +39,23 @@ public static class CaptureGuideProfiles
         new() { Name = "DirectShow camera + microphone", SourceFile = "DirectShow.txt", Description = "Use one DirectShow expression for camera/microphone capture. Replace example names with exact device names shown by discovery.", InputFormat = "dshow", InputExpression = "video=Integrated Camera:audio=Microphone", FrameRate = "30", VideoSize = "1280x720" },
         new() { Name = "Low-latency DirectShow camera + microphone", SourceFile = "DirectShow.txt", Description = "Lower the audio buffer and enlarge the realtime frame buffer. The device may reject these values; reduce buffers if instability or high memory use occurs.", InputFormat = "dshow", InputExpression = "video=Integrated Camera:audio=Microphone", FrameRate = "30", VideoSize = "1280x720", RtBufferSize = "702000k", AudioBufferSize = "50" },
         new() { Name = "Windows desktop — DDAgrab / D3D11 source", SourceFile = "Capture_Desktop.txt", Description = "Use the ddagrab source filter with D3D11 hardware frames. Requires a compatible recent FFmpeg build and supported Windows display stack.", CaptureFilterSource = "ddagrab=0", InitHardwareDevice = "d3d11va", VideoCodec = "h264_nvenc", RateControl = "Encoder-specific options", VideoEncoderOptions = "-cq:v 20" },
-        new() { Name = "Windows Graphics Capture — gfxcapture", SourceFile = "Capture_Desktop.txt", Description = "Use gfxcapture for monitor 1 at 1920x1080. Filter availability depends on the imported FFmpeg package; inspect filter help before running.", CaptureFilterSource = "gfxcapture=monitor_idx=1:width=1920:height=1080:resize_mode=scale_aspect:output_fmt=10bit", InitHardwareDevice = "d3d11va", VideoCodec = "hevc_nvenc", RateControl = "Encoder-specific options", VideoEncoderOptions = "-cq 15" }
+        new() { Name = "Windows Graphics Capture — gfxcapture", SourceFile = "Capture_Desktop.txt", Description = "Use gfxcapture for monitor 1 at 1920x1080. Filter availability depends on the imported FFmpeg package; inspect filter help before running.", CaptureFilterSource = "gfxcapture=monitor_idx=1:width=1920:height=1080:resize_mode=scale_aspect:output_fmt=10bit", InitHardwareDevice = "d3d11va", VideoCodec = "hevc_nvenc", RateControl = "Encoder-specific options", VideoEncoderOptions = "-cq 15" },
+        new() { Name = "Linux desktop — X11 (x11grab)", SourceFile = "Linux / FFmpeg platform example", Description = "Captures an X11/XWayland display. Replace :0.0 with the active display if needed. This is not native Wayland portal capture.", InputFormat = "x11grab", InputExpression = ":0.0", FrameRate = "30" },
+        new() { Name = "Linux webcam — V4L2 (/dev/video0)", SourceFile = "Linux / FFmpeg platform example", Description = "Captures a Linux Video4Linux2 camera. Replace /dev/video0 and adjust dimensions, frame rate, and pixel format for the device.", InputFormat = "v4l2", InputExpression = "/dev/video0", FrameRate = "30", VideoSize = "1280x720", PixelFormat = "auto" }
     ]);
     public static IReadOnlyList<string> Names { get; } = Array.AsReadOnly(All.Select(profile => profile.Name).ToArray());
+    public static IReadOnlyList<string> AvailableNames { get; } = Array.AsReadOnly(All
+        .Where(profile => OperatingSystem.IsWindows()
+            ? !profile.Name.StartsWith("Linux ", StringComparison.Ordinal)
+            : OperatingSystem.IsLinux()
+                ? !IsWindowsSpecific(profile)
+                : !IsWindowsSpecific(profile) && !profile.Name.StartsWith("Linux ", StringComparison.Ordinal))
+        .Select(profile => profile.Name)
+        .ToArray());
+    private static bool IsWindowsSpecific(CaptureGuideProfile profile) =>
+        profile.InputFormat is "dshow" or "gdigrab" ||
+        profile.CaptureFilterSource.Contains("ddagrab", StringComparison.OrdinalIgnoreCase) ||
+        profile.CaptureFilterSource.Contains("gfxcapture", StringComparison.OrdinalIgnoreCase) ||
+        profile.Name.StartsWith("Windows ", StringComparison.Ordinal);
     public static CaptureGuideProfile? Find(string? name) => All.FirstOrDefault(profile => string.Equals(profile.Name, name, StringComparison.Ordinal));
 }

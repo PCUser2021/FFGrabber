@@ -40,7 +40,7 @@ public sealed class FFmpegCommandBuilderTests
             CaptureFilterSource = "ddagrab=0"
         };
 
-        Assert.ThrowsException<ArgumentException>(() => FFmpegCommandBuilder.BuildTwoPass(settings));
+        Assert.ThrowsExactly<ArgumentException>(() => FFmpegCommandBuilder.BuildTwoPass(settings));
     }
 
     [TestMethod]

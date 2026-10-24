@@ -43,7 +43,7 @@ public sealed class FFmpegImportServiceTests
         var executor = CreateExecutor(executable, new ProcessRunResult(
             2, "ffprobe version 8.1.2-test_build", "fatal: simulated failure"));
 
-        await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
             () => FFmpegImportService.ValidateToolAsync(executable, "ffprobe", executor.Object));
     }
 
@@ -55,7 +55,7 @@ public sealed class FFmpegImportServiceTests
         var executor = CreateExecutor(executable, new ProcessRunResult(
             0, "unexpected output", string.Empty));
 
-        await Assert.ThrowsExceptionAsync<InvalidOperationException>(
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
             () => FFmpegImportService.ValidateToolAsync(executable, "ffplay", executor.Object));
     }
 
@@ -66,7 +66,7 @@ public sealed class FFmpegImportServiceTests
         var missing = System.IO.Path.Combine(directory.Path, "missing.exe");
         var executor = new Mock<IFFmpegProcessExecutor>(MockBehavior.Strict);
 
-        await Assert.ThrowsExceptionAsync<FileNotFoundException>(
+        await Assert.ThrowsExactlyAsync<FileNotFoundException>(
             () => FFmpegImportService.ValidateToolAsync(missing, "ffmpeg", executor.Object));
 
         executor.VerifyNoOtherCalls();

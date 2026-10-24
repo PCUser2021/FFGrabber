@@ -11,10 +11,20 @@ public sealed class FFmpegImportServiceTests
     private static readonly string[] ExpectedVersionArguments = ["-hide_banner", "-version"];
 
     [TestMethod]
+    public void ResolveToolDirectory_AcceptsTheNativeThreeToolSet()
+    {
+        using var directory = new TestDirectory();
+        directory.WriteDummyExecutable(FFmpegLocator.GetExecutableFileName("ffmpeg"));
+        directory.WriteDummyExecutable(FFmpegLocator.GetExecutableFileName("ffprobe"));
+        directory.WriteDummyExecutable(FFmpegLocator.GetExecutableFileName("ffplay"));
+        Assert.AreEqual(directory.Path, FFmpegLocator.ResolveToolDirectory(directory.Path));
+    }
+
+    [TestMethod]
     public async Task ValidateToolAsync_UsesVersionArguments_AndAcceptsValidBanner()
     {
         using var directory = new TestDirectory();
-        var executable = directory.WriteDummyExecutable("ffmpeg.exe");
+        var executable = directory.WriteDummyExecutable(FFmpegLocator.GetExecutableFileName("ffmpeg"));
         const string banner = "ffmpeg version 8.1.2-test_build";
 
         var executor = new Mock<IFFmpegProcessExecutor>(MockBehavior.Strict);
@@ -39,7 +49,7 @@ public sealed class FFmpegImportServiceTests
     public async Task ValidateToolAsync_RejectsNonZeroExitCode()
     {
         using var directory = new TestDirectory();
-        var executable = directory.WriteDummyExecutable("ffprobe.exe");
+        var executable = directory.WriteDummyExecutable(FFmpegLocator.GetExecutableFileName("ffprobe"));
         var executor = CreateExecutor(executable, new ProcessRunResult(
             2, "ffprobe version 8.1.2-test_build", "fatal: simulated failure"));
 
@@ -51,7 +61,7 @@ public sealed class FFmpegImportServiceTests
     public async Task ValidateToolAsync_RejectsOutputWithoutVersionBanner()
     {
         using var directory = new TestDirectory();
-        var executable = directory.WriteDummyExecutable("ffplay.exe");
+        var executable = directory.WriteDummyExecutable(FFmpegLocator.GetExecutableFileName("ffplay"));
         var executor = CreateExecutor(executable, new ProcessRunResult(
             0, "unexpected output", string.Empty));
 
@@ -63,7 +73,7 @@ public sealed class FFmpegImportServiceTests
     public async Task ValidateToolAsync_DoesNotInvokeProcessForMissingExecutable()
     {
         using var directory = new TestDirectory();
-        var missing = System.IO.Path.Combine(directory.Path, "missing.exe");
+        var missing = System.IO.Path.Combine(directory.Path, OperatingSystem.IsWindows() ? "missing.exe" : "missing");
         var executor = new Mock<IFFmpegProcessExecutor>(MockBehavior.Strict);
 
         await Assert.ThrowsExactlyAsync<FileNotFoundException>(

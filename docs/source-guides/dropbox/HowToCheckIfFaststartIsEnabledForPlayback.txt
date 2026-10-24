@@ -1,0 +1,54 @@
+= How to check if Fast Start is enabled for playback =
+
+== Introduction ==
+
+This '''How to''' applies to '''H.264/MP4''' files only but will probably work with '''H.264/MOV''' files too.
+
+Streaming web sites recommend to upload videos with Fast Start enabled. This allows video playback to begin before the file has been completely downloaded.
+
+Why ?
+
+Normally, a MP4 file has all the metadata about all packets stored at the end of the file, in data units named atoms. The "mdat" atom is located before the "moov" atom. If the file is created by adding the '''-movflags faststart''' option to the ffmpeg command line, the "moov" atom is moved at the beginning of the MP4 file during the ffmpeg second pass. By using this option, the "moov" atom is located before the "mdat" atom.
+
+In other words, the file is enabled for Fast Start playback only when the "moov" atom is located before the "mdat" atom.
+
+== Prerequisites ==
+
+This page is intended for Windows 10 users but can be adapted by Unix users with only small changes.
+
+Prior to using the next batch files, Windows users should download '''grep.exe''' and '''head.exe''' from an Internet site.
+
+== First approach
+
+The first approach is to fully scan the H.264/MP4 files to look for "mdat" and "moov" atoms. Under Windows, the "delims=µ" parameter allows to manage file names containing white spaces or any other special character.
+{{{
+@echo off
+for /F "delims=µ" %%i in ('dir /b /on *.mp4') do (
+echo %%i
+ffmpeg -v trace -i "%%i" NUL 2>&1 | grep -m 1 -o -e "type:'mdat'" -e "type:'moov'"
+)
+pause
+}}}
+This batch file searches the first occurence of either "mdat" atom or "moov" atom within each MP4 file in the current directory. The output listing contains two lines for each file :
+* the MP4 file name
+* the name of the first atom found (either "moov" or "mdat")
+
+The drawback of this batch file is that it can take a while to run when scanning hundreds of MP4 files.
+
+== Alternate method ==
+
+An alternate method is to truncate the MP4 files before scanning. If the "moov" atom is not located in the first 4K bytes, then Fast Start is not enabled.
+{{{
+@echo off
+echo 1>NUL 2>OUTPUT.txt
+for /F "delims=µ" %%i in ('dir /b /on *.mp4') do (
+echo %%i
+head -c 4096 "%%i" >TEMP.mp4
+ffmpeg -v trace -i TEMP.mp4 NUL 2>"%%i.txt"
+grep -L -m 1 -e "type:'moov'" "%%i.txt" >>OUTPUT.txt
+del "%%i.txt"
+)
+del TEMP.mp4
+pause
+}}}
+The OUTPUT.txt file contains the names of the MP4 files that are not enabled for Fast Start playback (i.e. using grep -L option).

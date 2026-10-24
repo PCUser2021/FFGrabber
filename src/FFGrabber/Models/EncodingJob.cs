@@ -27,7 +27,9 @@ public sealed record EncodingSettings(
     string OutputOptions = "",
     string InputFormat = "auto",
     string OutputFormat = "auto",
-    string AdditionalInputs = "");
+    string AdditionalInputs = "",
+    bool TwoPass = false,
+    string PassLogFile = "");
 
 public sealed class EncodingJob(EncodingSettings settings)
 {

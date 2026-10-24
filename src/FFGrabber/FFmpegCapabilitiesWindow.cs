@@ -53,7 +53,7 @@ public sealed class FFmpegCapabilitiesWindow : Window
         FontSize = 12,
         MinHeight = 460
     };
-    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Foreground = Brushes.LightGray };
+    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Foreground = ThemePreferences.Brush("#A4A9B6") };
     private string _fullOutput = string.Empty;
 
     public FFmpegCapabilitiesWindow(string? ffmpegPath)
@@ -64,9 +64,7 @@ public sealed class FFmpegCapabilitiesWindow : Window
         Height = 760;
         MinWidth = 760;
         MinHeight = 520;
-        Background = Brushes.Transparent;
-        TransparencyLevelHint = [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Mica, WindowTransparencyLevel.Transparent];
-        TransparencyBackgroundFallback = Brush("#FF111319");
+        Background = ThemePreferences.Brush("#FF111319");
 
         var root = new StackPanel { Spacing = 10, Margin = new Thickness(18) };
         root.Children.Add(new TextBlock { Text = "FFmpeg Options & Capabilities", FontSize = 22, FontWeight = FontWeight.SemiBold });
@@ -74,7 +72,7 @@ public sealed class FFmpegCapabilitiesWindow : Window
         {
             Text = "Search and export the options exposed by your imported FFmpeg executable. “-h full” returns the complete option catalogue, including component-specific options; separate lists reflect what is compiled into this exact build.",
             TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.Parse("#A4A9B6"))
+            Foreground = ThemePreferences.Brush("#A4A9B6")
         });
 
         var catalogRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -97,6 +95,7 @@ public sealed class FFmpegCapabilitiesWindow : Window
         exportRow.Children.Add(Button("Copy displayed text", async (_, _) => await CopyDisplayedTextAsync()));
         exportRow.Children.Add(Button("Save complete help…", async (_, _) => await SaveFullHelpAsync()));
         exportRow.Children.Add(Button("Official documentation ↗", (_, _) => OpenOfficialDocumentation()));
+        exportRow.Children.Add(Button("FFmpeg wiki ↗", (_, _) => OpenUrl("https://trac.ffmpeg.org/wiki")));
         root.Children.Add(exportRow);
 
         _helpQuery.KeyDown += async (_, e) =>
@@ -116,11 +115,11 @@ public sealed class FFmpegCapabilitiesWindow : Window
         root.Children.Add(_status);
         root.Children.Add(_output);
         root.Children.Add(Button("Close", (_, _) => Close()));
-        Content = new Border { Classes = { "glassShell" }, Child = new ScrollViewer { Content = root, Background = Brushes.Transparent } };
+        Content = new Border { Classes = { "glassShell" }, Child = new ScrollViewer { Content = root, Background = ThemePreferences.Brush("#FF111319") } };
         Opened += async (_, _) => await LoadSelectedAsync();
     }
 
-    private static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color));
+    private static IBrush Brush(string color) => ThemePreferences.Brush(color);
 
     private static Button Button(string text, EventHandler<RoutedEventArgs> onClick)
     {
@@ -254,15 +253,17 @@ public sealed class FFmpegCapabilitiesWindow : Window
         }
     }
 
-    private void OpenOfficialDocumentation()
+    private void OpenOfficialDocumentation() => OpenUrl("https://ffmpeg.org/ffmpeg.html");
+
+    private void OpenUrl(string url)
     {
         try
         {
-            Process.Start(new ProcessStartInfo("https://ffmpeg.org/ffmpeg.html") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            _status.Text = "Could not open the official documentation: " + ex.Message;
+            _status.Text = "Could not open the documentation: " + ex.Message;
         }
     }
 

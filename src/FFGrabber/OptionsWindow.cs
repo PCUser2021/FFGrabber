@@ -17,7 +17,7 @@ public sealed class OptionsWindow : Window
     private readonly Func<EncodingSettings> _getSettings;
     private readonly Func<string> _getQueueSnapshot;
     private readonly Action<string> _log;
-    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Color.Parse("#A4A9B6")) };
+    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Foreground = ThemePreferences.Brush("#A4A9B6") };
     private readonly Button _saveLogs = new() { Content = "Save Logs…", Classes = { "primary" } };
     private readonly ComboBox _themeMode = new()
     {
@@ -87,6 +87,8 @@ public sealed class OptionsWindow : Window
         }));
         root.Children.Add(Button("Open complete FFmpeg component reference ↗", (_, _) => OpenUrl("https://ffmpeg.org/ffmpeg-all.html")));
         root.Children.Add(Button("Open FFmpeg Trac wiki and guides ↗", (_, _) => OpenUrl("https://trac.ffmpeg.org/wiki")));
+        root.Children.Add(Button("Open ffprobe documentation ↗", (_, _) => OpenUrl("https://ffmpeg.org/ffprobe.html")));
+        root.Children.Add(Button("Open ffplay documentation ↗", (_, _) => OpenUrl("https://ffmpeg.org/ffplay.html")));
         root.Children.Add(_status);
         root.Children.Add(Button("Close", (_, _) => Close()));
         Content = new Border { Classes = { "glassShell" }, Child = root };

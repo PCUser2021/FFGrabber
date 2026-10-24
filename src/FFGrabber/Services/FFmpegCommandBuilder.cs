@@ -202,7 +202,11 @@ public static class FFmpegCommandBuilder
         }
 
         var quotedPrefix = "\"" + passLogPrefix.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
-        var firstPassOutputOptions = CombineOptionLines(settings.OutputOptions, $"-passlogfile {quotedPrefix} -pass 1 -an");
+        // The analysis pass writes to the null muxer. Do not carry the requested
+        // container/muxer flags or arbitrary final-output metadata into that null output:
+        // options such as -movflags can make pass 1 fail. Only pass bookkeeping and -an
+        // belong on the first-pass output; shared encoder/filter/mapping settings remain.
+        var firstPassOutputOptions = $"-passlogfile {quotedPrefix} -pass 1 -an";
         var secondPassOutputOptions = CombineOptionLines(settings.OutputOptions, $"-passlogfile {quotedPrefix} -pass 2");
 
         var firstPassSettings = settings with
@@ -212,6 +216,7 @@ public static class FFmpegCommandBuilder
             Overwrite = true,
             FastStart = false,
             PreserveMetadata = false,
+            MuxerOptions = string.Empty,
             OutputOptions = firstPassOutputOptions,
             TwoPass = false,
             PassLogFile = string.Empty

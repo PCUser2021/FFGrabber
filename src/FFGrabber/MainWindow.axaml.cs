@@ -465,7 +465,13 @@ public partial class MainWindow : Window
         _sessionLog.Write($"Tool paths: ffmpeg={FFmpegLocator.Find("ffmpeg") ?? "(not found)"}; ffprobe={FFmpegLocator.Find("ffprobe") ?? "(not found)"}; ffplay={FFmpegLocator.Find("ffplay") ?? "(not found)"}");
         AppendDisplayLog("Session log location: " + _sessionLog.CurrentLogPath);
         Opened += async (_, _) => await LoadAvailableCapabilitiesAsync();
-        Closed += (_, _) => _sessionLog.Dispose();
+        Closed += (_, _) =>
+        {
+            // Do not leave an FFmpeg encode running unattended after the window is closed.
+            try { _cancellation?.Cancel(); }
+            catch (ObjectDisposedException) { }
+            _sessionLog.Dispose();
+        };
     }
 
     private static ComboBox Combo(string[] values) => new() { ItemsSource = values, SelectedIndex = 0, MinWidth = 180 };
@@ -1298,6 +1304,10 @@ public partial class MainWindow : Window
             while (_jobs.Count > 0)
             {
                 var job = _jobs.Dequeue();
+                // Keep the on-screen queue in step with the job queue; otherwise started jobs
+                // stay listed as pending and new entries are numbered after finished ones.
+                if (_queueItems.Count > 0)
+                    _queueItems.RemoveAt(0);
                 _activeJobSettings = job;
                 AppendLog("Starting output: " + job.OutputPath);
                 try

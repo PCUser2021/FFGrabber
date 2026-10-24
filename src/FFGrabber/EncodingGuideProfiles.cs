@@ -134,7 +134,7 @@ public static class EncodingGuideProfiles
             Description = "H.265 quality encode plus the hvc1 sample-entry tag recommended by the guide for Apple / Final Cut compatibility.",
             VideoCodec = "libx265", AudioCodec = "aac", Preset = "fast",
             RateControl = "CRF quality", Crf = "26", AudioBitrate = "128k",
-            VideoEncoderOptions = "-tag:v hvc1", FastStart = true
+            OutputOptions = "-tag:v hvc1", FastStart = true
         },
         new()
         {
@@ -230,8 +230,8 @@ public static class EncodingGuideProfiles
             VideoCodec = "prores_ks", AudioCodec = "copy", Preset = "encoder default",
             RateControl = "Encoder-specific options", OutputSize = "2048x1152",
             FrameRate = "48", PixelFormat = "yuv422p10le",
-            InputFormat = "image2", OutputFormat = "mov",
-            VideoEncoderOptions = "-profile:v 3 -qscale:v 11 -vendor apl0",
+            InputFormat = "image2", OutputFormat = "mov", InputOptions = "-r 48 -force_fps",
+            VideoEncoderOptions = "-vendor apl0",
             VideoProfile = "3", VideoQscale = "11"
         },
         new()
@@ -242,8 +242,8 @@ public static class EncodingGuideProfiles
             VideoCodec = "prores_ks", AudioCodec = "copy", Preset = "encoder default",
             RateControl = "Encoder-specific options", OutputSize = "2048x1152",
             FrameRate = "48", PixelFormat = "yuva444p10le",
-            InputFormat = "image2", OutputFormat = "mov",
-            VideoEncoderOptions = "-profile:v 4 -qscale:v 11 -vendor apl0",
+            InputFormat = "image2", OutputFormat = "mov", InputOptions = "-r 48 -force_fps",
+            VideoEncoderOptions = "-vendor apl0",
             VideoProfile = "4", VideoQscale = "11"
         },
         new()
@@ -254,8 +254,8 @@ public static class EncodingGuideProfiles
             VideoCodec = "mjpeg", AudioCodec = "copy", Preset = "encoder default",
             RateControl = "Encoder-specific options", OutputSize = "2048x1152",
             FrameRate = "48", PixelFormat = "yuvj422p",
-            InputFormat = "image2", OutputFormat = "mov",
-            VideoEncoderOptions = "-qscale:v 1", VideoQscale = "1"
+            InputFormat = "image2", OutputFormat = "mov", InputOptions = "-r 48 -force_fps",
+            VideoEncoderOptions = "", VideoQscale = "1"
         },
         new()
         {
@@ -264,7 +264,7 @@ public static class EncodingGuideProfiles
             Description = "Legacy AVI/Xvid compatibility profile with native MPEG-4, FourCC xvid, and qscale 3. Modern devices usually support H.264/HEVC/AV1 better.",
             VideoCodec = "mpeg4", AudioCodec = "libmp3lame", Preset = "encoder default",
             RateControl = "Encoder-specific options", OutputFormat = "avi",
-            VideoEncoderOptions = "-vtag xvid -qscale:v 3",
+            VideoEncoderOptions = "-vtag xvid",
             VideoProfile = "", VideoQscale = "3",
             AudioBitrate = "", AudioQscale = "4"
         },
@@ -275,7 +275,7 @@ public static class EncodingGuideProfiles
             Description = "Theora video qscale 7 with libvorbis audio qscale 5. Both libraries must be present in the imported FFmpeg build.",
             VideoCodec = "libtheora", AudioCodec = "libvorbis", Preset = "encoder default",
             RateControl = "Encoder-specific options", OutputFormat = "ogg",
-            VideoEncoderOptions = "-qscale:v 7", AudioEncoderOptions = "-qscale:a 5",
+            VideoEncoderOptions = "", AudioEncoderOptions = "",
             VideoQscale = "7", AudioQscale = "5", AudioBitrate = ""
         },
         new()

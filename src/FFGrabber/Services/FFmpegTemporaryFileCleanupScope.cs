@@ -13,15 +13,18 @@ public sealed class FFmpegTemporaryFileCleanupScope
         ["ts", "m4s", "mp4", "m4a", "aac", "vtt", "webvtt", "webm", "cmfv", "cmfa"];
 
     private readonly DateTime _startedUtc;
+    private readonly string _protectedOutputPath;
     private readonly HashSet<string> _existingAtStart;
     private readonly IReadOnlyList<string> _directories;
     private readonly IReadOnlyList<TemporaryNamePattern> _patterns;
 
     private FFmpegTemporaryFileCleanupScope(
+        string protectedOutputPath,
         IReadOnlyList<string> directories,
         IReadOnlyList<TemporaryNamePattern> patterns)
     {
         _startedUtc = DateTime.UtcNow;
+        _protectedOutputPath = Path.GetFullPath(protectedOutputPath);
         _directories = directories;
         _patterns = patterns;
         _existingAtStart = EnumerateTemporaryFiles(directories)
@@ -124,7 +127,7 @@ public sealed class FFmpegTemporaryFileCleanupScope
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return new FFmpegTemporaryFileCleanupScope(directories, patterns);
+        return new FFmpegTemporaryFileCleanupScope(fullOutputPath, directories, patterns);
     }
 
     /// <summary>
@@ -138,7 +141,10 @@ public sealed class FFmpegTemporaryFileCleanupScope
 
         foreach (var path in EnumerateTemporaryFiles(_directories))
         {
-            if (_existingAtStart.Contains(path) || !MatchesTrackedPattern(path))
+            // A user may intentionally name the final output with a .tmp suffix.
+            // Never classify the exact configured output path as a cleanup candidate.
+            if (string.Equals(path, _protectedOutputPath, StringComparison.OrdinalIgnoreCase)
+                || _existingAtStart.Contains(path) || !MatchesTrackedPattern(path))
                 continue;
 
             try
@@ -185,6 +191,7 @@ public sealed class FFmpegTemporaryFileCleanupScope
             return Array.Empty<string>();
 
         return EnumerateTemporaryFiles(scope._directories)
+            .Where(path => !string.Equals(path, scope._protectedOutputPath, StringComparison.OrdinalIgnoreCase))
             .Where(scope.MatchesTrackedPattern)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -211,7 +218,8 @@ public sealed class FFmpegTemporaryFileCleanupScope
             try
             {
                 var fullPath = Path.GetFullPath(candidate);
-                if (!scope._directories.Contains(Path.GetDirectoryName(fullPath) ?? string.Empty,
+                if (string.Equals(fullPath, scope._protectedOutputPath, StringComparison.OrdinalIgnoreCase)
+                    || !scope._directories.Contains(Path.GetDirectoryName(fullPath) ?? string.Empty,
                         StringComparer.OrdinalIgnoreCase)
                     || !fullPath.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)
                     || !scope.MatchesTrackedPattern(fullPath)

@@ -539,6 +539,7 @@ public partial class MainWindow : Window
         {
             "Global / logging options" => _globalOptions,
             "Input / demuxer options" => _inputOptions,
+            "Additional input source" => _additionalInputs,
             "Stream mapping / selection" => _mappingOptions,
             "Video encoder options" => _videoEncoderOptions,
             "Audio encoder options" => _audioEncoderOptions,

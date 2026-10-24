@@ -7,6 +7,7 @@
 - Runtime FFmpeg capability browser and runtime-discovered encoder/demuxer/muxer selectors from the imported binary.
 - Direct argument-vector process execution without invoking a shell.
 - Untruncated session logging and **Options → Save Logs…** ZIP export.
+- Opaque, theme-aware UI with persisted System/Light/Dark selection; all windows share the selected theme without relying on backdrop transparency.
 - CI checks for PE architecture, absence of bundled FFmpeg, installer compilation and checksum generation.
 
 ## Next development targets

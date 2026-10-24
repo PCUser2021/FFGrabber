@@ -46,7 +46,7 @@ public static class ThemePreferences
             // If the preference cannot be read, use the system theme without blocking startup.
         }
 
-        return "System";
+        return "Light";
     }
 
     public static void ApplyChoice(string? choice)
@@ -91,14 +91,14 @@ public static class ThemePreferences
         {
             "light" => "Light",
             "dark" => "Dark",
-            _ => "System"
+            _ => "Light"
         };
 
     private static ThemeVariant ToVariant(string choice) => choice switch
     {
         "Light" => ThemeVariant.Light,
         "Dark" => ThemeVariant.Dark,
-        _ => ThemeVariant.Default
+        _ => ThemeVariant.Light
     };
 
     private static bool IsLight =>
@@ -114,19 +114,45 @@ public static class ThemePreferences
         {
             key = key switch
             {
-                "#A4A9B6" => "#58677A",
-                "#B7BECC" => "#526174",
-                "#C9CED9" => "#29364A",
-                "#F1F3F8" => "#1C2738",
-                "#E9EDF5" => "#29364A",
-                "#C2F970" => "#4F7618",
-                "#FF111319" => "#F3F6FA",
+                "#A4A9B6" => "#5D5D5D",
+                "#B7BECC" => "#5D5D5D",
+                "#C9CED9" => "#303030",
+                "#F1F3F8" => "#1A1A1A",
+                "#E9EDF5" => "#303030",
+                "#C2F970" => "#0067C0",
+                "#FF111319" => "#F3F5F8",
+                "#084BC0" => "#0067C0",
+                "#60E3FF" => "#0067C0",
+                "#0A3D96" => "#005A9E",
+                "#175DCE" => "#0067C0",
+                "#4FE9FF" => "#60CDFF",
+                "#134A99" => "#E8F2FC",
+                "#50D8F7" => "#0067C0",
+                "#E7FCFF" => "#005A9E",
                 _ => key
             };
         }
-        else if (key == "#FF111319")
+        else
         {
-            key = "#10141C";
+            key = key switch
+            {
+                "#A4A9B6" => "#C8C8C8",
+                "#B7BECC" => "#C8C8C8",
+                "#C9CED9" => "#D7D7D7",
+                "#F1F3F8" => "#F5F5F5",
+                "#E9EDF5" => "#D7D7D7",
+                "#C2F970" => "#60CDFF",
+                "#FF111319" => "#202020",
+                "#084BC0" => "#005A9E",
+                "#60E3FF" => "#60CDFF",
+                "#0A3D96" => "#004578",
+                "#175DCE" => "#005A9E",
+                "#4FE9FF" => "#60CDFF",
+                "#134A99" => "#283B46",
+                "#50D8F7" => "#60CDFF",
+                "#E7FCFF" => "#F5F5F5",
+                _ => key
+            };
         }
 
         return Color.Parse(key);

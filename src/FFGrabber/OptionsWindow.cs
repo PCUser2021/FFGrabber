@@ -21,7 +21,7 @@ public sealed class OptionsWindow : Window
     private readonly Button _saveLogs = new() { Content = "Save Logs…", Classes = { "primary" } };
     private readonly ComboBox _themeMode = new()
     {
-        ItemsSource = new[] { "System", "Light", "Dark" },
+        ItemsSource = new[] { "Light", "Dark" },
         SelectedItem = ThemePreferences.GetSavedChoice(),
         MinWidth = 150
     };
@@ -62,13 +62,13 @@ public sealed class OptionsWindow : Window
         root.Children.Add(appearanceRow);
         root.Children.Add(new TextBlock
         {
-            Text = "System follows Windows. Light and Dark are applied immediately to all FFGrabber windows and saved for the next launch.",
+            Text = "Choose Light or Dark. The selected appearance is applied immediately to FFGrabber windows and saved for the next launch.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = ThemePreferences.Brush("#A4A9B6")
         });
         _themeMode.SelectionChanged += (_, _) =>
         {
-            var choice = _themeMode.SelectedItem?.ToString() ?? "System";
+            var choice = _themeMode.SelectedItem?.ToString() ?? "Light";
             ThemePreferences.ApplyChoice(choice);
             _status.Text = $"Appearance changed to {choice}.";
         };

@@ -154,7 +154,16 @@ public partial class MainWindow : Window
         MinWidth = 900;
         MinHeight = 700;
 
-        var root = new StackPanel { Spacing = 14, Margin = new Thickness(24) };
+        var root = new Grid { Background = Brush("#FF111319") };
+        root.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        root.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        root.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(220)));
+        root.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        var header = new StackPanel { Spacing = 10, Margin = new Thickness(22, 14, 22, 10) };
+        var convertContent = new StackPanel { Spacing = 14, Margin = new Thickness(22) };
+        var captureContent = new StackPanel { Spacing = 14, Margin = new Thickness(22) };
+        var advancedContent = new StackPanel { Spacing = 14, Margin = new Thickness(22) };
+        var activityContent = new StackPanel { Spacing = 14, Margin = new Thickness(22) };
         var hero = new Border { Classes = { "heroPanel" }, Padding = new Thickness(20) };
         var heroContent = new StackPanel { Spacing = 10 };
         var brandRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14, VerticalAlignment = VerticalAlignment.Center };
@@ -174,16 +183,16 @@ public partial class MainWindow : Window
         {
             Classes = { "tagPill" },
             VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock { Text = "PURE GUI  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.Bold, Foreground = Brush("#C2F970") }
+            Child = new TextBlock { Text = "FLUENT WORKSPACE  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#C2F970") }
         });
         brandRow.Children.Add(new Border
         {
             Classes = { "tagPill" },
             VerticalAlignment = VerticalAlignment.Center,
-            Background = Brush("#123B75"),
-            BorderBrush = Brush("#54D9F8"),
+            Background = Brush("#E8F2FC"),
+            BorderBrush = Brush("#0067C0"),
             BorderThickness = new Thickness(1),
-            Child = new TextBlock { Text = $"v{AppVersion}", FontSize = 11, FontWeight = FontWeight.Bold, Foreground = Brush("#DDF9FF") }
+            Child = new TextBlock { Text = $"v{AppVersion}", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Brush("#0067C0") }
         });
         heroContent.Children.Add(brandRow);
         heroContent.Children.Add(new TextBlock
@@ -194,7 +203,7 @@ public partial class MainWindow : Window
             FontSize = 13
         });
         hero.Child = heroContent;
-        root.Children.Add(hero);
+        header.Children.Add(hero);
 
         var topActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         topActions.Children.Add(GlyphButton("\uE713", "Options", async (_, _) => await OpenOptionsAsync()));
@@ -205,9 +214,9 @@ public partial class MainWindow : Window
         topActions.Children.Add(GlyphButton("\uE71C", "FFmpeg options & capabilities", async (_, _) => await OpenCapabilitiesAsync()));
         topActions.Children.Add(GlyphButton("\uE713", "Encoding settings editor", async (_, _) => await OpenOptionComposerAsync()));
         topActions.Children.Add(GlyphButton("\uE74D", "Clean output .tmp files…", async (_, _) => await CleanTemporaryFilesAsync()));
-        root.Children.Add(topActions);
+        header.Children.Add(topActions);
         RefreshFFmpegStatus();
-        root.Children.Add(new Border { Classes = { "statusPanel" }, Child = _ffmpegStatus });
+        header.Children.Add(new Border { Classes = { "statusPanel" }, Child = _ffmpegStatus });
 
         var sourcePanel = Panel("Source and destination");
         var sourceBody = PanelChildren(sourcePanel);
@@ -220,7 +229,7 @@ public partial class MainWindow : Window
         outputRow.Children.Add(_output);
         outputRow.Children.Add(GlyphButton("\uE8B7", "Choose folder", async (_, _) => await BrowseOutputAsync()));
         sourceBody.Children.Add(outputRow);
-        root.Children.Add(sourcePanel);
+        convertContent.Children.Add(sourcePanel);
 
         var settingsPanel = Panel("Encoding settings");
         var settings = PanelChildren(settingsPanel);
@@ -325,12 +334,12 @@ public partial class MainWindow : Window
             Content = guideControls
         });
 
-        root.Children.Add(settingsPanel);
-        root.Children.Add(BuildCaptureAndHardwarePanel());
+        convertContent.Children.Add(settingsPanel);
+        captureContent.Children.Add(BuildCaptureAndHardwarePanel());
 
-        root.Children.Add(BuildAdvancedOptions());
+        advancedContent.Children.Add(BuildAdvancedOptions());
 
-        root.Children.Add(new TextBlock
+        advancedContent.Children.Add(new TextBlock
         {
             Text = "Advanced values are passed to ffmpeg.exe as process arguments (not through a shell). They are placed in the input, encoder/filter, muxer and output positions shown below. Duplicate options are allowed so later values can override generated defaults where FFmpeg's option semantics permit.",
             Foreground = Brush("#A4A9B6"),
@@ -349,16 +358,108 @@ public partial class MainWindow : Window
         actions.Children.Add(_cancelButton);
         actions.Children.Add(GlyphButton("\uE946", "Inspect with ffprobe", async (_, _) => await ProbeAsync()));
         actions.Children.Add(GlyphButton("\uE768", "Play with ffplay", Play));
-        root.Children.Add(actions);
+        convertContent.Children.Add(actions);
 
-        root.Children.Add(Heading("Command preview"));
-        root.Children.Add(_preview);
-        root.Children.Add(Heading("Queue"));
+        convertContent.Children.Add(Heading("Command preview"));
+        convertContent.Children.Add(_preview);
+        activityContent.Children.Add(Heading("Queue"));
         _queueView.ItemsSource = _queueItems;
-        root.Children.Add(_queueView);
-        root.Children.Add(Heading("Live log preview (complete log is retained separately)"));
-        root.Children.Add(_log);
-        Content = new ScrollViewer { Content = root, Background = Brush("#FF111319") };
+        activityContent.Children.Add(_queueView);
+        activityContent.Children.Add(Heading("Live log preview (complete log is retained separately)"));
+        activityContent.Children.Add(_log);
+        var convertPage = new ScrollViewer { Content = convertContent };
+        var capturePage = new ScrollViewer { Content = captureContent };
+        var advancedPage = new ScrollViewer { Content = advancedContent };
+        var activityPage = new ScrollViewer { Content = activityContent };
+        var mainContent = new ContentControl { Content = convertPage };
+        var pages = new Control[] { convertPage, capturePage, advancedPage, activityPage };
+        var navigationButtons = new List<Button>();
+
+        void NavigateTo(int index)
+        {
+            mainContent.Content = pages[index];
+            foreach (var item in navigationButtons)
+                item.Classes.Remove("selected");
+            if (index >= 0 && index < navigationButtons.Count)
+                navigationButtons[index].Classes.Add("selected");
+        }
+
+        var navigation = new StackPanel { Spacing = 6, Margin = new Thickness(12, 18, 12, 18) };
+        navigation.Children.Add(new TextBlock
+        {
+            Text = "WORKSPACE",
+            FontSize = 11,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = Brush("#A4A9B6"),
+            Margin = new Thickness(10, 4, 0, 6)
+        });
+
+        Button AddNavigationItem(string glyph, string label, int index)
+        {
+            var item = NavigationButton(glyph, label, (_, _) => NavigateTo(index));
+            navigationButtons.Add(item);
+            navigation.Children.Add(item);
+            return item;
+        }
+
+        AddNavigationItem("\uE8A5", "Convert", 0).Classes.Add("selected");
+        AddNavigationItem("\uE8B7", "Capture & hardware", 1);
+        AddNavigationItem("\uE713", "Advanced options", 2);
+        AddNavigationItem("\uE768", "Queue & activity", 3);
+        navigation.Children.Add(NavigationButton("\uE8A5", "Source guide library", async (_, _) => await OpenGuideLibraryAsync()));
+
+        navigation.Children.Add(new Border
+        {
+            Height = 1,
+            Background = Brush("#A4A9B6"),
+            Margin = new Thickness(8, 12, 8, 10)
+        });
+        navigation.Children.Add(new TextBlock
+        {
+            Text = "APPEARANCE",
+            FontSize = 11,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = Brush("#A4A9B6"),
+            Margin = new Thickness(10, 0, 0, 3)
+        });
+        var themePicker = new ComboBox
+        {
+            ItemsSource = new[] { "Light", "Dark" },
+            SelectedItem = ThemePreferences.GetSavedChoice(),
+            MinWidth = 150,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(4, 0, 4, 0)
+        };
+        themePicker.SelectionChanged += (_, _) =>
+        {
+            var choice = themePicker.SelectedItem?.ToString() ?? "Light";
+            ThemePreferences.ApplyChoice(choice);
+        };
+        navigation.Children.Add(themePicker);
+        navigation.Children.Add(new TextBlock
+        {
+            Text = "FFGrabber uses your imported FFmpeg toolset. No FFmpeg executables are bundled or downloaded.",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 11,
+            Foreground = Brush("#A4A9B6"),
+            Margin = new Thickness(10, 12, 10, 0)
+        });
+
+        var sidebar = new Border
+        {
+            Classes = { "sidebarShell" },
+            Child = new ScrollViewer { Content = navigation }
+        };
+        Grid.SetRow(header, 0);
+        Grid.SetColumnSpan(header, 2);
+        root.Children.Add(header);
+        Grid.SetRow(sidebar, 1);
+        Grid.SetColumn(sidebar, 0);
+        root.Children.Add(sidebar);
+        Grid.SetRow(mainContent, 1);
+        Grid.SetColumn(mainContent, 1);
+        root.Children.Add(mainContent);
+        Content = root;
 
         _sessionLog.Write($"FFGrabber main window initialized; OS={RuntimeInformation.OSDescription}; architecture={RuntimeInformation.ProcessArchitecture}; appVersion={AppVersion}");
         _sessionLog.Write($"Tool paths: ffmpeg={FFmpegLocator.Find("ffmpeg") ?? "(not found)"}; ffprobe={FFmpegLocator.Find("ffprobe") ?? "(not found)"}; ffplay={FFmpegLocator.Find("ffplay") ?? "(not found)"}");
@@ -476,20 +577,34 @@ public partial class MainWindow : Window
 
     private static Control ButtonContent(string glyph, string label)
     {
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9, VerticalAlignment = VerticalAlignment.Center };
-        content.Children.Add(new Border
+        var content = new StackPanel
         {
-            Width = 28, Height = 28, CornerRadius = new CornerRadius(9),
-            Background = Brush("#134A99"), BorderBrush = Brush("#50D8F7"), BorderThickness = new Thickness(1),
-            Child = new TextBlock
-            {
-                Text = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14,
-                Foreground = Brush("#E7FCFF"), HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            }
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        content.Children.Add(new TextBlock
+        {
+            Text = glyph,
+            FontFamily = new FontFamily("Segoe MDL2 Assets"),
+            FontSize = 16,
+            Foreground = Brush("#C2F970"),
+            VerticalAlignment = VerticalAlignment.Center
         });
-        content.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+        content.Children.Add(new TextBlock
+        {
+            Text = label,
+            VerticalAlignment = VerticalAlignment.Center
+        });
         return content;
+    }
+
+    private static Button NavigationButton(string glyph, string label, EventHandler<RoutedEventArgs> handler)
+    {
+        var button = new Button { Content = ButtonContent(glyph, label) };
+        button.Classes.Add("navButton");
+        button.Click += handler;
+        return button;
     }
 
     private static Button GlyphButton(string glyph, string label, EventHandler<RoutedEventArgs> handler, bool primary = false)
@@ -1381,6 +1496,12 @@ public partial class MainWindow : Window
         {
             AppendLog("Could not launch ffplay: " + ex);
         }
+    }
+
+    private async Task OpenGuideLibraryAsync()
+    {
+        var window = new GuideLibraryWindow();
+        await window.ShowDialog(this);
     }
 
     private async Task OpenOptionsAsync()

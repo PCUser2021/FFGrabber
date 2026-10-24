@@ -2,127 +2,130 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="FFGrabber.App"
              xmlns:styling="clr-namespace:FluentAvalonia.Styling;assembly=FluentAvalonia"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Light">
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
-          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F3F6FA"/>
-          <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1C2738"/>
-          <SolidColorBrush x:Key="TextSecondaryBrush" Color="#58677A"/>
+          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F3F5F8"/>
+          <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1A1A"/>
+          <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5D5D5D"/>
           <SolidColorBrush x:Key="SurfaceHeroBrush" Color="#FFFFFF"/>
-          <SolidColorBrush x:Key="SurfaceShellBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="SurfaceShellBrush" Color="#F8F8F8"/>
           <SolidColorBrush x:Key="SurfacePanelBrush" Color="#FFFFFF"/>
-          <SolidColorBrush x:Key="SurfaceStatusBrush" Color="#EAF0F6"/>
-          <SolidColorBrush x:Key="BorderSubtleBrush" Color="#D7DFE9"/>
-          <SolidColorBrush x:Key="BorderStrongBrush" Color="#AEBCCC"/>
-          <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#E8EEF5"/>
-          <SolidColorBrush x:Key="ButtonHoverBrush" Color="#DCE6F0"/>
-          <SolidColorBrush x:Key="ButtonPressedBrush" Color="#CFDCE9"/>
+          <SolidColorBrush x:Key="SurfaceStatusBrush" Color="#EAF3FB"/>
+          <SolidColorBrush x:Key="BorderSubtleBrush" Color="#E5E5E5"/>
+          <SolidColorBrush x:Key="BorderStrongBrush" Color="#C8C8C8"/>
+          <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#F3F3F3"/>
+          <SolidColorBrush x:Key="ButtonHoverBrush" Color="#EAEAEA"/>
+          <SolidColorBrush x:Key="ButtonPressedBrush" Color="#DDDDDD"/>
           <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF"/>
-          <SolidColorBrush x:Key="AccentBrush" Color="#C2F970"/>
-          <SolidColorBrush x:Key="AccentBorderBrush" Color="#8EBF42"/>
-          <SolidColorBrush x:Key="AccentHoverBrush" Color="#D1FA9A"/>
-          <SolidColorBrush x:Key="AccentTextBrush" Color="#17220D"/>
-          <SolidColorBrush x:Key="TagPillBackgroundBrush" Color="#E8F4D8"/>
-          <SolidColorBrush x:Key="SelectionBrush" Color="#D5E8BA"/>
+          <SolidColorBrush x:Key="AccentBrush" Color="#0067C0"/>
+          <SolidColorBrush x:Key="AccentBorderBrush" Color="#0067C0"/>
+          <SolidColorBrush x:Key="AccentHoverBrush" Color="#1A79D3"/>
+          <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="TagPillBackgroundBrush" Color="#E8F2FC"/>
+          <SolidColorBrush x:Key="SelectionBrush" Color="#CDE6FA"/>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
-          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#10141C"/>
-          <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F5F7FC"/>
-          <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B1B8C8"/>
-          <SolidColorBrush x:Key="SurfaceHeroBrush" Color="#1B222D"/>
-          <SolidColorBrush x:Key="SurfaceShellBrush" Color="#171D27"/>
-          <SolidColorBrush x:Key="SurfacePanelBrush" Color="#202734"/>
-          <SolidColorBrush x:Key="SurfaceStatusBrush" Color="#252F3B"/>
-          <SolidColorBrush x:Key="BorderSubtleBrush" Color="#46515F"/>
-          <SolidColorBrush x:Key="BorderStrongBrush" Color="#667487"/>
-          <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#2D3643"/>
-          <SolidColorBrush x:Key="ButtonHoverBrush" Color="#394657"/>
-          <SolidColorBrush x:Key="ButtonPressedBrush" Color="#465366"/>
-          <SolidColorBrush x:Key="InputBackgroundBrush" Color="#151B24"/>
-          <SolidColorBrush x:Key="AccentBrush" Color="#C2F970"/>
-          <SolidColorBrush x:Key="AccentBorderBrush" Color="#C2F970"/>
-          <SolidColorBrush x:Key="AccentHoverBrush" Color="#D5FF9A"/>
-          <SolidColorBrush x:Key="AccentTextBrush" Color="#17220D"/>
-          <SolidColorBrush x:Key="TagPillBackgroundBrush" Color="#283A1C"/>
-          <SolidColorBrush x:Key="SelectionBrush" Color="#35462B"/>
+          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#202020"/>
+          <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F5F5F5"/>
+          <SolidColorBrush x:Key="TextSecondaryBrush" Color="#C8C8C8"/>
+          <SolidColorBrush x:Key="SurfaceHeroBrush" Color="#2B2B2B"/>
+          <SolidColorBrush x:Key="SurfaceShellBrush" Color="#252525"/>
+          <SolidColorBrush x:Key="SurfacePanelBrush" Color="#2B2B2B"/>
+          <SolidColorBrush x:Key="SurfaceStatusBrush" Color="#292929"/>
+          <SolidColorBrush x:Key="BorderSubtleBrush" Color="#3F3F3F"/>
+          <SolidColorBrush x:Key="BorderStrongBrush" Color="#606060"/>
+          <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#333333"/>
+          <SolidColorBrush x:Key="ButtonHoverBrush" Color="#414141"/>
+          <SolidColorBrush x:Key="ButtonPressedBrush" Color="#4A4A4A"/>
+          <SolidColorBrush x:Key="InputBackgroundBrush" Color="#202020"/>
+          <SolidColorBrush x:Key="AccentBrush" Color="#60CDFF"/>
+          <SolidColorBrush x:Key="AccentBorderBrush" Color="#60CDFF"/>
+          <SolidColorBrush x:Key="AccentHoverBrush" Color="#7DD8FF"/>
+          <SolidColorBrush x:Key="AccentTextBrush" Color="#00334D"/>
+          <SolidColorBrush x:Key="TagPillBackgroundBrush" Color="#283B46"/>
+          <SolidColorBrush x:Key="SelectionBrush" Color="#244B62"/>
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
   </Application.Resources>
 
   <Application.Styles>
-    <styling:FluentAvaloniaTheme UseSystemFontOnWindows="True" CustomAccentColor="#C2F970"/>
-
+    <styling:FluentAvaloniaTheme UseSystemFontOnWindows="True" CustomAccentColor="#0078D4"/>
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}"/>
+      <Setter Property="FontFamily" Value="Segoe UI Variable"/>
     </Style>
-
     <Style Selector="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+      <Setter Property="FontSize" Value="13"/>
     </Style>
     <Style Selector="TextBlock.pageTitle">
-      <Setter Property="FontSize" Value="31"/>
+      <Setter Property="FontSize" Value="28"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.muted">
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
-
     <Style Selector="Border.heroPanel">
       <Setter Property="Background" Value="{DynamicResource SurfaceHeroBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="22"/>
+      <Setter Property="CornerRadius" Value="12"/>
     </Style>
     <Style Selector="Border.brandMark">
       <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="15"/>
-      <Setter Property="Width" Value="54"/>
-      <Setter Property="Height" Value="54"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="Width" Value="48"/>
+      <Setter Property="Height" Value="48"/>
     </Style>
     <Style Selector="Border.tagPill">
       <Setter Property="Background" Value="{DynamicResource TagPillBackgroundBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="12"/>
-      <Setter Property="Padding" Value="10,5"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="9,4"/>
     </Style>
     <Style Selector="Border.statusPanel">
       <Setter Property="Background" Value="{DynamicResource SurfaceStatusBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="13"/>
-      <Setter Property="Padding" Value="14,11"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="12,9"/>
     </Style>
     <Style Selector="Border.glassShell">
       <Setter Property="Background" Value="{DynamicResource SurfaceShellBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="20"/>
-      <Setter Property="Padding" Value="20"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="Padding" Value="18"/>
     </Style>
     <Style Selector="Border.panel">
       <Setter Property="Background" Value="{DynamicResource SurfacePanelBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="17"/>
-      <Setter Property="Padding" Value="17"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="16"/>
     </Style>
-
+    <Style Selector="Border.sidebarShell">
+      <Setter Property="Background" Value="{DynamicResource SurfaceShellBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
+      <Setter Property="BorderThickness" Value="0,0,1,0"/>
+    </Style>
     <Style Selector="Button">
       <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="11"/>
-      <Setter Property="Padding" Value="13,9"/>
-      <Setter Property="MinHeight" Value="38"/>
-      <Setter Property="FontWeight" Value="Medium"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="12,7"/>
+      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="FontWeight" Value="Normal"/>
     </Style>
     <Style Selector="Button:pointerover">
       <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
@@ -144,15 +147,32 @@
     <Style Selector="Button.primary TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
-
+    <Style Selector="Button.navButton">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Padding" Value="9,7"/>
+      <Setter Property="MinHeight" Value="40"/>
+    </Style>
+    <Style Selector="Button.navButton:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.navButton.selected">
+      <Setter Property="Background" Value="{DynamicResource TagPillBackgroundBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
+    </Style>
+    <Style Selector="Button.navButton.selected:pointerover">
+      <Setter Property="Background" Value="{DynamicResource TagPillBackgroundBrush}"/>
+    </Style>
     <Style Selector="TextBox">
       <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
       <Setter Property="CaretBrush" Value="{DynamicResource AccentBorderBrush}"/>
       <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}"/>
-      <Setter Property="CornerRadius" Value="9"/>
-      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="9,7"/>
     </Style>
     <Style Selector="TextBox:focus">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
@@ -161,20 +181,20 @@
       <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-      <Setter Property="CornerRadius" Value="9"/>
+      <Setter Property="CornerRadius" Value="6"/>
     </Style>
     <Style Selector="ListBox">
       <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="CornerRadius" Value="8"/>
     </Style>
     <Style Selector="Expander">
       <Setter Property="Background" Value="{DynamicResource SurfacePanelBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="13"/>
-      <Setter Property="Padding" Value="12"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="10"/>
     </Style>
     <Style Selector="CheckBox">
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>

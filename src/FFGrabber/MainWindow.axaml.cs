@@ -298,6 +298,20 @@ public partial class MainWindow : Window
 
     private static ComboBox Combo(string[] values) => new() { ItemsSource = values, SelectedIndex = 0, MinWidth = 180 };
 
+    private static void SetComboValue(ComboBox combo, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+
+        var choices = (combo.ItemsSource as IEnumerable<string> ?? Array.Empty<string>()).ToList();
+        if (!choices.Contains(value, StringComparer.OrdinalIgnoreCase))
+            choices.Add(value);
+
+        combo.ItemsSource = choices;
+        combo.SelectedItem = choices.First(choice =>
+            string.Equals(choice, value, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string CombineOptionLines(params string?[] values) =>
         string.Join(Environment.NewLine, values
             .Select(value => value?.Trim())
@@ -425,6 +439,229 @@ public partial class MainWindow : Window
     }
 
     private static string Selected(ComboBox combo) => combo.SelectedItem?.ToString() ?? string.Empty;
+
+    private void ApplyGuideProfile()
+    {
+        var profile = EncodingGuideProfiles.Find(Selected(_guideProfile));
+        if (profile is null)
+        {
+            _guideProfileDescription.Text = "Manual / custom mode. Choose a documented profile to populate the fields, or edit the controls directly.";
+            return;
+        }
+
+        SetComboValue(_mode, profile.Mode);
+        SetComboValue(_videoCodec, profile.VideoCodec);
+        SetComboValue(_audioCodec, profile.AudioCodec);
+        SetComboValue(_preset, profile.Preset);
+        SetComboValue(_rateControl, profile.RateControl);
+        SetComboValue(_size, profile.OutputSize);
+        SetComboValue(_pixelFormat, profile.PixelFormat);
+        SetComboValue(_inputFormat, profile.InputFormat);
+        SetComboValue(_outputFormat, profile.OutputFormat);
+        SetComboValue(_videoTune, string.IsNullOrWhiteSpace(profile.VideoTune) ? "auto" : profile.VideoTune);
+        SetComboValue(_audioProfile, string.IsNullOrWhiteSpace(profile.AudioProfile) ? "auto" : profile.AudioProfile);
+
+        _crf.Text = profile.Crf;
+        _videoBitrate.Text = profile.VideoBitrate;
+        _frameRate.Text = profile.FrameRate;
+        _audioBitrate.Text = profile.AudioBitrate;
+        _metadata.IsChecked = profile.PreserveMetadata;
+        _fastStart.IsChecked = profile.FastStart;
+
+        _globalOptions.Text = profile.GlobalOptions;
+        _inputOptions.Text = profile.InputOptions;
+        _additionalInputs.Text = profile.AdditionalInputs;
+        _mappingOptions.Text = profile.MappingOptions;
+        _videoEncoderOptions.Text = profile.VideoEncoderOptions;
+        _audioEncoderOptions.Text = profile.AudioEncoderOptions;
+        _filterOptions.Text = profile.FilterOptions;
+        _muxerOptions.Text = profile.MuxerOptions;
+        _outputOptions.Text = profile.OutputOptions;
+
+        _minVideoBitrate.Text = profile.MinVideoBitrate;
+        _maxVideoBitrate.Text = profile.MaxVideoBitrate;
+        _bufferSize.Text = profile.BufferSize;
+        _gopSize.Text = profile.GopSize;
+        _videoProfile.Text = profile.VideoProfile;
+        _videoQscale.Text = profile.VideoQscale;
+        _videoQp.Text = profile.VideoQp;
+        _audioQscale.Text = profile.AudioQscale;
+        _audioVbr.Text = profile.AudioVbr;
+        _audioCutoff.Text = profile.AudioCutoff;
+        _audioSampleRate.Text = profile.AudioSampleRate;
+        _audioChannels.Text = profile.AudioChannels;
+        _colorPrimaries.Text = profile.ColorPrimaries;
+        _colorTransfer.Text = profile.ColorTransfer;
+        _colorSpace.Text = profile.ColorSpace;
+
+        _guideProfileDescription.Text = $"Source: {profile.SourceFile}{Environment.NewLine}{profile.Description}";
+        AppendLog($"Applied encoding guide profile: {profile.Name} (source: {profile.SourceFile}). Review the command preview and the imported encoder's help before running.");
+        PreviewCommand(this, new RoutedEventArgs());
+
+        var executable = FFmpegLocator.Find("ffmpeg");
+        if (executable is null)
+        {
+            AppendLog("Profile applied without validating codec availability because no FFmpeg toolset is imported.");
+            return;
+        }
+
+        // Report rather than hide a codec mismatch: actual encoder availability depends on
+        // the imported binary, and profile selection must not imply that it is guaranteed.
+        if (profile.VideoCodec is not ("copy" or ""))
+        {
+            var availableVideo = _videoCodec.ItemsSource as IEnumerable<string> ?? Array.Empty<string>();
+            if (!availableVideo.Contains(profile.VideoCodec, StringComparer.OrdinalIgnoreCase))
+                AppendLog($"Profile note: {profile.VideoCodec} is not listed by the currently imported FFmpeg build. The profile remains editable, but a job may fail until a compatible encoder is imported.");
+        }
+        if (profile.AudioCodec is not ("copy" or ""))
+        {
+            var availableAudio = _audioCodec.ItemsSource as IEnumerable<string> ?? Array.Empty<string>();
+            if (!availableAudio.Contains(profile.AudioCodec, StringComparer.OrdinalIgnoreCase))
+                AppendLog($"Profile note: {profile.AudioCodec} is not listed by the currently imported FFmpeg build. The profile remains editable, but a job may fail until a compatible encoder is imported.");
+        }
+    }
+
+    private async Task OpenOptionComposerAsync()
+    {
+        var window = new FFmpegOptionComposerWindow(
+            FFmpegLocator.Find("ffmpeg"),
+            Selected(_videoCodec),
+            Selected(_audioCodec),
+            Selected(_inputFormat),
+            Selected(_outputFormat),
+            AddAdvancedOption);
+        await window.ShowDialog(this);
+    }
+
+    private void AddAdvancedOption(string scope, string optionText)
+    {
+        var target = scope switch
+        {
+            "Global / logging options" => _globalOptions,
+            "Input / demuxer options" => _inputOptions,
+            "Stream mapping / selection" => _mappingOptions,
+            "Video encoder options" => _videoEncoderOptions,
+            "Audio encoder options" => _audioEncoderOptions,
+            "Filters / filtergraph" => _filterOptions,
+            "Muxer / container options" => _muxerOptions,
+            _ => _outputOptions
+        };
+
+        target.Text = CombineOptionLines(target.Text, optionText);
+        SetComboValue(_guideProfile, "Manual / custom");
+        _guideProfileDescription.Text = "Custom settings modified using the searchable encoding-settings editor.";
+        AppendLog($"Added option from encoding settings editor to {scope}: {optionText}");
+        PreviewCommand(this, new RoutedEventArgs());
+    }
+
+    private async Task CleanTemporaryFilesAsync()
+    {
+        if (_cancellation is not null)
+        {
+            AppendLog("Temporary-file cleanup is disabled while an FFmpeg job is running.");
+            return;
+        }
+
+        var outputPath = _output.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(outputPath))
+        {
+            AppendLog("Enter the output path first. Only local output-related .tmp files are eligible for cleanup.");
+            return;
+        }
+
+        IReadOnlyList<string> arguments;
+        try
+        {
+            var settings = GetSettings();
+            if (string.IsNullOrWhiteSpace(settings.InputPath)
+                || string.Equals(settings.InputPath, settings.OutputPath, StringComparison.OrdinalIgnoreCase))
+            {
+                // The cleanup uses only the output pattern and muxer/segment arguments. A
+                // harmless synthetic input permits cleanup before a new encode is configured.
+                settings = settings with { InputPath = "__ffgrabber_cleanup_probe__.invalid" };
+            }
+
+            arguments = FFmpegCommandBuilder.Build(settings);
+        }
+        catch (Exception ex)
+        {
+            AppendLog("Could not derive temporary-file patterns from the current settings: " + ex.Message);
+            return;
+        }
+
+        var candidates = FFmpegTemporaryFileCleanupScope.FindExistingCandidates(outputPath, arguments);
+        if (candidates.Count == 0)
+        {
+            AppendLog("No output-related .tmp files matching the current output/HLS/DASH template were found. Unrelated .tmp files were not scanned.");
+            return;
+        }
+
+        if (!await ConfirmTemporaryFileCleanupAsync(candidates))
+        {
+            AppendLog("Temporary-file cleanup cancelled; no files were deleted.");
+            return;
+        }
+
+        var result = await Task.Run(() =>
+            FFmpegTemporaryFileCleanupScope.DeleteConfirmedCandidates(outputPath, arguments, candidates));
+
+        foreach (var path in result.DeletedFiles)
+            AppendLog("Removed confirmed output-related temporary file: " + path);
+        foreach (var failure in result.FailedFiles)
+            AppendLog("Could not remove temporary file: " + failure);
+
+        AppendLog($"Temporary-file cleanup complete: deleted {result.DeletedCount}; failed {result.FailedCount}.");
+    }
+
+    private async Task<bool> ConfirmTemporaryFileCleanupAsync(IReadOnlyList<string> candidates)
+    {
+        var dialog = new Window
+        {
+            Title = "Confirm output temporary-file cleanup",
+            Width = 760,
+            Height = 560,
+            MinWidth = 560,
+            MinHeight = 400,
+            CanResize = true,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = Brush("#FF111319")
+        };
+
+        var root = new StackPanel { Spacing = 12, Margin = new Thickness(18) };
+        root.Children.Add(new TextBlock
+        {
+            Text = $"Found {candidates.Count:N0} output-related .tmp file(s). Delete only these listed files?",
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold,
+            TextWrapping = TextWrapping.Wrap
+        });
+        root.Children.Add(new TextBlock
+        {
+            Text = "This operation is not reversible. The list is restricted to output/muxer-specific naming patterns. Existing files are never deleted automatically; this explicit action requires your confirmation.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Brush("#A4A9B6")
+        });
+        root.Children.Add(new ListBox { ItemsSource = candidates, MinHeight = 220 });
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+
+        var confirmed = false;
+        var delete = new Button { Content = $"Delete {candidates.Count:N0} file(s)", Classes = { "primary" } };
+        delete.Click += (_, _) => { confirmed = true; dialog.Close(); };
+        var cancel = new Button { Content = "Cancel" };
+        cancel.Click += (_, _) => dialog.Close();
+        actions.Children.Add(delete);
+        actions.Children.Add(cancel);
+        root.Children.Add(actions);
+        dialog.Content = new Border { Classes = { "glassShell" }, Child = root };
+
+        await dialog.ShowDialog(this);
+        return confirmed;
+    }
 
     private EncodingSettings GetSettings() => new(
         _input.Text?.Trim() ?? string.Empty,
@@ -655,15 +892,34 @@ public partial class MainWindow : Window
                 {
                     var args = FFmpegCommandBuilder.Build(job);
                     AppendLog("Running: " + FFmpegCommandBuilder.ToDisplayCommand(executable, args));
-                    var result = await FFmpegProcessRunner.RunAsync(
-                        executable,
-                        args,
-                        onStandardOutput: line => LogProcessLine("FFMPEG STDOUT", line),
-                        onStandardError: line => LogProcessLine("FFMPEG STDERR", line),
-                        cancellationToken: _cancellation.Token);
-                    AppendLog(result.ExitCode == 0
-                        ? "Completed: " + job.OutputPath
-                        : $"Failed (exit {result.ExitCode}): {job.OutputPath}");
+                    var temporaryFileScope = FFmpegTemporaryFileCleanupScope.Begin(job.OutputPath, args);
+                    try
+                    {
+                        var result = await FFmpegProcessRunner.RunAsync(
+                            executable,
+                            args,
+                            onStandardOutput: line => LogProcessLine("FFMPEG STDOUT", line),
+                            onStandardError: line => LogProcessLine("FFMPEG STDERR", line),
+                            cancellationToken: _cancellation.Token);
+                        AppendLog(result.ExitCode == 0
+                            ? "Completed: " + job.OutputPath
+                            : $"Failed (exit {result.ExitCode}): {job.OutputPath}");
+                    }
+                    finally
+                    {
+                        // Wait for FFmpeg to finish or be killed before checking for orphaned
+                        // files. Cleanup is restricted to patterns in the output's own scope.
+                        if (temporaryFileScope is not null)
+                        {
+                            var cleanup = temporaryFileScope.CleanupCreatedFiles();
+                            foreach (var orphan in cleanup.DeletedFiles)
+                                AppendLog("Removed temporary file created by this FFmpeg job: " + orphan);
+                            foreach (var failure in cleanup.FailedFiles)
+                                AppendLog("Could not remove FFmpeg temporary file: " + failure);
+                            if (cleanup.DeletedCount > 0)
+                                AppendLog($"Automatic temporary-file cleanup removed {cleanup.DeletedCount} file(s).");
+                        }
+                    }
                 }
                 catch (OperationCanceledException)
                 {

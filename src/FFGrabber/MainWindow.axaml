@@ -2,7 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="FFGrabber.MainWindow"
         Title="FFGrabber"
-        Width="1180" Height="900"
-        MinWidth="900" MinHeight="680"
-        Background="#111319">
+        Width="1260" Height="1000"
+        MinWidth="900" MinHeight="700"
+        TransparencyLevelHint="AcrylicBlur, Mica, Transparent"
+        TransparencyBackgroundFallback="#FF111319"
+        Background="Transparent">
 </Window>

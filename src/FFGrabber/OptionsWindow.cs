@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using System.Diagnostics;
 using FFGrabber.Models;
 using FFGrabber.Services;
 
@@ -37,27 +38,34 @@ public sealed class OptionsWindow : Window
         Height = 380;
         MinWidth = 540;
         MinHeight = 320;
-        Background = new SolidColorBrush(Color.Parse("#111319"));
+        Background = Brushes.Transparent;
+        TransparencyLevelHint = [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Mica, WindowTransparencyLevel.Transparent];
+        TransparencyBackgroundFallback = new SolidColorBrush(Color.Parse("#FF111319"));
 
         var root = new StackPanel { Spacing = 14, Margin = new Thickness(24) };
         root.Children.Add(new TextBlock { Text = "Options", FontSize = 24, FontWeight = FontWeight.SemiBold });
         root.Children.Add(new TextBlock
         {
-            Text = "Export a complete support bundle or open the capability browser for the exact FFmpeg build you imported.",
+            Text = "Export full diagnostic logs or browse every option supported by your imported FFmpeg build. The option catalogue is read from your local executable, not a stale built-in list.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Color.Parse("#A4A9B6"))
         });
 
         _saveLogs.Click += async (_, _) => await SaveLogsAsync();
         root.Children.Add(_saveLogs);
-        root.Children.Add(Button("FFmpeg options & capabilities…", async (_, _) =>
+        root.Children.Add(Button("Browse all FFmpeg options and capabilities…", async (_, _) =>
         {
             var window = new FFmpegCapabilitiesWindow(_ffmpegPath);
             await window.ShowDialog(this);
         }));
+        root.Children.Add(Button("Open official FFmpeg command-line documentation ↗", (_, _) =>
+        {
+            try { Process.Start(new ProcessStartInfo("https://ffmpeg.org/ffmpeg.html") { UseShellExecute = true }); }
+            catch (Exception ex) { _status.Text = "Could not open the official documentation: " + ex.Message; }
+        }));
         root.Children.Add(_status);
         root.Children.Add(Button("Close", (_, _) => Close()));
-        Content = root;
+        Content = new Border { Classes = { "glassShell" }, Child = root };
     }
 
     private static Button Button(string text, EventHandler<RoutedEventArgs> onClick)

@@ -23,7 +23,9 @@ Quote values containing spaces. These fields are passed as individual process ar
 
 ## FFmpeg option browser
 
-Use **FFmpeg options & capabilities…** to load the full generic option help and the installed tool's encoder, decoder, codec, format, muxer, demuxer, filter, bitstream-filter, protocol, device, hardware-acceleration, pixel-format, sample-format and channel-layout lists. To inspect a specific component, use **Show detailed help** with topics such as `encoder=libx265`, `decoder=h264`, `muxer=matroska`, `demuxer=mov`, `filter=scale`, or `protocol=https`. These results come from the FFmpeg executable actually installed, not a copied static catalogue.
+Use **Options… → Browse all FFmpeg options and capabilities…** to inspect basic help, advanced tool help, and the complete option catalogue from **-h full**. This is the authoritative list for the exact executable you imported, including private options exposed by its encoders, decoders, demuxers, muxers and filters. The browser supports live text filtering, copying displayed text, and exporting the complete help output to a UTF-8 text file. It also includes the installed tool's encoder, decoder, codec, format, muxer, demuxer, filter, bitstream-filter, protocol, device, hardware-acceleration, pixel-format, sample-format and channel-layout lists.
+
+The main window's advanced fields collectively let you supply any documented FFmpeg command-line option at the appropriate command-line stage, including options not represented by a dedicated dropdown. FFmpeg's option set changes with the imported build, so the GUI intentionally discovers options live instead of shipping a static codec-specific catalogue.
 
 Some switches appear only when a component was compiled into FFmpeg. Hardware encoding additionally requires a supported GPU, driver and backend. Which codecs are available depends entirely on the FFmpeg build you import.
 

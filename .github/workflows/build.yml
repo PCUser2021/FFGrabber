@@ -32,7 +32,7 @@ jobs:
         id: app-version
         shell: pwsh
         run: |
-          $version = '0.4.0'
+          $version = '0.5.0'
           if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}'.StartsWith('v')) {
             $version = '${{ github.ref_name }}'.Substring(1)
           }
@@ -149,7 +149,7 @@ jobs:
         id: release-version
         shell: pwsh
         run: |
-          $version = '0.4.0'
+          $version = '0.5.0'
           if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}'.StartsWith('v')) {
             $version = '${{ github.ref_name }}'.Substring(1)
           }

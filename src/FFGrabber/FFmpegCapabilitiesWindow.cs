@@ -1,6 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
+using Avalonia.Platform.Storage;
+using System.Diagnostics;
 using Avalonia.Layout;
 using System.Text;
 using Avalonia.Media;
@@ -12,7 +15,9 @@ public sealed class FFmpegCapabilitiesWindow : Window
 {
     private static readonly (string Label, string[] Arguments)[] Catalogs =
     [
-        ("All generic options — -h full", ["-h", "full"]),
+        ("Basic tool help — -h", ["-h"]),
+        ("Advanced tool options — -h long", ["-h", "long"]),
+        ("Complete option catalogue — -h full", ["-h", "full"]),
         ("Encoders — -encoders", ["-encoders"]),
         ("Decoders — -decoders", ["-decoders"]),
         ("All codecs — -codecs", ["-codecs"]),
@@ -57,13 +62,15 @@ public sealed class FFmpegCapabilitiesWindow : Window
         Height = 760;
         MinWidth = 760;
         MinHeight = 520;
-        Background = new SolidColorBrush(Color.Parse("#111319"));
+        Background = Brushes.Transparent;
+        TransparencyLevelHint = [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Mica, WindowTransparencyLevel.Transparent];
+        TransparencyBackgroundFallback = Brush("#FF111319");
 
         var root = new StackPanel { Spacing = 10, Margin = new Thickness(18) };
         root.Children.Add(new TextBlock { Text = "FFmpeg Options & Capabilities", FontSize = 22, FontWeight = FontWeight.SemiBold });
         root.Children.Add(new TextBlock
         {
-            Text = "This browser queries your installed FFmpeg binary. Lists and detailed help reflect the codecs, formats, filters and options actually compiled into that build.",
+            Text = "Search and export the options exposed by your imported FFmpeg executable. “-h full” returns the complete option catalogue, including component-specific options; separate lists reflect what is compiled into this exact build.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Color.Parse("#A4A9B6"))
         });
@@ -84,10 +91,30 @@ public sealed class FFmpegCapabilitiesWindow : Window
         filterRow.Children.Add(Button("Clear filter", (_, _) => { _filter.Text = ""; ApplyFilter(); }));
         root.Children.Add(filterRow);
 
+        var exportRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Left };
+        exportRow.Children.Add(Button("Copy displayed text", async (_, _) => await CopyDisplayedTextAsync()));
+        exportRow.Children.Add(Button("Save complete help…", async (_, _) => await SaveFullHelpAsync()));
+        exportRow.Children.Add(Button("Official documentation ↗", (_, _) => OpenOfficialDocumentation()));
+        root.Children.Add(exportRow);
+
+        _helpQuery.KeyDown += async (_, e) =>
+        {
+            if (e.Key != Key.Enter) return;
+            e.Handled = true;
+            await LoadDetailAsync();
+        };
+        _filter.KeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Enter) return;
+            e.Handled = true;
+            ApplyFilter();
+        };
+        _filter.TextChanged += (_, _) => ApplyFilter();
+
         root.Children.Add(_status);
         root.Children.Add(_output);
         root.Children.Add(Button("Close", (_, _) => Close()));
-        Content = new ScrollViewer { Content = root };
+        Content = new Border { Classes = { "glassShell" }, Child = new ScrollViewer { Content = root, Background = Brushes.Transparent } };
         Opened += async (_, _) => await LoadSelectedAsync();
     }
 
@@ -170,6 +197,70 @@ public sealed class FFmpegCapabilitiesWindow : Window
             _fullOutput = ex.ToString();
             _output.Text = _fullOutput;
             _status.Text = "Could not query FFmpeg; see the text below for the error.";
+        }
+    }
+
+    private async Task CopyDisplayedTextAsync()
+    {
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is null)
+            {
+                _status.Text = "Clipboard access is unavailable on this platform.";
+                return;
+            }
+            await clipboard.SetTextAsync(_output.Text ?? string.Empty);
+            _status.Text = "Displayed help text copied to the clipboard.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Could not copy help text: " + ex.Message;
+        }
+    }
+
+    private async Task SaveFullHelpAsync()
+    {
+        try
+        {
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Save complete FFmpeg help output",
+                SuggestedFileName = "FFGrabber-FFmpeg-help.txt",
+                DefaultExtension = "txt",
+                ShowOverwritePrompt = true,
+                FileTypeChoices = [new FilePickerFileType("Text file") { Patterns = ["*.txt"] }]
+            });
+            if (file is null)
+            {
+                _status.Text = "Help export cancelled.";
+                return;
+            }
+
+            var path = file.TryGetLocalPath() ?? file.Path.LocalPath;
+            if (string.IsNullOrWhiteSpace(path))
+                throw new IOException("The selected destination is not a local file path.");
+            if (!string.Equals(Path.GetExtension(path), ".txt", StringComparison.OrdinalIgnoreCase))
+                path += ".txt";
+
+            await File.WriteAllTextAsync(path, _fullOutput, new UTF8Encoding(false));
+            _status.Text = "Saved complete help output to: " + path;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Could not save help output: " + ex.Message;
+        }
+    }
+
+    private void OpenOfficialDocumentation()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("https://ffmpeg.org/ffmpeg.html") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Could not open the official documentation: " + ex.Message;
         }
     }
 

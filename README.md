@@ -2,14 +2,14 @@
 
 **FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.4.0).** Native Avalonia GUI, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
+> **Status: active preview (0.5.0).** Native Avalonia GUI, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
 
 ## Downloads
 
 **Official download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
 
-- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.4.0.exe`
-- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.4.0.exe`
+- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.0.exe`
+- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.0.exe`
 - **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
 
 ## First run: import FFmpeg
@@ -46,7 +46,7 @@ Prerequisites: .NET 10 SDK and PowerShell 7. Inno Setup 7.1.0+ only for local in
 ```powershell
 ./scripts/Build.ps1 -Architecture x64
 ./scripts/Build.ps1 -Architecture arm64
-./scripts/Build.ps1 -Architecture x64 -Version 0.4.0 -Installer
+./scripts/Build.ps1 -Architecture x64 -Version 0.5.0 -Installer
 ```
 
 ## GitHub Actions

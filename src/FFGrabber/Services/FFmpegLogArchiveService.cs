@@ -76,9 +76,19 @@ public static class FFmpegLogArchiveService
         reportEntries.Add(("diagnostics/current-encoding-settings.json",
             JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true })));
         reportEntries.Add(("diagnostics/queue-snapshot.txt", queueSnapshot ?? string.Empty));
-        var bundledBuildMetadata = Path.Combine(AppContext.BaseDirectory, "tools", "ffmpeg", FFmpegLocator.ArchitectureFolder, "ffmpeg-build.json");
-        if (File.Exists(bundledBuildMetadata))
-            reportEntries.Add(("diagnostics/ffmpeg/bundled-build-metadata.json", File.ReadAllText(bundledBuildMetadata, Encoding.UTF8)));
+        if (!string.IsNullOrWhiteSpace(ffmpeg))
+        {
+            var ffmpegDirectory = Path.GetDirectoryName(ffmpeg)!;
+            var metadataCandidates = new[]
+            {
+                Path.Combine(ffmpegDirectory, "ffmpeg-build.json"),
+                Path.Combine(Directory.GetParent(ffmpegDirectory)?.FullName ?? ffmpegDirectory, "ffmpeg-build.json"),
+                Path.Combine(AppContext.BaseDirectory, "tools", "ffmpeg", FFmpegLocator.ArchitectureFolder, "ffmpeg-build.json")
+            };
+            var metadataPath = metadataCandidates.FirstOrDefault(File.Exists);
+            if (metadataPath is not null)
+                reportEntries.Add(("diagnostics/ffmpeg/active-build-metadata.json", File.ReadAllText(metadataPath, Encoding.UTF8)));
+        }
         reportEntries.Add(("README-SUPPORT-BUNDLE.txt",
             "FFGrabber support bundle.\r\n\r\n" +
             "Contents include the complete current-session log, available previous FFGrabber session logs, " +

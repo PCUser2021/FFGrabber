@@ -27,7 +27,8 @@ The Windows CI workflow publishes this release only after both architecture buil
 - Advanced raw FFmpeg options for global/input-demuxer, stream mapping, video encoder, audio encoder, filter graph, muxer/container, and output settings.
 - FFmpeg capability browser for full help, encoders, decoders, formats, muxers, demuxers, filters, protocols, devices, hardware accelerators, pixel formats, sample formats, bitstream filters and channel layouts.
 - Full support ZIP export through **Options → Save Logs…**, including the untruncated session log, prior local session logs, system/runtime details, current settings, active and pending job settings, FFmpeg build configuration, and tool capability reports.
-- Runtime-discovered video/audio encoder lists and complete muxer/demuxer selectors populated from the FFmpeg binary actually installed.
+- **Import FFmpeg…** button to select a user FFmpeg folder with `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`; all three executables are version-tested, the selected folder is saved between launches, and encoding/probing/playback/capability reports use the imported tool set.
+- Runtime-discovered video/audio encoder lists and complete muxer/demuxer selectors populated from the active FFmpeg binary.
 - GitHub Actions compiles FFmpeg from the verified upstream 9.0.2 source tag for both supported Windows architectures, uses the static GPL dependency profile, records source/build provenance, validates PE machine types, and emits SHA-256 manifests for the resulting binaries. The GyanD 9.0.2 repository ZIP is a mirror/support archive, not the FFmpeg source tree; the script verifies that fact and compiles the upstream source it references.
 
 - Convert using H.264 (`libx264`), HEVC (`libx265`) or AV1 (`libsvtav1`) where the chosen FFmpeg build supports them.

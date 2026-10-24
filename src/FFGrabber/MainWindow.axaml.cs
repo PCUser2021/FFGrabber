@@ -18,6 +18,8 @@ namespace FFGrabber;
 public partial class MainWindow : Window
 {
     private readonly SessionLog _sessionLog = new();
+    private readonly Button _importFfmpegButton = new() { Content = "Import FFmpeg…" };
+    private readonly TextBlock _ffmpegStatus = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12, Foreground = Brush("#A4A9B6") };
     private readonly TextBox _input = new() { PlaceholderText = "Local file, URL, device expression, pipe, or FFmpeg input", MinWidth = 420 };
     private readonly TextBox _output = new() { PlaceholderText = "Output file path, URL, or FFmpeg target", MinWidth = 420 };
     private readonly ComboBox _mode = Combo(["Convert / encode", "Remux / stream copy", "Extract audio", "Video only"]);
@@ -85,8 +87,12 @@ public partial class MainWindow : Window
 
         var topActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         topActions.Children.Add(Button("Options…", async (_, _) => await OpenOptionsAsync()));
+        topActions.Children.Add(_importFfmpegButton);
+        _importFfmpegButton.Click += async (_, _) => await ImportFFmpegAsync();
         topActions.Children.Add(Button("FFmpeg options & capabilities…", async (_, _) => await OpenCapabilitiesAsync()));
         root.Children.Add(topActions);
+        RefreshFFmpegStatus();
+        root.Children.Add(_ffmpegStatus);
 
         var sourcePanel = Panel("Source and destination");
         var sourceBody = PanelChildren(sourcePanel);
@@ -278,7 +284,7 @@ public partial class MainWindow : Window
         var executable = FFmpegLocator.Find("ffmpeg");
         if (executable is null)
         {
-            AppendLog("FFmpeg was not found; basic fallback encoder options remain available.");
+            AppendLog("FFmpeg was not found; import a folder containing ffmpeg.exe, ffprobe.exe and ffplay.exe, or add the folder to PATH.");
             return;
         }
 
@@ -345,6 +351,60 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppendLog("Cannot queue job: " + ex.Message);
+        }
+    }
+
+    private void RefreshFFmpegStatus()
+    {
+        var importedDirectory = FFmpegLocator.ImportedDirectory;
+        if (importedDirectory is not null)
+        {
+            _ffmpegStatus.Text = $"Active FFmpeg source: Imported user tool set{Environment.NewLine}{importedDirectory}{Environment.NewLine}FFmpeg, ffprobe and ffplay will all run from this folder.";
+            return;
+        }
+
+        _ffmpegStatus.Text = $"Active FFmpeg source: bundled tools or PATH{Environment.NewLine}{FFmpegLocator.Find("ffmpeg") ?? "ffmpeg.exe not found"}";
+    }
+
+    private async Task ImportFFmpegAsync()
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select the FFmpeg folder containing ffmpeg.exe, ffprobe.exe, and ffplay.exe",
+            AllowMultiple = false
+        });
+        if (folders.Count == 0)
+            return;
+
+        var selectedDirectory = folders[0].TryGetLocalPath() ?? folders[0].Path.LocalPath;
+        if (string.IsNullOrWhiteSpace(selectedDirectory))
+        {
+            AppendLog("FFmpeg import cancelled: the selected folder is not a local filesystem path.");
+            return;
+        }
+
+        _importFfmpegButton.IsEnabled = false;
+        _ffmpegStatus.Text = "Validating ffmpeg.exe, ffprobe.exe and ffplay.exe…";
+        AppendLog("Validating user-provided FFmpeg folder: " + selectedDirectory);
+        try
+        {
+            var result = await FFmpegImportService.ImportAndValidateAsync(selectedDirectory);
+            RefreshFFmpegStatus();
+            AppendLog("Imported user FFmpeg tool set: " + result.Directory);
+            AppendLog("ffmpeg: " + result.FFmpegVersion);
+            AppendLog("ffprobe: " + result.FFprobeVersion);
+            AppendLog("ffplay: " + result.FFplayVersion);
+            AppendLog("Future encoding jobs, probing, playback and capability reports will use the imported executables.");
+            await LoadAvailableCapabilitiesAsync();
+        }
+        catch (Exception ex)
+        {
+            _ffmpegStatus.Text = "FFmpeg import failed. The previous tool selection remains active.";
+            AppendLog("FFmpeg import failed: " + ex);
+        }
+        finally
+        {
+            _importFfmpegButton.IsEnabled = true;
         }
     }
 

@@ -115,13 +115,13 @@ public static class FFmpegLogArchiveService
             reportEntries.Add(("diagnostics/ffprobe/version.txt",
                 await RunReportAsync(ffprobe, ["-version"], cancellationToken).ConfigureAwait(false)));
         else
-            reportEntries.Add(("diagnostics/ffprobe/tool-not-found.txt", "ffprobe.exe was not found."));
+            reportEntries.Add(("diagnostics/ffprobe/tool-not-found.txt", $"{FFmpegLocator.GetExecutableFileName("ffprobe")} was not found."));
 
         if (!string.IsNullOrWhiteSpace(ffplay))
             reportEntries.Add(("diagnostics/ffplay/version.txt",
                 await RunReportAsync(ffplay, ["-version"], cancellationToken).ConfigureAwait(false)));
         else
-            reportEntries.Add(("diagnostics/ffplay/tool-not-found.txt", "ffplay.exe was not found."));
+            reportEntries.Add(("diagnostics/ffplay/tool-not-found.txt", $"{FFmpegLocator.GetExecutableFileName("ffplay")} was not found."));
 
         progress?.Invoke("Writing ZIP archive");
         await Task.Run(() =>

@@ -369,53 +369,50 @@ public sealed class FFmpegOptionComposerWindow : Window
         if (optionName.Equals("-i", StringComparison.OrdinalIgnoreCase))
             return "Additional input source";
 
+        // Output metadata should not be placed in the stream-mapping field.
+        if (optionName is "-metadata" or "-metadata:s:v:0")
+            return "Other output options";
+
+        // Help and guide sources are stronger signals than suffix-based guessing.
         if (group.Contains("Stream selection", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Metadata / stream", StringComparison.OrdinalIgnoreCase)
             || optionName is "-map" or "-map_metadata" or "-map_chapters" or "-an" or "-vn" or "-sn" or "-dn")
             return "Stream mapping / selection";
 
-        // The runtime -h full catalogue does not carry our guide-category metadata, so
-        // classify common option aliases directly by FFmpeg's stream/option naming.
-        if (optionName.EndsWith(":a", StringComparison.OrdinalIgnoreCase)
-            || optionName.StartsWith("-c:a", StringComparison.OrdinalIgnoreCase)
-            || optionName.StartsWith("-codec:a", StringComparison.OrdinalIgnoreCase)
-            || optionName.StartsWith("-acodec", StringComparison.OrdinalIgnoreCase)
-            || optionName is "-b:a" or "-q:a" or "-qscale:a" or "-aq" or "-ar" or "-ac" or "-vbr" or "-cutoff" or "-profile:a")
-            return "Audio encoder options";
-
+        // Filters are checked before audio suffixes because names such as -filter:a
+        // end with ':a' but belong in the filtergraph field.
         if (optionName.StartsWith("-vf", StringComparison.OrdinalIgnoreCase)
             || optionName.StartsWith("-af", StringComparison.OrdinalIgnoreCase)
             || optionName.StartsWith("-filter", StringComparison.OrdinalIgnoreCase)
             || optionName is "-lavfi" or "-filter_complex")
             return "Filters / filtergraph";
 
-        if (optionName is "-ss" or "-sseof" or "-t" or "-to" or "-re" or "-framerate"
-            or "-video_size" or "-list_formats" or "-list-formats-ext" or "-hwaccel"
-            or "-probesize" or "-analyzeduration" or "-f" or "-use_wallclock_as_timestamps")
-            return "Input / demuxer options";
-
-        if (group.Contains("Audio", StringComparison.OrdinalIgnoreCase)
-            || optionName is "-ar" or "-ac" or "-b:a" or "-q:a" or "-qscale:a"
-                or "-profile:a" or "-cutoff" or "-vbr" or "-aq")
+        if (optionName.EndsWith(":a", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-c:a", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-codec:a", StringComparison.OrdinalIgnoreCase)
+            || optionName.StartsWith("-acodec", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-b:a" or "-q:a" or "-qscale:a" or "-aq" or "-ar" or "-ac"
+                or "-vbr" or "-cutoff" or "-profile:a" or "-compression_level")
             return "Audio encoder options";
+
+        if (optionName.Equals("-f", StringComparison.OrdinalIgnoreCase))
+            return group.Contains("Input", StringComparison.OrdinalIgnoreCase)
+                ? "Input / demuxer options"
+                : "Muxer / container options";
 
         if (group.Contains("Input", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Capture", StringComparison.OrdinalIgnoreCase)
-            || optionName is "-ss" or "-t" or "-to" or "-re" or "-framerate"
-                or "-video_size" or "-list_formats" or "-list-formats-ext"
-                or "-hwaccel" or "-probesize")
+            || optionName is "-ss" or "-sseof" or "-t" or "-to" or "-re" or "-framerate"
+                or "-video_size" or "-list_formats" or "-list-formats-ext" or "-hwaccel"
+                or "-probesize" or "-analyzeduration" or "-use_wallclock_as_timestamps")
             return "Input / demuxer options";
-
-        if (group.Contains("Filter", StringComparison.OrdinalIgnoreCase)
-            || optionName is "-vf" or "-filter_complex")
-            return "Filters / filtergraph";
 
         if (group.Contains("Container", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Streaming", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Compatibility", StringComparison.OrdinalIgnoreCase)
             || group.Contains("HDR", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Multiplexing", StringComparison.OrdinalIgnoreCase)
-            || optionName is "-f" or "-movflags" or "-metadata" or "-metadata:s:v:0" or "-tag:v" or "-vtag" or "-vendor")
+            || optionName is "-movflags" or "-cues_to_front" or "-tag:v" or "-vtag" or "-vendor")
             return "Muxer / container options";
 
         if (group.Contains("Global", StringComparison.OrdinalIgnoreCase)
@@ -449,7 +446,7 @@ public sealed class FFmpegOptionComposerWindow : Window
                 or "-tune" or "-profile:v" or "-pix_fmt" or "-minrate" or "-maxrate"
                 or "-bufsize" or "-g" or "-keyint_min" or "-bf" or "-threads"
                 or "-coder" or "-context" or "-level" or "-slices" or "-slicecrc"
-                or "-force_fps" or "-r" or "-s" or "-vtag" or "-tag:v" or "-vendor")
+                or "-force_fps" or "-r" or "-s" )
             return "Video encoder options";
 
         _ = description;

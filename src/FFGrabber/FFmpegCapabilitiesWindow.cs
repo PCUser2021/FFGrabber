@@ -17,8 +17,8 @@ public sealed class FFmpegCapabilitiesWindow : Window
     private static readonly (string Label, string[] Arguments)[] Catalogs =
     [
         ("Basic tool help — -h", ["-h"]),
-        ("Advanced tool options — -h long", ["-h", "long"]),
-        ("Complete option catalogue — -h full", ["-h", "full"]),
+        ("All FFmpeg options — -h full", ["-h", "full"]),
+
         ("Encoders — -encoders", ["-encoders"]),
         ("Decoders — -decoders", ["-decoders"]),
         ("All codecs — -codecs", ["-codecs"]),

@@ -1,0 +1,19 @@
+= How to fix TV playback issues =
+
+== Introduction ==
+
+Some media players embedded in TV devices have limited features when playing back movie files. This '''How To''' helps to fix some issues.
+
+== Fixing video orientation issue using null filter ==
+Some TV devices ignore the '''rotate=90''' metadata assigned to the video stream. In general, this occurs when the movie file has been recorded in '''portrait''' mode using a smartphone. Therefore, on the TV, the video stream is displayed in landscape mode instead of portrait mode.
+
+The null filter can convert, for example, a '''1920x1080''' (16/9, rotate=90) video stream to a '''1080x1920''' (9/16, rotate=0) video stream :
+{{{
+ffmpeg -i "INPUT.mp4" -vf null -c:a copy "OUTPUT.mp4"
+}}}
+
+== Adding a dummy audio stream using anullsrc audio source ==
+Some TV devices cannot display video streams correctly when there is no audio stream. The command below shows how to add a dummy audio stream :
+{{{
+ffmpeg -i "INPUT.mp4" -f lavfi -i anullsrc -c:v copy -shortest "OUTPUT.mp4"
+}}}

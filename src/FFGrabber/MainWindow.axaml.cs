@@ -80,7 +80,7 @@ public partial class MainWindow : Window
 
     private readonly ComboBox _capturePreset = new()
     {
-        ItemsSource = CaptureGuideProfiles.Names.Prepend("Manual / custom").ToArray(),
+        ItemsSource = CaptureGuideProfiles.AvailableNames.Prepend("Manual / custom").ToArray(),
         SelectedIndex = 0,
         MinWidth = 390
     };
@@ -184,7 +184,7 @@ public partial class MainWindow : Window
         {
             Classes = { "tagPill" },
             VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock { Text = "WINDOWS FLUENT  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#C2F970") }
+            Child = new TextBlock { Text = "CROSS-PLATFORM  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#C2F970") }
         });
         brandRow.Children.Add(new Border
         {
@@ -379,7 +379,7 @@ public partial class MainWindow : Window
 
         advancedContent.Children.Add(new TextBlock
         {
-            Text = "Advanced values are passed to ffmpeg.exe as process arguments (not through a shell). They are placed in the input, encoder/filter, muxer and output positions shown below. Duplicate options are allowed so later values can override generated defaults where FFmpeg's option semantics permit.",
+            Text = "Advanced values are passed to the imported FFmpeg executable as process arguments (not through a shell). They are placed in the input, encoder/filter, muxer and output positions shown below. Duplicate options are allowed so later values can override generated defaults where FFmpeg's option semantics permit.",
             Foreground = Brush("#A4A9B6"),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12
@@ -667,7 +667,8 @@ public partial class MainWindow : Window
         profileRow.Children.Add(Label("Capture guide profile", 150));
         profileRow.Children.Add(_capturePreset);
         profileRow.Children.Add(GlyphButton("\uE768", "Apply capture profile", (_, _) => ApplyCapturePreset(), primary: true));
-        profileRow.Children.Add(GlyphButton("\uE8A5", "List DirectShow devices", async (_, _) => await ListDirectShowDevicesAsync()));
+        if (OperatingSystem.IsWindows())
+            profileRow.Children.Add(GlyphButton("\uE8A5", "List DirectShow devices", async (_, _) => await ListDirectShowDevicesAsync()));
         stack.Children.Add(profileRow);
 
         var inputRateSize = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -1135,7 +1136,7 @@ public partial class MainWindow : Window
         var executable = FFmpegLocator.Find("ffmpeg");
         if (executable is null)
         {
-            AppendLog("No FFmpeg imported yet. Click \"Import FFmpeg…\" and select the folder containing ffmpeg.exe, ffprobe.exe and ffplay.exe.");
+            AppendLog($"No FFmpeg imported yet. Click \"Import FFmpeg…\" and select the folder containing {FFmpegLocator.GetRequiredToolsDescription()}.");
             return;
         }
 
@@ -1147,7 +1148,12 @@ public partial class MainWindow : Window
             _availableAudioEncoders = new HashSet<string>(capabilities.AudioEncoders, StringComparer.OrdinalIgnoreCase);
             SetChoices(_videoCodec, new[] { "copy" }.Concat(capabilities.VideoEncoders), "libx264");
             SetChoices(_audioCodec, new[] { "copy" }.Concat(capabilities.AudioEncoders), "aac");
-            SetChoices(_inputFormat, new[] { "auto", "dshow", "gdigrab", "lavfi", "v4l2", "alsa", "avfoundation", "pulse", "x11grab" }.Concat(capabilities.Demuxers), "auto");
+            var platformInputFormats = OperatingSystem.IsWindows()
+                ? new[] { "dshow", "gdigrab", "lavfi" }
+                : OperatingSystem.IsLinux()
+                    ? new[] { "v4l2", "alsa", "pulse", "pipewire", "x11grab", "lavfi" }
+                    : new[] { "avfoundation", "lavfi" };
+            SetChoices(_inputFormat, new[] { "auto" }.Concat(platformInputFormats).Concat(capabilities.Demuxers), "auto");
             SetChoices(_outputFormat, new[] { "auto" }.Concat(capabilities.Muxers), "auto");
             AppendLog($"Discovered {capabilities.VideoEncoders.Count} video encoders, {capabilities.AudioEncoders.Count} audio encoders, {capabilities.Demuxers.Count} demuxers and {capabilities.Muxers.Count} muxers.");
         }
@@ -1178,7 +1184,7 @@ public partial class MainWindow : Window
         try
         {
             var settings = GetSettings();
-            var executable = FFmpegLocator.Find("ffmpeg") ?? "ffmpeg.exe";
+            var executable = FFmpegLocator.Find("ffmpeg") ?? FFmpegLocator.GetExecutableFileName("ffmpeg");
             if (settings.TwoPass)
             {
                 var plan = FFmpegCommandBuilder.BuildTwoPass(settings);
@@ -1234,14 +1240,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        _ffmpegStatus.Text = "No FFmpeg imported. FFGrabber does not include FFmpeg: click \"Import FFmpeg…\" and select your folder containing ffmpeg.exe, ffprobe.exe and ffplay.exe.";
+        _ffmpegStatus.Text = $"No FFmpeg imported. FFGrabber does not include FFmpeg: click \"Import FFmpeg…\" and select your folder containing {FFmpegLocator.GetRequiredToolsDescription()}.";
     }
 
     private async Task ImportFFmpegAsync()
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select the FFmpeg folder containing ffmpeg.exe, ffprobe.exe, and ffplay.exe",
+            Title = $"Select the FFmpeg folder containing {FFmpegLocator.GetRequiredToolsDescription()}",
             AllowMultiple = false
         });
         if (folders.Count == 0)
@@ -1255,7 +1261,7 @@ public partial class MainWindow : Window
         }
 
         _importFfmpegButton.IsEnabled = false;
-        _ffmpegStatus.Text = "Validating ffmpeg.exe, ffprobe.exe and ffplay.exe…";
+        _ffmpegStatus.Text = $"Validating {FFmpegLocator.GetRequiredToolsDescription()}…";
         AppendLog("Validating user-provided FFmpeg folder: " + selectedDirectory);
         try
         {
@@ -1330,7 +1336,7 @@ public partial class MainWindow : Window
         var executable = FFmpegLocator.Find("ffmpeg");
         if (executable is null)
         {
-            AppendLog("No FFmpeg imported. Click \"Import FFmpeg…\" and select the folder containing ffmpeg.exe, ffprobe.exe and ffplay.exe.");
+            AppendLog($"No FFmpeg imported. Click \"Import FFmpeg…\" and select the folder containing {FFmpegLocator.GetRequiredToolsDescription()}.");
             return;
         }
 
@@ -1484,7 +1490,7 @@ public partial class MainWindow : Window
         var executable = FFmpegLocator.Find("ffprobe");
         if (executable is null)
         {
-            AppendLog("ffprobe.exe was not found.");
+            AppendLog($"{FFmpegLocator.GetExecutableFileName("ffprobe")} was not found.");
             return;
         }
 
@@ -1516,7 +1522,7 @@ public partial class MainWindow : Window
         var executable = FFmpegLocator.Find("ffplay");
         if (executable is null)
         {
-            AppendLog("ffplay.exe was not found.");
+            AppendLog($"{FFmpegLocator.GetExecutableFileName("ffplay")} was not found.");
             return;
         }
 

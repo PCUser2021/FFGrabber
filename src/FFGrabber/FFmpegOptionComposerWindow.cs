@@ -369,9 +369,13 @@ public sealed class FFmpegOptionComposerWindow : Window
         if (optionName.Equals("-i", StringComparison.OrdinalIgnoreCase))
             return "Additional input source";
 
-        // Output metadata should not be placed in the stream-mapping field.
-        if (optionName is "-metadata" or "-metadata:s:v:0")
+        // Output metadata and HDR tags are output options, not stream-mapping options.
+        if (optionName is "-metadata" or "-metadata:s:v:0"
+            or "-color_primaries" or "-color_trc" or "-colorspace")
             return "Other output options";
+
+        if (optionName is "-movflags" or "-cues_to_front" or "-tag:v" or "-vtag" or "-vendor")
+            return "Muxer / container options";
 
         // Help and guide sources are stronger signals than suffix-based guessing.
         if (group.Contains("Stream selection", StringComparison.OrdinalIgnoreCase)
@@ -411,8 +415,7 @@ public sealed class FFmpegOptionComposerWindow : Window
             || group.Contains("Streaming", StringComparison.OrdinalIgnoreCase)
             || group.Contains("Compatibility", StringComparison.OrdinalIgnoreCase)
             || group.Contains("HDR", StringComparison.OrdinalIgnoreCase)
-            || group.Contains("Multiplexing", StringComparison.OrdinalIgnoreCase)
-            || optionName is "-movflags" or "-cues_to_front" or "-tag:v" or "-vtag" or "-vendor")
+            || group.Contains("Multiplexing", StringComparison.OrdinalIgnoreCase))
             return "Muxer / container options";
 
         if (group.Contains("Global", StringComparison.OrdinalIgnoreCase)

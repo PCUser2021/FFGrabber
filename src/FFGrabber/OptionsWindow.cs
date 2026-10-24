@@ -19,6 +19,12 @@ public sealed class OptionsWindow : Window
     private readonly Action<string> _log;
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Color.Parse("#A4A9B6")) };
     private readonly Button _saveLogs = new() { Content = "Save Logs…", Classes = { "primary" } };
+    private readonly ComboBox _themeMode = new()
+    {
+        ItemsSource = new[] { "System", "Light", "Dark" },
+        SelectedItem = ThemePreferences.GetSavedChoice(),
+        MinWidth = 150
+    };
 
     public OptionsWindow(
         string? ffmpegPath,
@@ -35,12 +41,10 @@ public sealed class OptionsWindow : Window
 
         Title = "FFGrabber — Options";
         Width = 640;
-        Height = 380;
+        Height = 520;
         MinWidth = 540;
-        MinHeight = 320;
-        Background = Brushes.Transparent;
-        TransparencyLevelHint = [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Mica, WindowTransparencyLevel.Transparent];
-        TransparencyBackgroundFallback = new SolidColorBrush(Color.Parse("#FF111319"));
+        MinHeight = 420;
+        Background = ThemePreferences.Brush("#FF111319");
 
         var root = new StackPanel { Spacing = 14, Margin = new Thickness(24) };
         root.Children.Add(new TextBlock { Text = "Options", FontSize = 24, FontWeight = FontWeight.SemiBold });
@@ -48,8 +52,26 @@ public sealed class OptionsWindow : Window
         {
             Text = "Export full diagnostic logs or browse every option supported by your imported FFmpeg build. The option catalogue is read from your local executable, not a stale built-in list.",
             TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.Parse("#A4A9B6"))
+            Foreground = ThemePreferences.Brush("#A4A9B6")
         });
+
+        root.Children.Add(new TextBlock { Text = "Appearance", FontSize = 16, FontWeight = FontWeight.SemiBold });
+        var appearanceRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
+        appearanceRow.Children.Add(new TextBlock { Text = "Application theme", VerticalAlignment = VerticalAlignment.Center, MinWidth = 145 });
+        appearanceRow.Children.Add(_themeMode);
+        root.Children.Add(appearanceRow);
+        root.Children.Add(new TextBlock
+        {
+            Text = "System follows Windows. Light and Dark are applied immediately to all FFGrabber windows and saved for the next launch.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = ThemePreferences.Brush("#A4A9B6")
+        });
+        _themeMode.SelectionChanged += (_, _) =>
+        {
+            var choice = _themeMode.SelectedItem?.ToString() ?? "System";
+            ThemePreferences.ApplyChoice(choice);
+            _status.Text = $"Appearance changed to {choice}.";
+        };
 
         _saveLogs.Click += async (_, _) => await SaveLogsAsync();
         root.Children.Add(_saveLogs);
@@ -63,9 +85,17 @@ public sealed class OptionsWindow : Window
             try { Process.Start(new ProcessStartInfo("https://ffmpeg.org/ffmpeg.html") { UseShellExecute = true }); }
             catch (Exception ex) { _status.Text = "Could not open the official documentation: " + ex.Message; }
         }));
+        root.Children.Add(Button("Open complete FFmpeg component reference ↗", (_, _) => OpenUrl("https://ffmpeg.org/ffmpeg-all.html")));
+        root.Children.Add(Button("Open FFmpeg Trac wiki and guides ↗", (_, _) => OpenUrl("https://trac.ffmpeg.org/wiki")));
         root.Children.Add(_status);
         root.Children.Add(Button("Close", (_, _) => Close()));
         Content = new Border { Classes = { "glassShell" }, Child = root };
+    }
+
+    private void OpenUrl(string url)
+    {
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch (Exception ex) { _status.Text = "Could not open the documentation: " + ex.Message; }
     }
 
     private static Button Button(string text, EventHandler<RoutedEventArgs> onClick)

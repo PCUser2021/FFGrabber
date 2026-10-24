@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="FFGrabber.App"
              xmlns:styling="clr-namespace:FluentAvalonia.Styling;assembly=FluentAvalonia"
-             RequestedThemeVariant="Light">
+             RequestedThemeVariant="Default">
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.ThemeDictionaries>
@@ -122,7 +122,7 @@
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="CornerRadius" Value="8"/>
       <Setter Property="Padding" Value="12,7"/>
       <Setter Property="MinHeight" Value="34"/>
       <Setter Property="FontWeight" Value="Normal"/>

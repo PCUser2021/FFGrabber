@@ -58,6 +58,74 @@ public sealed class FFmpegCommandBuilderTests
             "The Windows Graphics Capture profile should remain available.");
     }
 
+    [TestMethod]
+    public void RecoveredGuideProfiles_AreEmbeddedAndMapAllFourteenPayloads()
+    {
+        string[] expectedSources =
+        [
+            "h264_master_guide.txt",
+            "h265_hevc_deep_dive.txt",
+            "av1_nextgen_delivery.txt",
+            "vp9_webm_publishing.txt",
+            "ffv1_lossless_archive.txt",
+            "prores_vfx_intermediate.txt",
+            "mpeg4_legacy_compatibility.txt",
+            "theora_ogg_fallback.txt",
+            "aac_audio_standards.txt",
+            "mp3_vintage_distribution.txt",
+            "opus_interactive_telephony.txt",
+            "flac_bit_perfect_master.txt",
+            "youtube_upload_recipes.txt",
+            "streaming_live_delivery.txt"
+        ];
+
+        var profiles = EncodingGuideProfiles.All
+            .Where(profile => expectedSources.Contains(profile.SourceFile, StringComparer.OrdinalIgnoreCase))
+            .ToDictionary(profile => profile.SourceFile, StringComparer.OrdinalIgnoreCase);
+        var resources = typeof(EncodingGuideProfiles).Assembly.GetManifestResourceNames();
+
+        Assert.AreEqual(14, profiles.Count, "Every recovered text profile needs a matching one-click GUI profile.");
+        foreach (var source in expectedSources)
+        {
+            Assert.IsTrue(profiles.ContainsKey(source), $"No encoder settings profile maps to {source}.");
+            Assert.IsTrue(resources.Contains(
+                "FFGrabber.source-guides.dropbox." + source,
+                StringComparer.OrdinalIgnoreCase), $"The source payload {source} must be embedded in the app.");
+        }
+
+        Assert.AreEqual("libx264", profiles["h264_master_guide.txt"].VideoCodec);
+        Assert.AreEqual("22", profiles["h264_master_guide.txt"].Crf);
+        Assert.AreEqual("yuv420p", profiles["h264_master_guide.txt"].PixelFormat);
+        Assert.IsTrue(profiles["av1_nextgen_delivery.txt"].VideoEncoderOptions.Contains("-b:v 0", StringComparison.Ordinal));
+        Assert.AreEqual("webm", profiles["vp9_webm_publishing.txt"].OutputFormat);
+        Assert.AreEqual("ogg", profiles["theora_ogg_fallback.txt"].OutputFormat);
+        Assert.AreEqual("192k", profiles["aac_audio_standards.txt"].AudioBitrate);
+        Assert.AreEqual("flac", profiles["flac_bit_perfect_master.txt"].OutputFormat);
+        Assert.AreEqual("384k", profiles["youtube_upload_recipes.txt"].AudioBitrate);
+        Assert.AreEqual("4000k", profiles["streaming_live_delivery.txt"].VideoBitrate);
+    }
+
+    [TestMethod]
+    public void EmbeddedGuideLibrary_ContainsAllCurrentGuideAndProfileDocuments()
+    {
+        var resources = typeof(EncodingGuideProfiles).Assembly.GetManifestResourceNames()
+            .Where(name => name.Contains(".source-guides.dropbox.", StringComparison.OrdinalIgnoreCase)
+                && name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        string[] preservedReferences =
+        [
+            "Capture_ALSA.txt", "Capture_Desktop.txt", "Capture_Lightning.txt",
+            "Capture_Webcam.txt", "DirectShow.txt", "HWAccelIntro.txt"
+        ];
+
+        Assert.IsTrue(resources.Length >= 20,
+            "The six preserved capture/hardware references and fourteen recovered profile payloads must all be embedded.");
+        foreach (var source in preservedReferences)
+            Assert.IsTrue(resources.Contains(
+                "FFGrabber.source-guides.dropbox." + source,
+                StringComparer.OrdinalIgnoreCase), $"The full reference {source} must be embedded.");
+    }
+
     private static EncodingSettings CreateTwoPassSettings(string output, string passLogPrefix) => new(
         InputPath: "input.mp4",
         OutputPath: output,

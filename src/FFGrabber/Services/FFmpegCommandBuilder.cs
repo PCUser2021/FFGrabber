@@ -20,29 +20,36 @@ public static class FFmpegCommandBuilder
 
     public static List<string> Build(EncodingSettings s)
     {
-        if (string.IsNullOrWhiteSpace(s.InputPath))
-            throw new ArgumentException("Specify a source path, URL, device expression, pipe, or other FFmpeg input.");
+        var usesCaptureFilter = !string.IsNullOrWhiteSpace(s.CaptureFilterSource);
+        if (string.IsNullOrWhiteSpace(s.InputPath) && !usesCaptureFilter)
+            throw new ArgumentException("Specify a source path, URL, device expression, pipe, or a capture source filter.");
         if (string.IsNullOrWhiteSpace(s.OutputPath))
             throw new ArgumentException("Specify an output path, URL, or other FFmpeg target.");
-        if (string.Equals(s.InputPath.Trim(), s.OutputPath.Trim(), StringComparison.OrdinalIgnoreCase))
+        if (!usesCaptureFilter && string.Equals(s.InputPath.Trim(), s.OutputPath.Trim(), StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Input and output locations must be different.");
-        if (IsLocalPath(s.InputPath) && IsLocalPath(s.OutputPath) &&
+        if (!usesCaptureFilter && IsLocalPath(s.InputPath) && IsLocalPath(s.OutputPath) &&
             string.Equals(NormalizeLocalPath(s.InputPath), NormalizeLocalPath(s.OutputPath), StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Input and output paths must be different.");
+        if (usesCaptureFilter && string.Equals(s.VideoCodec, "copy", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("A capture source filter produces raw frames; choose an encoder such as libx264 or h264_nvenc instead of stream copy.");
+        if (usesCaptureFilter && FFmpegArgumentParser.Parse(s.FilterOptions).Any(token => string.Equals(token, "-filter_complex", StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException("Capture source filter mode already creates the primary -filter_complex graph. Remove any other -filter_complex from Filter options; use the source-filter field for the capture graph.");
 
         var args = new List<string> { "-hide_banner" };
         args.AddRange(FFmpegArgumentParser.Parse(s.GlobalOptions));
         args.Add(s.Overwrite ? "-y" : "-n");
 
         // FFmpeg input/demuxer options must be placed before the corresponding -i.
-        args.AddRange(FFmpegArgumentParser.Parse(s.InputOptions));
-        if (!string.IsNullOrWhiteSpace(s.InputFormat) && !string.Equals(s.InputFormat, "auto", StringComparison.OrdinalIgnoreCase))
-            args.AddRange(["-f", s.InputFormat.Trim()]);
-        args.AddRange(["-i", s.InputPath]);
-
-        // Any additional inputs are real argument tokens, not shell text. This lets
-        // image-sequence, stereo/multicam, overlay, and separate audio workflows use
-        // multiple -i sources while preserving the option ordering supplied by the user.
+        // Source-filter capture (DDAgrab/gfxcapture) is an independent graph source and
+        // deliberately has no primary -i. Its filter graph is appended below.
+        if (!usesCaptureFilter)
+        {
+            args.AddRange(FFmpegArgumentParser.Parse(s.InputOptions));
+            if (!string.IsNullOrWhiteSpace(s.InputFormat) && !string.Equals(s.InputFormat, "auto", StringComparison.OrdinalIgnoreCase))
+                args.AddRange(["-f", s.InputFormat.Trim()]);
+            args.AddRange(["-i", s.InputPath]);
+        }
+        // Additional media inputs remain available in either ordinary-input or source-filter mode.
         args.AddRange(FFmpegArgumentParser.Parse(s.AdditionalInputs));
 
         var customMapping = FFmpegArgumentParser.Parse(s.StreamMappingOptions);
@@ -123,9 +130,11 @@ public static class FFmpegCommandBuilder
         // override a generated value with the matching FFmpeg flag (for example -preset or -crf).
         args.AddRange(FFmpegArgumentParser.Parse(s.VideoEncoderOptions));
         args.AddRange(FFmpegArgumentParser.Parse(s.AudioEncoderOptions));
+        if (usesCaptureFilter)
+            args.AddRange(["-filter_complex", s.CaptureFilterSource.Trim()]);
         args.AddRange(FFmpegArgumentParser.Parse(s.FilterOptions));
 
-        if (s.PreserveMetadata)
+        if (s.PreserveMetadata && !usesCaptureFilter)
             args.AddRange(["-map_metadata", "0", "-map_chapters", "0"]);
 
         if (s.FastStart && FastStartExtensions.Contains(Path.GetExtension(s.OutputPath), StringComparer.OrdinalIgnoreCase))
@@ -150,6 +159,8 @@ public static class FFmpegCommandBuilder
         ArgumentNullException.ThrowIfNull(settings);
         if (!settings.TwoPass)
             throw new ArgumentException("Enable the Two-pass video encoding control first.", nameof(settings));
+        if (!string.IsNullOrWhiteSpace(settings.CaptureFilterSource))
+            throw new ArgumentException("Automated two-pass encoding is not enabled for live DDAgrab/gfxcapture source graphs; use a normal input or a single-pass capture profile.");
         if (!string.Equals(settings.Mode, "Convert / encode", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Automated two-pass encoding is currently available for Convert / encode jobs only.");
         if (settings.VideoCodec is not ("libx264" or "mpeg4" or "libvpx" or "libvpx-vp9" or "libaom-av1" or "ffv1"))

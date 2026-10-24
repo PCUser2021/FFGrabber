@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using FFGrabber.Models;
@@ -77,6 +78,35 @@ public partial class MainWindow : Window
     private readonly TextBox _colorSpace = new() { PlaceholderText = "e.g. bt2020nc", Width = 150 };
     private readonly TextBox _additionalInputs = MultiLine("Optional extra FFmpeg inputs, e.g. -i \"right-eye.exr\" -i audio.m4a", 56);
 
+    private readonly ComboBox _capturePreset = new()
+    {
+        ItemsSource = CaptureGuideProfiles.Names.Prepend("Manual / custom").ToArray(),
+        SelectedIndex = 0,
+        MinWidth = 390
+    };
+    private readonly TextBox _captureFrameRate = new() { PlaceholderText = "e.g. 30 or 30000/1001", Width = 150 };
+    private readonly TextBox _captureVideoSize = new() { PlaceholderText = "e.g. 1920x1080", Width = 150 };
+    private readonly ComboBox _capturePixelFormat = Combo(["auto", "yuyv422", "nv12", "mjpeg", "bgra", "rgb24", "yuv420p", "p010le"]);
+    private readonly ComboBox _captureVideoCodec = Combo(["auto", "rawvideo", "mjpeg", "h264", "hevc"]);
+    private readonly TextBox _captureRtBufferSize = new() { PlaceholderText = "e.g. 702000k", Width = 150 };
+    private readonly TextBox _captureAudioBufferSize = new() { PlaceholderText = "milliseconds; e.g. 50", Width = 150 };
+    private readonly TextBox _captureOffsetX = new() { PlaceholderText = "optional; e.g. 0", Width = 100 };
+    private readonly TextBox _captureOffsetY = new() { PlaceholderText = "optional; e.g. 0", Width = 100 };
+    private readonly TextBox _captureChannels = new() { PlaceholderText = "ALSA: e.g. 2", Width = 100 };
+    private readonly TextBox _captureSampleRate = new() { PlaceholderText = "ALSA: e.g. 44100", Width = 130 };
+    private readonly TextBox _captureVideoDeviceIndex = new() { PlaceholderText = "AVFoundation index", Width = 150 };
+    private readonly CheckBox _captureShowRegion = new() { Content = "Show capture region (-show_region)" };
+    private readonly CheckBox _captureCopyTimestamps = new() { Content = "Preserve input timestamps (-copyts)" };
+    private readonly CheckBox _captureBenchmark = new() { Content = "Benchmark (-benchmark)" };
+    private readonly CheckBox _disableAutoScale = new() { Content = "Disable FFmpeg automatic output scaling (-noautoscale)" };
+    private readonly ComboBox _hwAccel = Combo(["None / disabled", "auto", "cuda", "d3d11va", "dxva2", "qsv", "vaapi", "vdpau", "vulkan", "videotoolbox"]);
+    private readonly ComboBox _hwAccelOutputFormat = Combo(["auto", "cuda", "d3d11", "dxva2_vld", "qsv", "vaapi", "vulkan"]);
+    private readonly TextBox _hwAccelDevice = new() { PlaceholderText = "device index/name; e.g. 0", Width = 150 };
+    private readonly TextBox _initHwDevice = new() { PlaceholderText = "e.g. d3d11va or cuda=gpu:0", Width = 220 };
+    private readonly TextBox _filterHwDevice = new() { PlaceholderText = "optional named device", Width = 190 };
+    private readonly TextBox _extraHwFrames = new() { PlaceholderText = "e.g. 8", Width = 90 };
+    private readonly TextBox _captureFilterSource = MultiLine("Optional source filter graph, e.g. ddagrab=0 or gfxcapture=monitor_idx=1:max_framerate=60. When set, FFGrabber does not add the primary -i input.", 60);
+
     private readonly TextBox _globalOptions = MultiLine("-loglevel verbose -threads 0", 56);
     private readonly TextBox _inputOptions = MultiLine("-ss 00:00:05 -probesize 50M -analyzeduration 100M", 56);
     private readonly TextBox _mappingOptions = MultiLine("-map 0:v:0 -map 0:a? -map_metadata 0 -map_chapters 0", 56);
@@ -105,10 +135,20 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _cancellation;
     private EncodingSettings? _activeJobSettings;
 
+    private static string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.5.6";
+
     public MainWindow()
     {
         InitializeComponent();
-        Title = "FFGrabber — FFmpeg workstation";
+        try
+        {
+            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/FFGrabber.ico")));
+        }
+        catch (Exception ex)
+        {
+            _sessionLog.Write("Could not load embedded FFGrabber icon: " + ex.Message);
+        }
+        Title = $"FFGrabber v{AppVersion} — FFmpeg workstation";
         Width = 1260;
         Height = 1000;
         MinWidth = 900;
@@ -121,15 +161,13 @@ public partial class MainWindow : Window
         brandRow.Children.Add(new Border
         {
             Classes = { "brandMark" },
-            Child = new TextBlock
-            {
-                Text = "FG",
-                FontSize = 19,
-                FontWeight = FontWeight.Bold,
-                Foreground = Brush("#171D10"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            }
+            Width = 56,
+            Height = 56,
+            CornerRadius = new CornerRadius(16),
+            Background = Brush("#084BC0"),
+            BorderBrush = Brush("#60E3FF"),
+            BorderThickness = new Thickness(1),
+            Child = BuildBrandGlyph()
         });
         brandRow.Children.Add(new TextBlock { Text = "FFGrabber", Classes = { "pageTitle" }, VerticalAlignment = VerticalAlignment.Center });
         brandRow.Children.Add(new Border
@@ -137,6 +175,15 @@ public partial class MainWindow : Window
             Classes = { "tagPill" },
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock { Text = "PURE GUI  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.Bold, Foreground = Brush("#C2F970") }
+        });
+        brandRow.Children.Add(new Border
+        {
+            Classes = { "tagPill" },
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = Brush("#123B75"),
+            BorderBrush = Brush("#54D9F8"),
+            BorderThickness = new Thickness(1),
+            Child = new TextBlock { Text = $"v{AppVersion}", FontSize = 11, FontWeight = FontWeight.Bold, Foreground = Brush("#DDF9FF") }
         });
         heroContent.Children.Add(brandRow);
         heroContent.Children.Add(new TextBlock
@@ -151,6 +198,7 @@ public partial class MainWindow : Window
 
         var topActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         topActions.Children.Add(GlyphButton("\uE713", "Options", async (_, _) => await OpenOptionsAsync()));
+        topActions.Children.Add(GlyphButton("\uE946", "About / version", async (_, _) => await OpenAboutAsync()));
         _importFfmpegButton.Content = ButtonContent("\uE8E5", "Import FFmpeg…");
         topActions.Children.Add(_importFfmpegButton);
         _importFfmpegButton.Click += async (_, _) => await ImportFFmpegAsync();
@@ -278,6 +326,7 @@ public partial class MainWindow : Window
         });
 
         root.Children.Add(settingsPanel);
+        root.Children.Add(BuildCaptureAndHardwarePanel());
 
         root.Children.Add(BuildAdvancedOptions());
 
@@ -311,7 +360,7 @@ public partial class MainWindow : Window
         root.Children.Add(_log);
         Content = new ScrollViewer { Content = root, Background = Brush("#FF111319") };
 
-        _sessionLog.Write($"FFGrabber main window initialized; OS={RuntimeInformation.OSDescription}; architecture={RuntimeInformation.ProcessArchitecture}; appVersion={typeof(MainWindow).Assembly.GetName().Version}");
+        _sessionLog.Write($"FFGrabber main window initialized; OS={RuntimeInformation.OSDescription}; architecture={RuntimeInformation.ProcessArchitecture}; appVersion={AppVersion}");
         _sessionLog.Write($"Tool paths: ffmpeg={FFmpegLocator.Find("ffmpeg") ?? "(not found)"}; ffprobe={FFmpegLocator.Find("ffprobe") ?? "(not found)"}; ffplay={FFmpegLocator.Find("ffplay") ?? "(not found)"}");
         AppendDisplayLog("Session log location: " + _sessionLog.CurrentLogPath);
         Opened += async (_, _) => await LoadAvailableCapabilitiesAsync();
@@ -398,15 +447,46 @@ public partial class MainWindow : Window
         return row;
     }
 
+    private static Control BuildBrandGlyph()
+    {
+        var glyph = new Grid();
+        glyph.Children.Add(new Border
+        {
+            Width = 32, Height = 35, CornerRadius = new CornerRadius(10),
+            BorderThickness = new Thickness(3), BorderBrush = Brush("#61E2FF"),
+            Background = Brush("#0A3D96"), HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center, RenderTransform = new RotateTransform(-12)
+        });
+        glyph.Children.Add(new Border
+        {
+            Width = 32, Height = 35, CornerRadius = new CornerRadius(10),
+            BorderThickness = new Thickness(3), BorderBrush = Brush("#F0FDFF"),
+            Background = Brush("#175DCE"), HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center, RenderTransform = new RotateTransform(10)
+        });
+        glyph.Children.Add(new Border
+        {
+            Width = 11, Height = 11, CornerRadius = new CornerRadius(6),
+            Background = Brush("#4FE9FF"), BorderBrush = Brush("#FFFFFF"),
+            BorderThickness = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        return glyph;
+    }
+
     private static Control ButtonContent(string glyph, string label)
     {
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        content.Children.Add(new TextBlock
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9, VerticalAlignment = VerticalAlignment.Center };
+        content.Children.Add(new Border
         {
-            Text = glyph,
-            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            FontSize = 15,
-            VerticalAlignment = VerticalAlignment.Center
+            Width = 28, Height = 28, CornerRadius = new CornerRadius(9),
+            Background = Brush("#134A99"), BorderBrush = Brush("#50D8F7"), BorderThickness = new Thickness(1),
+            Child = new TextBlock
+            {
+                Text = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14,
+                Foreground = Brush("#E7FCFF"), HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
         });
         content.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
         return content;
@@ -426,6 +506,195 @@ public partial class MainWindow : Window
         if (primary) button.Classes.Add("primary");
         button.Click += handler;
         return button;
+    }
+
+    private Expander BuildCaptureAndHardwarePanel()
+    {
+        var stack = new StackPanel { Spacing = 10 };
+        stack.Children.Add(new TextBlock
+        {
+            Text = "Capture and acceleration settings extracted from the DirectShow, desktop/webcam capture and hardware-acceleration references. The selected FFmpeg build and device must support the chosen settings; device names, size, frame rate and pixel formats vary by hardware.",
+            TextWrapping = TextWrapping.Wrap, Foreground = Brush("#A4A9B6")
+        });
+        var profileRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        profileRow.Children.Add(Label("Capture guide profile", 150));
+        profileRow.Children.Add(_capturePreset);
+        profileRow.Children.Add(GlyphButton("\uE768", "Apply capture profile", (_, _) => ApplyCapturePreset(), primary: true));
+        profileRow.Children.Add(GlyphButton("\uE8A5", "List DirectShow devices", async (_, _) => await ListDirectShowDevicesAsync()));
+        stack.Children.Add(profileRow);
+
+        var inputRateSize = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        inputRateSize.Children.Add(Label("Capture frame rate (-framerate)", 165));
+        inputRateSize.Children.Add(_captureFrameRate);
+        inputRateSize.Children.Add(Label("Capture size (-video_size)", 155));
+        inputRateSize.Children.Add(_captureVideoSize);
+        stack.Children.Add(inputRateSize);
+
+        var inputFormatCodec = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        inputFormatCodec.Children.Add(Label("Input pixel format", 150));
+        inputFormatCodec.Children.Add(_capturePixelFormat);
+        inputFormatCodec.Children.Add(Label("Capture stream codec", 150));
+        inputFormatCodec.Children.Add(_captureVideoCodec);
+        stack.Children.Add(inputFormatCodec);
+
+        var inputBufferRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        inputBufferRow.Children.Add(Label("Realtime buffer (-rtbufsize)", 165));
+        inputBufferRow.Children.Add(_captureRtBufferSize);
+        inputBufferRow.Children.Add(Label("Audio buffer (ms)", 115));
+        inputBufferRow.Children.Add(_captureAudioBufferSize);
+        stack.Children.Add(inputBufferRow);
+
+        var cropRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        cropRow.Children.Add(Label("Desktop offset X", 120));
+        cropRow.Children.Add(_captureOffsetX);
+        cropRow.Children.Add(Label("Offset Y", 65));
+        cropRow.Children.Add(_captureOffsetY);
+        cropRow.Children.Add(Label("Device index", 90));
+        cropRow.Children.Add(_captureVideoDeviceIndex);
+        stack.Children.Add(cropRow);
+
+        var audioRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        audioRow.Children.Add(Label("Capture channels (-channels)", 170));
+        audioRow.Children.Add(_captureChannels);
+        audioRow.Children.Add(Label("Capture rate (-sample_rate)", 170));
+        audioRow.Children.Add(_captureSampleRate);
+        stack.Children.Add(audioRow);
+
+        var captureChecks = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 18, VerticalAlignment = VerticalAlignment.Center };
+        captureChecks.Children.Add(_captureShowRegion);
+        captureChecks.Children.Add(_captureCopyTimestamps);
+        captureChecks.Children.Add(_captureBenchmark);
+        captureChecks.Children.Add(_disableAutoScale);
+        stack.Children.Add(captureChecks);
+
+        stack.Children.Add(Heading("Hardware acceleration / hardware frames"));
+        var hwRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        hwRow.Children.Add(Label("Decoder hardware API (-hwaccel)", 180));
+        hwRow.Children.Add(_hwAccel);
+        hwRow.Children.Add(Label("Hardware frame format", 140));
+        hwRow.Children.Add(_hwAccelOutputFormat);
+        stack.Children.Add(hwRow);
+
+        var hwDeviceRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        hwDeviceRow.Children.Add(Label("Decode device (-hwaccel_device)", 180));
+        hwDeviceRow.Children.Add(_hwAccelDevice);
+        hwDeviceRow.Children.Add(Label("Extra frames", 90));
+        hwDeviceRow.Children.Add(_extraHwFrames);
+        stack.Children.Add(hwDeviceRow);
+        stack.Children.Add(Row("Initialize hardware device", _initHwDevice));
+        stack.Children.Add(Row("Filter hardware device", _filterHwDevice));
+        stack.Children.Add(new TextBlock
+        {
+            Text = "For DDAgrab/gfxcapture, use a source filter below instead of a file input. The historical Capture_Lightning.txt example uses a non-existent FFmpeg -delay option and an external buffering tool; that unsupported flag is intentionally reference-only.",
+            TextWrapping = TextWrapping.Wrap, Foreground = Brush("#A4A9B6")
+        });
+        AddOptionEditor(stack, "Capture source filter (no primary -i; e.g. ddagrab=0 or gfxcapture=monitor_idx=1:max_framerate=60)", _captureFilterSource);
+        return new Expander
+        {
+            Header = "Capture & hardware acceleration — DirectShow, desktop/webcam, buffering, CUDA/D3D11/QSV/Vulkan",
+            IsExpanded = false, Content = stack
+        };
+    }
+
+    private void ApplyCapturePreset()
+    {
+        var profile = CaptureGuideProfiles.Find(Selected(_capturePreset));
+        if (profile is null)
+        {
+            _guideProfileDescription.Text = "Manual / custom capture mode. Select a source profile to populate the input, capture and encoder settings.";
+            return;
+        }
+        // Applying a profile intentionally replaces its related input/capture/encoder baseline.
+        _input.Text = profile.InputExpression;
+        SetComboValue(_inputFormat, profile.InputFormat);
+        SetComboValue(_videoCodec, profile.VideoCodec);
+        SetComboValue(_rateControl, profile.RateControl);
+        SetComboValue(_preset, profile.RateControl == "Encoder-specific options" ? "encoder default" : "medium");
+        SetComboValue(_capturePixelFormat, profile.PixelFormat);
+        SetComboValue(_captureVideoCodec, profile.StreamCodec);
+        SetComboValue(_hwAccel, "None / disabled");
+        SetComboValue(_hwAccelOutputFormat, "auto");
+        _captureFrameRate.Text = profile.FrameRate;
+        _captureVideoSize.Text = profile.VideoSize;
+        _captureRtBufferSize.Text = profile.RtBufferSize;
+        _captureAudioBufferSize.Text = profile.AudioBufferSize;
+        _captureOffsetX.Text = profile.OffsetX;
+        _captureOffsetY.Text = profile.OffsetY;
+        _captureChannels.Text = profile.Channels;
+        _captureSampleRate.Text = profile.SampleRate;
+        _captureVideoDeviceIndex.Text = profile.VideoDeviceIndex;
+        _captureShowRegion.IsChecked = profile.ShowRegion;
+        _captureCopyTimestamps.IsChecked = profile.CopyTimestamps;
+        _captureBenchmark.IsChecked = false;
+        _disableAutoScale.IsChecked = false;
+        _hwAccelDevice.Text = "";
+        _extraHwFrames.Text = "";
+        _initHwDevice.Text = profile.InitHardwareDevice;
+        _filterHwDevice.Text = profile.FilterHardwareDevice;
+        _captureFilterSource.Text = profile.CaptureFilterSource;
+        _inputOptions.Text = "";
+        _videoEncoderOptions.Text = profile.VideoEncoderOptions;
+        _filterOptions.Text = "";
+        _crf.Text = profile.Crf;
+        _frameRate.Text = "source";
+        _twoPass.IsChecked = false;
+        _guideProfile.SelectedItem = "Manual / custom";
+        _guideProfileDescription.Text = $"Capture source: {profile.SourceFile}{Environment.NewLine}{profile.Description}";
+        if (!string.IsNullOrWhiteSpace(profile.CaptureFilterSource))
+            _metadata.IsChecked = false;
+        AppendLog($"Applied capture profile: {profile.Name} (source: {profile.SourceFile}). Replace example device names with actual names and review the command preview.");
+        PreviewCommand(this, new RoutedEventArgs());
+    }
+
+    private string BuildCaptureInputOptions()
+    {
+        var args = new List<string>();
+        AddOptionPair(args, "-framerate", _captureFrameRate.Text);
+        AddOptionPair(args, "-video_size", _captureVideoSize.Text);
+        var pixel = Selected(_capturePixelFormat);
+        if (!string.IsNullOrWhiteSpace(pixel) && !pixel.Equals("auto", StringComparison.OrdinalIgnoreCase))
+            AddOptionPair(args, "-pixel_format", pixel);
+        var codec = Selected(_captureVideoCodec);
+        if (!string.IsNullOrWhiteSpace(codec) && !codec.Equals("auto", StringComparison.OrdinalIgnoreCase))
+            AddOptionPair(args, "-vcodec", codec);
+        AddOptionPair(args, "-rtbufsize", _captureRtBufferSize.Text);
+        AddOptionPair(args, "-audio_buffer_size", _captureAudioBufferSize.Text);
+        AddOptionPair(args, "-offset_x", _captureOffsetX.Text);
+        AddOptionPair(args, "-offset_y", _captureOffsetY.Text);
+        AddOptionPair(args, "-video_device_index", _captureVideoDeviceIndex.Text);
+        AddOptionPair(args, "-channels", _captureChannels.Text);
+        AddOptionPair(args, "-sample_rate", _captureSampleRate.Text);
+        if (_captureShowRegion.IsChecked == true)
+            AddOptionPair(args, "-show_region", "1");
+        var hw = Selected(_hwAccel);
+        if (!string.IsNullOrWhiteSpace(hw) && !hw.Equals("None / disabled", StringComparison.OrdinalIgnoreCase))
+            AddOptionPair(args, "-hwaccel", hw);
+        var outputFormat = Selected(_hwAccelOutputFormat);
+        if (!string.IsNullOrWhiteSpace(outputFormat) && !outputFormat.Equals("auto", StringComparison.OrdinalIgnoreCase))
+            AddOptionPair(args, "-hwaccel_output_format", outputFormat);
+        AddOptionPair(args, "-hwaccel_device", _hwAccelDevice.Text);
+        AddOptionPair(args, "-extra_hw_frames", _extraHwFrames.Text);
+        return string.Join(" ", args);
+    }
+
+    private string BuildHardwareGlobalOptions()
+    {
+        var args = new List<string>();
+        AddOptionPair(args, "-init_hw_device", _initHwDevice.Text);
+        AddOptionPair(args, "-filter_hw_device", _filterHwDevice.Text);
+        if (_captureCopyTimestamps.IsChecked == true)
+            args.Add("-copyts");
+        if (_captureBenchmark.IsChecked == true)
+            args.Add("-benchmark");
+        return string.Join(" ", args);
+    }
+
+    private static void AddOptionPair(List<string> args, string option, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+        args.Add(option);
+        args.Add(value.Trim());
     }
 
     private Expander BuildAdvancedOptions()
@@ -699,19 +968,20 @@ public partial class MainWindow : Window
         Selected(_pixelFormat),
         _metadata.IsChecked == true,
         _fastStart.IsChecked == true,
-        _globalOptions.Text ?? string.Empty,
-        _inputOptions.Text ?? string.Empty,
+        CombineOptionLines(_globalOptions.Text, BuildHardwareGlobalOptions()),
+        CombineOptionLines(_inputOptions.Text, BuildCaptureInputOptions()),
         _mappingOptions.Text ?? string.Empty,
         CombineOptionLines(_videoEncoderOptions.Text, BuildVideoGuideOptions()),
         CombineOptionLines(_audioEncoderOptions.Text, BuildAudioGuideOptions()),
         _filterOptions.Text ?? string.Empty,
         _muxerOptions.Text ?? string.Empty,
-        CombineOptionLines(_outputOptions.Text, BuildColorMetadataOptions()),
+        CombineOptionLines(_outputOptions.Text, BuildColorMetadataOptions(), _disableAutoScale.IsChecked == true ? "-noautoscale" : ""),
         Selected(_inputFormat),
         Selected(_outputFormat),
         _additionalInputs.Text ?? string.Empty,
         _twoPass.IsChecked == true,
-        _passLogFile.Text?.Trim() ?? string.Empty);
+        _passLogFile.Text?.Trim() ?? string.Empty,
+        _captureFilterSource.Text?.Trim() ?? string.Empty);
 
     private async Task LoadAvailableCapabilitiesAsync()
     {
@@ -730,7 +1000,7 @@ public partial class MainWindow : Window
             _availableAudioEncoders = new HashSet<string>(capabilities.AudioEncoders, StringComparer.OrdinalIgnoreCase);
             SetChoices(_videoCodec, new[] { "copy" }.Concat(capabilities.VideoEncoders), "libx264");
             SetChoices(_audioCodec, new[] { "copy" }.Concat(capabilities.AudioEncoders), "aac");
-            SetChoices(_inputFormat, new[] { "auto" }.Concat(capabilities.Demuxers), "auto");
+            SetChoices(_inputFormat, new[] { "auto", "dshow", "gdigrab", "lavfi", "v4l2", "alsa", "avfoundation", "pulse", "x11grab" }.Concat(capabilities.Demuxers), "auto");
             SetChoices(_outputFormat, new[] { "auto" }.Concat(capabilities.Muxers), "auto");
             AppendLog($"Discovered {capabilities.VideoEncoders.Count} video encoders, {capabilities.AudioEncoders.Count} audio encoders, {capabilities.Demuxers.Count} demuxers and {capabilities.Muxers.Count} muxers.");
         }
@@ -1128,6 +1398,71 @@ public partial class MainWindow : Window
     {
         var window = new FFmpegCapabilitiesWindow(FFmpegLocator.Find("ffmpeg"));
         await window.ShowDialog(this);
+    }
+
+    private async Task OpenAboutAsync()
+    {
+        var assembly = typeof(MainWindow).Assembly;
+        var root = new StackPanel { Spacing = 12 };
+        root.Children.Add(new TextBlock { Text = "FFGrabber", FontSize = 26, FontWeight = FontWeight.Bold, Foreground = Brush("#E5F8FF") });
+        root.Children.Add(new TextBlock { Text = $"Version {AppVersion}", FontSize = 18, FontWeight = FontWeight.SemiBold, Foreground = Brush("#56DDF9") });
+        root.Children.Add(new TextBlock
+        {
+            Text = $"Assembly version: {assembly.GetName().Version}\nRuntime: {RuntimeInformation.FrameworkDescription}\nOperating system: {RuntimeInformation.OSDescription}\nProcess architecture: {RuntimeInformation.ProcessArchitecture}\n\nFFGrabber is an import-only frontend. FFmpeg, FFprobe and FFplay are supplied and updated by the user; this application does not bundle or fetch those executables.",
+            TextWrapping = TextWrapping.Wrap, Foreground = Brush("#C6D0E0")
+        });
+        root.Children.Add(new TextBlock { Text = "Source and releases: github.com/PCUser2021/FFGrabber", Foreground = Brush("#8BDFFF"), TextWrapping = TextWrapping.Wrap });
+        var close = new Button { Content = "Close", HorizontalAlignment = HorizontalAlignment.Right, MinWidth = 100 };
+        var dialog = new Window { Title = $"About FFGrabber v{AppVersion}", Width = 520, Height = 360, MinWidth = 520, MinHeight = 360, CanResize = false, WindowStartupLocation = WindowStartupLocation.CenterOwner };
+        close.Click += (_, _) => dialog.Close();
+        root.Children.Add(close);
+        dialog.Content = new Border { Classes = { "glassShell" }, Child = root };
+        try { dialog.Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/FFGrabber.ico"))); } catch { }
+        await dialog.ShowDialog(this);
+    }
+
+    private async Task ListDirectShowDevicesAsync()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            AppendLog("DirectShow device discovery is available only on Windows.");
+            return;
+        }
+        var executable = FFmpegLocator.Find("ffmpeg");
+        if (executable is null)
+        {
+            AppendLog("Import a Windows FFmpeg build first, then list DirectShow devices.");
+            return;
+        }
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = executable,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+        foreach (var arg in new[] { "-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy" })
+            startInfo.ArgumentList.Add(arg);
+        try
+        {
+            using var process = new Process { StartInfo = startInfo };
+            if (!process.Start())
+                throw new InvalidOperationException("FFmpeg did not start.");
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+            var stdout = await stdoutTask;
+            var stderr = await stderrTask;
+            AppendLog("DirectShow device enumeration finished (exit code " + process.ExitCode + ").");
+            foreach (var line in (stdout + Environment.NewLine + stderr).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+                AppendLog(line);
+            AppendLog("Replace example camera/microphone names with the exact names shown above.");
+        }
+        catch (Exception ex)
+        {
+            AppendLog("DirectShow device discovery failed: " + ex);
+        }
     }
 
     private string BuildQueueSnapshot() =>

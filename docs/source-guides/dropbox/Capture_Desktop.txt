@@ -1,0 +1,180 @@
+{{{
+#!html
+<h1 style="font-size: 22px;">
+Capturing Your Desktop / Screen Recording
+</h1>
+}}}
+
+[[PageOutline(1, Contents)]]
+
+Here are a few solutions for capturing your desktop and recording a video of your screen with ffmpeg. (A Chinese version of this page is [[Capture/Desktop中文版本|also available]].)
+
+For the sake of brevity, these commands do not specify any additional encoder settings. For more info about H.264 encoding, see [[Encode/H.264|the H.264 encoding guide]].
+
+By default, these commands will use the x264 encoder, which should be reasonably fast on modern machines. See [#lossless-recording Lossless Recording] if you need to improve performance.
+
+= Linux =
+
+Use the [https://ffmpeg.org/ffmpeg-devices.html#x11grab x11grab] device:
+{{{
+ffmpeg -video_size 1024x768 -framerate 25 -f x11grab -i :0.0+100,200 output.mp4
+}}}
+
+This will grab the image from desktop, starting with the upper-left corner at x=100, y=200 with a width and height of 1024⨉768.
+
+If you need audio too, you can use [https://ffmpeg.org/ffmpeg-devices.html#alsa-1 ALSA] (see [[Capture/ALSA]] for more info):
+{{{
+ffmpeg -video_size 1024x768 -framerate 25 -f x11grab -i :0.0+100,200 -f alsa -ac 2 -i hw:0 output.mkv
+}}}
+
+Or the [https://ffmpeg.org/ffmpeg-devices.html#pulse pulse] input device (see [[Capture/PulseAudio]] for more info):
+{{{
+ffmpeg -video_size 1024x768 -framerate 25 -f x11grab -i :0.0+100,200 -f pulse -ac 2 -i default output.mkv
+}}}
+
+Suspending and resuming a capture will result in the output video being paused at the time it was suspended for the duration of the suspension. To prevent this, the setpts filtergraph needs to be used.
+
+{{{
+ffmpeg -video_size 1024x768 -framerate 25 -f x11grab -i :0.0+0,0 -vf setpts=N/FR/TB output.mkv
+}}}
+
+= macOS =
+
+Use the [https://ffmpeg.org/ffmpeg-devices.html#avfoundation avfoundation] device:
+{{{
+ffmpeg -f avfoundation -list_devices true -i ""
+}}}
+
+This will enumerate all the available input devices including screens ready to be captured.
+
+Once you've figured out the device index corresponding to the screen to be captured, use:
+{{{
+ffmpeg -f avfoundation -i "<screen device index>:<audio device index>" output.mkv
+}}}
+
+This will capture the screen from `<screen device index>` and audio from `<audio device index>` into the output file `output.mkv`.
+
+= Windows =
+
+== Win10+ WinRT/UWP based Windows.Graphics.Capture ==
+
+This filter uses the most recent API Microsoft added for capturing individual windows, but also entire monitors.
+It grabs the frames directly from the compositor, which allows it to capture windows that are partially or fully occluded.
+
+{{{
+ffmpeg -filter_complex gfxcapture=window_title='(?i)My Application':max_framerate=60,hwdownload,format=bgra,format=yuv420p -c:v libx264 -crf 15 capture.mp4
+}}}
+
+Since it outputs d3d11 hardware frames, you need to either download them like shown above, or pass them directly to a compatible hardware encoder, like nvenc or amf.
+
+{{{
+ffmpeg -filter_complex gfxcapture=monitor_idx=1:width=1920:height=1080:resize_mode=scale_aspect:output_fmt=10bit -c:v hevc_nvenc -cq 15 capture.mp4
+}}}
+
+This filter returns frames at the rate they come in from the native API, with timestamps directly from the compositor.
+As a result of this, it produces highly variable frame rate (VFR) output, which in extreme cases can be 0 FPS for extended periods of time.
+If you need a stable frame rate, add an FPS filter after it:
+
+{{{
+ffmpeg -filter_complex gfxcapture=window_exe='^firefox.exe$':display_border=1:scale_mode=point:max_framerate=60,fps=60 -rc qvbr -qvbr_quality_level 15 -c:v hevc_amf capture.mp4
+}}}
+
+For a full list of options, check the documentation of the gfxcapture filter: [https://ffmpeg.org/ffmpeg-filters.html#gfxcapture]
+
+== Use DirectShow ==
+
+Use a [[DirectShow]] third party [https://github.com/rdp/screen-capture-recorder-to-video-windows-free device(download filter here)]:
+{{{
+ffmpeg -f dshow -i video="screen-capture-recorder" output.mkv
+}}}
+
+This will grab the image from entire desktop. You can refer to a [http://web.archive.org/web/20150314014836/http://betterlogic.com/roger/2010/07/list-of-available-directshow-screen-capture-filters/ list of alternative devices].
+
+If you need audio too:
+{{{
+ffmpeg -f dshow -i video="UScreenCapture":audio="Microphone" output.mkv
+}}}
+If you want to capture the audio that is playing from your speakers you may also need to configure so-called "Stereo Mix" device.
+
+or
+{{{
+ffmpeg -f dshow -i video="UScreenCapture" -f dshow -i audio="Microphone" output.mkv
+}}}
+
+
+You can list your devices with:
+{{{
+ffmpeg -list_devices true -f dshow -i dummy
+}}}
+
+== Use built-in GDI screengrabber ==
+
+You can also use [https://ffmpeg.org/ffmpeg-devices.html#gdigrab gdigrab] as input device to grab video from the Windows screen.
+
+To capture all your displays as one big contiguous display:
+{{{
+ffmpeg -f gdigrab -framerate 30 -i desktop output.mkv
+}}}
+
+If you want to limit to a region, and show the area being grabbed:
+{{{
+ffmpeg -f gdigrab -framerate 30 -offset_x 10 -offset_y 20 -video_size 640x480 -show_region 1 -i desktop output.mkv
+}}}
+
+
+To grab the contents of the window named "Calculator":
+{{{
+ffmpeg -f gdigrab -framerate 30 -i title=Calculator output.mkv
+}}}
+
+== Use Windows 8+ Desktop Duplication API == 
+
+Windows 8 introduced a new way of capturing whole desktops: The Desktop Duplication API
+
+FFmpeg implements support for it in the form of the [https://ffmpeg.org/ffmpeg-filters.html#ddagrab ddagrab] filter.
+
+It provides the user with on-gpu D3D11 textures, in the form of ffmpeg D3D11VA frames, which can then be directly encoded by a compatible hardware encoder, for example [[HWAccelIntro#NVENC|NVENC]] encoders:
+{{{
+ffmpeg -init_hw_device d3d11va -filter_complex ddagrab=0 -c:v h264_nvenc -cq:v 20 output.mkv
+}}}
+
+For Intel GPUs that support [[Hardware/QuickSync|QuickSync]] (QSV) encoders, use the [https://ffmpeg.org/ffmpeg-filters.html#hwmap hwmap] filter to wrap D3D11 frames into QSV frames:
+{{{
+ffmpeg -init_hw_device d3d11va:,vendor_id=0x8086 -filter_complex ddagrab=0,hwmap=derive_device=qsv,format=qsv -c:v h264_qsv -global_quality 20 output.mkv
+}}}
+
+To further adjust the video color properties using the [[Hardware/QuickSync|QuickSync]] VPP filters:
+{{{
+ffmpeg -init_hw_device d3d11va:,vendor_id=0x8086 -filter_complex ddagrab=0,hwmap=derive_device=qsv,vpp_qsv=format=nv12:out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709:out_range=tv -c:v hevc_qsv -global_quality 20 output.mkv
+}}}
+
+Or downloaded and processed as usual, though with a bit of overhead compared to pure on-GPU processing:
+{{{
+ffmpeg -filter_complex ddagrab=0,hwdownload,format=bgra -c:v libx264 -crf 20 output.mkv
+}}}
+
+= Hardware Encoding =
+
+You can use [[HWAccelIntro|hardware acceleration]] to speed up encoding and reduce the load on your CPU. For example, with NVIDIA hardware encoding:
+
+{{{
+ffmpeg -f gdigrab -framerate 30 -i desktop -c:v h264_nvenc -qp 0 output.mkv
+}}}
+
+= Lossless Recording =
+
+If your CPU is not fast enough, the encoding process might take too long. To speed up the encoding process, you can use lossless encoding and disable advanced encoder options, e.g.:
+
+{{{
+ffmpeg -video_size 1920x1080 -framerate 30 -f x11grab -i :0.0 -c:v libx264rgb -crf 0 -preset ultrafast -color_range 2 output.mkv
+}}}
+
+{{{-crf 0}}} tells x264 to encode in lossless mode; {{{-preset ultrafast}}} advises it to do so fast. Note the use of `libx264rgb` rather than `libx264`; the latter would do a lossy conversion from RGB to yuv444p (8 bit yuv444p is not enough to preserve 8 bit RGB, 10 bit YCbCr is needed). -color_range 2 is needed because otherwise it will write full range RGB yet will tag it as limited range (this was fixed in 7ca71b79f2b3256a0eef1a099b857ac9e4017e36 and thus is no longer needed).
+
+The encoder should be fast enough on most modern hardware to record without any framedrop, and even leave enough CPU headroom for other applications.
+
+If you're going to archive the recording or are concerned about file size, re-encode it losslessly again, but with a slower preset. Note that since the initial recording was lossless, and the re-encode is lossless too, no quality loss is introduced in this process in any way.
+
+{{{
+ffmpeg -i output.mkv -c:v libx264rgb -crf 0 -preset veryslow output-smaller.mkv
+}}}

@@ -29,7 +29,8 @@ public sealed record EncodingSettings(
     string OutputFormat = "auto",
     string AdditionalInputs = "",
     bool TwoPass = false,
-    string PassLogFile = "");
+    string PassLogFile = "",
+    string CaptureFilterSource = "");
 
 public sealed class EncodingJob(EncodingSettings settings)
 {

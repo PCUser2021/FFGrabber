@@ -1,0 +1,53 @@
+[[PageOutline(1-100,Contents)]]
+
+== The problem ==
+
+This is a funny tutorial that describes one of the ways you can capture a lightning, during storms. The problem with a lightning capturing is that it happens at a random time interval and lasts for a brief moment of time, so it is very tricky to capture it easily. The usual way is to record the sky continuously for a longer time period and later to edit the recording and cut the pieces where the lightning happened or using some hi-tech expensive cameras, that can do all this for you.
+
+== The ideal solution ==
+
+But let's do this in a cheap and easy way. What we need is to capture the video of the sky continuously and to save a video only when a lightning happens. We can accomplish this by using "buffered capturing". Consider the following example.
+
+1. First ffmpeg instance captures the input from camera and buffers its output for, say 20 seconds. This allows the output to always be late for 20 seconds, comparing to the input.
+2. Second ffmpeg instance starts whenever the lightning happens, captures the output of the first ffmpeg instance and records it to a file.
+
+This way, in ideal situation, we will start saving our video file 20 seconds in the past, comparing to the current time. Of course, it will take some time for second ffmpeg instance to start, but it should be enough (less than 20 seconds) to capture the moment of the lightning, when it arrives from the buffer. Also, we record for the next 30 seconds (-t 30) which should capture the moment when the lightning happened (20 seconds before the lightning and 10 seconds after). The idea is pretty simple, right?
+
+Let's translate all that into familiar ffmpeg commands. For the first ffmpeg instance, which will constantly keep capturing the input from the camera and buffer it for some time, we should type something like this:
+{{{
+ffmpeg -f v4l2 -i /dev/video0 -vcodec rawvideo -delay 20 -f mpegts udp://127.0.0.1:1234
+}}}
+
+And we will prepare the following command for the second ffmpeg instance and when we see the lightning, we'll just press the Enter key:
+{{{
+ffmpeg -f mpegts -i udp://127.0.0.1:1234 -vcodec libx264 -t 30 output.flv
+}}}
+
+Now, this all looks great, except FFmpeg doesn't have (yet) a "-delay <seconds>" option, which will buffer and delay the output for specified number of seconds. If you are interested in a discussion about the "-delay" option in ffmpeg, please [http://ffmpeg.org/trac/ffmpeg/ticket/1753 read this ticket]. I hope this will be implemented soon, but until then, we can use another tool, which can do what we need.
+
+== The actual solution ==
+
+The tool we will use is a modified version of [http://code.google.com/p/samplicator/ Samplicator tool] which "Sends copies of (UDP) datagrams to multiple receivers". The modified version of this tool has a feature added that allows Samplicator to delay its output UDP stream for some time.
+
+With the help of this tool, we are now able to accomplish what we want. First, we will start the first ffmpeg:
+{{{
+ffmpeg -f v4l2 -i /dev/video0 -vcodec rawvideo -f mpegts udp://127.0.0.1:1234
+}}}
+
+then we will start a modified Samplicator tool, to buffer the UDP stream for 20 seconds:
+{{{
+samplicate -p 1234 -z 20 127.0.0.1/5678
+}}}
+
+and, finally, we will prepare the following command for the second ffmpeg instance and when we see the lightning, we'll just press the Enter key:
+{{{
+ffmpeg -f mpegts -i udp://127.0.0.1:5678 -vcodec libx264 -t 30 output.flv
+}}}
+
+== Download ==
+
+The source code of the modified Samplicator tool can be found here: [http://ffmpeg.gusari.org/uploads/samplicator-1.3.6-z.tar.gz]
+
+Keep in mind it is in early beta stage, so it might not even work on your platform at all, but the author of the original Samplicator was contacted and provided with all the changes, so hopefully we can soon expect that those will be merged into the original tool and tested for bugs. Until that happens (and if it happens at all), you might use that modified tool under the same license that is provided for the original tool, nothing more, nothing less.
+
+Happy lightning hunting :)

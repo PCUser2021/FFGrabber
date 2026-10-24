@@ -2,16 +2,16 @@
 
 **FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.5.5).** Native Avalonia GUI with persistent System/Light/Dark themes, opaque surfaces to avoid backdrop-transparency artifacts, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
+> **Status: active preview (0.5.6).** Native Avalonia GUI with persistent System/Light/Dark themes, opaque surfaces to avoid backdrop-transparency artifacts, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
 
 ## Downloads
 
 **Official download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
 
-- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.5.exe`
-- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.5.exe`
+- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.6.exe`
+- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.6.exe`
 - **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
-- **Release notes:** [FFGrabber v0.5.5](docs/RELEASE-NOTES-0.5.5.md)
+- **Release notes:** [FFGrabber v0.5.6](docs/RELEASE-NOTES-0.5.6.md)
 
 ## First run: import FFmpeg
 
@@ -54,7 +54,7 @@ Prerequisites: .NET 10 SDK and PowerShell 7. Inno Setup 7.1.0+ only for local in
 ```powershell
 ./scripts/Build.ps1 -Architecture x64
 ./scripts/Build.ps1 -Architecture arm64
-./scripts/Build.ps1 -Architecture x64 -Version 0.5.5 -Installer
+./scripts/Build.ps1 -Architecture x64 -Version 0.5.6 -Installer
 ```
 
 ## GitHub Actions
@@ -72,3 +72,12 @@ See [docs/ROADMAP.md](docs/ROADMAP.md).
 ## License
 
 FFGrabber application code is offered under the MIT License. Third-party components are covered by their own licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+## Capture and hardware-acceleration workflows
+
+Version 0.5.6 adds dedicated DirectShow, Windows desktop-capture and hardware-acceleration controls; capture starter profiles; an optional source-filter graph for DDAgrab/gfxcapture; and visible version/About information. The searchable settings catalogue now covers hardware frame contexts, capture buffering and device modes. Availability depends on the imported FFmpeg build, hardware, drivers and target platform.
+
+The six currently accessible capture/hardware text guides are preserved verbatim under [docs/source-guides/dropbox](docs/source-guides/README.md). The encoder guide profiles and option index from the previous release remain integrated; their 14 original Dropbox file IDs are no longer addressable in the current reference set, so this release does not claim to include those raw source copies. Platform-specific examples, diagnostics, build flags and the unsupported "-delay" example are treated as reference-only. Current runtime help from the imported FFmpeg remains authoritative.
+
+The new glossy blue/cyan FFGrabber icon is used by the application executable, title bar, desktop and Start Menu shortcuts, Setup package and uninstall display entry. The main window shows the product version and includes an About/version dialog.
+

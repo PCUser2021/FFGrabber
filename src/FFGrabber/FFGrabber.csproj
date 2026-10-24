@@ -4,15 +4,17 @@
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>FFGrabber</AssemblyName>
     <RootNamespace>FFGrabber</RootNamespace>
-    <Version>0.5.5</Version>
+    <Version>0.5.6</Version>
     <Authors>FFGrabber contributors</Authors>
     <Description>A Windows graphical frontend for a user-imported FFmpeg (no FFmpeg is bundled).</Description>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\FFGrabber.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
     <PackageReference Include="Avalonia" Version="12.1.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />

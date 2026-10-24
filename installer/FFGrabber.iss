@@ -1,17 +1,18 @@
 #ifndef AppVersion
-  #define AppVersion "0.5.5"
+  #define AppVersion "0.5.6"
 #endif
 #ifndef AppArch
   #define AppArch "x64"
 #endif
 #ifndef AppFileVersion
-  #define AppFileVersion "0.5.5.0"
+  #define AppFileVersion "0.5.6.0"
 #endif
 #define AppName "FFGrabber"
 #define AppPublisher "FFGrabber contributors"
 
 [Setup]
 AppId={{A14F9D45-65B9-4B27-8F99-2BF0B89BFA7A}
+SetupIconFile=..\src\FFGrabber\Assets\FFGrabber.ico
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
@@ -55,8 +56,8 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "..\artifacts\publish\{#AppArch}\*"; DestDir: "{app}"; Excludes: "ffmpeg.exe,ffprobe.exe,ffplay.exe,tools\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\FFGrabber"; Filename: "{app}\FFGrabber.exe"
-Name: "{autodesktop}\FFGrabber"; Filename: "{app}\FFGrabber.exe"; Tasks: desktopicon
+Name: "{autoprograms}\FFGrabber"; Filename: "{app}\FFGrabber.exe"; IconFilename: "{app}\FFGrabber.exe"; IconIndex: 0
+Name: "{autodesktop}\FFGrabber"; Filename: "{app}\FFGrabber.exe"; IconFilename: "{app}\FFGrabber.exe"; IconIndex: 0; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\FFGrabber.exe"; Description: "Launch FFGrabber"; Flags: postinstall nowait skipifsilent

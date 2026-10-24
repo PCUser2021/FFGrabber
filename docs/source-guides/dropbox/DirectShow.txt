@@ -1,0 +1,233 @@
+= !DirectShow =
+[[PageOutline(1-3, Contents)]]
+
+FFmpeg can take input from "directshow" devices on your Windows computer. See the [http://ffmpeg.org/ffmpeg-devices.html#dshow FFmpeg dshow input device documentation] for official documentation.  It can accept input from audio, video devices, video capture devices, analog tv tuner devices.
+
+== 
+
+Example to list dshow input devices:
+
+{{{
+c:\> ffmpeg -f dshow -list_devices true -i dummy
+ffmpeg version N-45279-g6b86dd5... --enable-runtime-cpudetect
+  libavutil      51. 74.100 / 51. 74.100
+  libavcodec     54. 65.100 / 54. 65.100
+  libavformat    54. 31.100 / 54. 31.100
+  libavdevice    54.  3.100 / 54.  3.100
+  libavfilter     3. 19.102 /  3. 19.102
+  libswscale      2.  1.101 /  2.  1.101
+  libswresample   0. 16.100 /  0. 16.100
+[dshow @ 03ACF580] DirectShow video devices
+[dshow @ 03ACF580]  "Integrated Camera"
+[dshow @ 03ACF580]  "screen-capture-recorder"
+[dshow @ 03ACF580] DirectShow audio devices
+[dshow @ 03ACF580]  "Internal Microphone (Conexant 2"
+[dshow @ 03ACF580]  "virtual-audio-capturer"
+dummy: Immediate exit requested
+}}}
+
+Example to use a dshow device as an input:
+
+{{{
+c:\> ffmpeg -f dshow -i video="Integrated Camera" out.mp4
+}}}
+
+Note: "Integrated Camera" is the device name used as an input to dshow and it may differ on other hardware. You must always use the device name listed on your hardware.  Screen capture recorder is a third party downloadable dshow capture source, here as an example.  See also gdigrab screen capture.
+
+
+Example to use audio and video dshow device as an input (keeps them synchronized):
+
+{{{
+c:\> ffmpeg -f dshow -i video="Integrated Camera":audio="Microphone name here" out.mp4
+}}}
+
+or
+
+
+{{{
+c:\> ffmpeg -f dshow -i "video=Integrated Camera:audio=Microphone name here" out.mp4
+}}}
+
+You can also pass the device certain parameters that it needs, for instance a webcam might allow you to capture it in 1024x768 at up to max 5 fps, or allow you to capture at 640x480 at 30 fps.
+
+Example to print a list of options from a selected device:
+
+{{{
+c:\> ffmpeg -f dshow -list_options true -i video="Integrated Camera"
+ffmpeg version N-45279-g6b86dd5 Copyright (c) 2000-2012 the FFmpeg developers
+  built on Oct 10 2012 17:30:47 with gcc 4.7.1 (GCC)
+  configuration:...
+  libavutil      51. 74.100 / 51. 74.100
+  libavcodec     54. 65.100 / 54. 65.100
+  libavformat    54. 31.100 / 54. 31.100
+  libavdevice    54.  3.100 / 54.  3.100
+  libavfilter     3. 19.102 /  3. 19.102
+  libswscale      2.  1.101 /  2.  1.101
+  libswresample   0. 16.100 /  0. 16.100
+[dshow @ 01D4F3E0] DirectShow video device options
+[dshow @ 01D4F3E0]  Pin "Capture"
+[dshow @ 01D4F3E0]   pixel_format=yuyv422  min s=640x480 fps=15 max s=640x480 fps=30
+[dshow @ 01D4F3E0]   pixel_format=yuyv422  min s=1280x720 fps=7.5 max s=1280x720 fps=7.5
+[dshow @ 01D4F3E0]   vcodec=mjpeg  min s=640x480 fps=15 max s=640x480 fps=30
+[dshow @ 01D4F3E0]   vcodec=mjpeg  min s=1280x720 fps=15 max s=1280x720 fps=30
+video=Integrated Camera: Immediate exit requested
+}}}
+
+
+You can see in this particular instance that it can either stream it to you in a "raw pixel_format" (yuyv422 in this case), or as an mjpeg stream.
+
+{{{ ffmpeg -f dshow -video_size 1280x720 -framerate 7.5 -pixel_format yuyv422 -i video="Integrated Camera" out.avi }}}
+
+You can specify the type (mjpeg) and size (1280x720) and frame rate to tell the device to give you (15 fps) (note for instance, in this instance, the camera can give you a higher frame rate/size total if you specify mjpeg):
+
+{{{ ffmpeg -f dshow -video_size 1280x720 -framerate 15 -vcodec mjpeg -i video="Integrated Camera" out.avi }}}
+
+You can specify "-vcodec copy" to [http://ffmpeg.org/ffmpeg.html#Stream-copy stream copy] the video instead of re-encoding, if you can receive the data in some type of pre-encoded format, like mjpeg in this instance.
+
+Example audio list options:
+{{{
+ffmpeg -f dshow -list_options true -i audio="DVS Receive  1-2 (Dante Virtual Soundcard)"
+ffmpeg version git-2021-11-03-25e34ef Copyright (c) 2000-2021 the FFmpeg developers
+  built with Microsoft (R) C/C++ Optimizing Compiler Version 19.29.30136 for x64
+  libavutil      57.  7.100 / 57.  7.100
+  libavcodec     59. 12.100 / 59. 12.100
+  libavformat    59.  8.100 / 59.  8.100
+  libavdevice    59.  0.101 / 59.  0.101
+  libavfilter     8. 16.101 /  8. 16.101
+  libswscale      6.  1.100 /  6.  1.100
+  libswresample   4.  0.100 /  4.  0.100
+  libpostproc    56.  0.100 / 56.  0.100
+[dshow @ 000002637D32FBC0] DirectShow audio only device options (from audio devices)
+[dshow @ 000002637D32FBC0]  Pin "Capture" (alternative pin name "Capture")
+[dshow @ 000002637D32FBC0]   ch= 2, bits=16, rate= 44100
+    Last message repeated 1 times
+[dshow @ 000002637D32FBC0]   ch= 1, bits=16, rate= 44100
+[dshow @ 000002637D32FBC0]   ch= 2, bits=16, rate= 32000
+[dshow @ 000002637D32FBC0]   ch= 1, bits=16, rate= 32000
+[dshow @ 000002637D32FBC0]   ch= 2, bits=16, rate= 22050
+[dshow @ 000002637D32FBC0]   ch= 1, bits=16, rate= 22050
+[dshow @ 000002637D32FBC0]   ch= 2, bits=16, rate= 11025
+[dshow @ 000002637D32FBC0]   ch= 1, bits=16, rate= 11025
+[dshow @ 000002637D32FBC0]   ch= 2, bits=16, rate=  8000
+[dshow @ 000002637D32FBC0]   ch= 1, bits=16, rate=  8000
+[dshow @ 000002637D32FBC0]   ch= 2, bits= 8, rate= 44100
+[dshow @ 000002637D32FBC0]   ch= 1, bits= 8, rate= 44100
+[dshow @ 000002637D32FBC0]   ch= 2, bits= 8, rate= 22050
+[dshow @ 000002637D32FBC0]   ch= 1, bits= 8, rate= 22050
+[dshow @ 000002637D32FBC0]   ch= 2, bits= 8, rate= 11025
+[dshow @ 000002637D32FBC0]   ch= 1, bits= 8, rate= 11025
+[dshow @ 000002637D32FBC0]   ch= 2, bits= 8, rate=  8000
+[dshow @ 000002637D32FBC0]   ch= 1, bits= 8, rate=  8000
+[dshow @ 000002637D32FBC0]   ch= 2, bits=16, rate= 48000
+[dshow @ 000002637D32FBC0]   ch= 1, bits=16, rate= 48000
+[dshow @ 000002637D32FBC0]   ch= 2, bits=16, rate= 96000
+[dshow @ 000002637D32FBC0]   ch= 1, bits=16, rate= 96000
+audio=DVS Receive  1-2 (Dante Virtual Soundcard): Immediate exit requested
+}}}
+
+
+Also this note [http://ffmpeg.zeranoe.com/forum/viewtopic.php?f=3&t=27 that] the input string is in the format video=<video device name>:audio=<audio device name>. It is possible to have two separate inputs (like -f dshow -i audio=foo -f dshow -i video=bar) though some limited tests had shown a difference in  synchronism between the two options at times.  Possibly you can overcome it using the "-copy_ts" flag.  The reason this works is that each "input" is assumed to start "at its first input time" and FFmpeg, by default, basically normalizes it "from its first input" as meaning "0.0 seconds."  Because ffmpeg is using two different dshow inputs, it basically starts one up, then starts up the second *after* so it might start sending in packets a fraction of a second later, and FFmpeg happily treats its "later starting" timestamps as also 0.0 so mixing them doesn't work well if they start off set.  So if you use -copy_ts then it will start them with "relative to machine start time" timestamps which should be able to mix accurately in theory.  Ping me if you want it fixed to come more than one audio and one video in an input and thus not need these work arounds rogerdpack@gmail.com
+
+Also note that you can only at most have 2 streams at once (one audio and one video, like -i video=XX:audio=YY).  Ask if you want this improved.  You can have multiples one after the other, however, like 
+{{{
+ffmpeg -f dshow -i video=XX:audio=ZZ -f dshow -i video=ZZ:audio=QQ
+}}}
+FFmpeg can also "merge/combine" multiple audio inputs, like the above using its amix filter (it can also combine video inputs of course, or record them as separate streams).
+
+See the [http://ffmpeg.org/ffmpeg-devices.html#dshow FFmpeg dshow input device documentation] for a list of more dshow options you can specify. For instance you can decrease latency on audio devices, or specify a video by "index" if two have the same name, etc. etc.
+
+=== Specifying input framerate ===
+
+You can set framerate like {{{ffmpeg -f dshow -framerate 7.5 -i video=XXX}}}.  This instructs the device itself to send you frames at 7.5 fps [if it can].
+
+Be careful *not* to specify framerate with the "-r" parameter, like this  {{{ffmpeg -f dshow -r 7.5 -i video=XXX}}}.  This actually specifies that the devices incoming PTS timestamps be *ignored* and replaced as if the device were running at 7.5 fps [so it runs at default fps, but its timestamps are treated as if 7.5 fps].  This can cause the recording to appear to have "video slower than audio" or, under high cpu load (if video frames are dropped) it will cause the video to fall "behind" the audio [after playback of the recording is done, audio continues on--and gets highly out of sync, video appears to go into "fast forward" mode during high cpu scenes].
+
+If you want say 10 fps, and you device only supports 7.5 and 15 fps, then run it at 15 fps then "downsample" to 10 fps.  There are a few ways to do this--you could specify your output to be 10 fps, like this: {{{ffmpeg -f dshow -framerate 15 -i video=XXX -r 10 output.mp4}}} or insert a filter to do the same thing for you: {{{ffmpeg -f dshow -framerate 15 -vf fps=15 output.mp4}}}.
+
+
+== !Buffering/Latency ==
+
+By default FFmpeg captures frames from the input, and then does whatever you told it to do, for instance, re-encoding them and saving them to an output file.  By default if it receives a video frame "too early" (while the previous frame isn't finished yet), it will discard that frame, so that it can keep up the the real time input.  You can adjust this by setting the `rtbufsize` parameter, though note that if your encoding process can't keep up, eventually you'll still start losing frames just the same (and using it at all can introduce a bit of latency).  It may be helpful to still specify some size of buffer, however, otherwise frames may be needlessly dropped possibly.
+
+See [[StreamingGuide]] for some tips on tweaking encoding (sections latency and cpu usage).  For instance, you could save it to a very fast codec, then re-encode it later.
+
+There is also an option `audio_buffer_size`.
+Basically if you're capturing from a live mic, the default behavior for this hardware device is to "buffer" 500ms (or 1000ms) worth of data, before it starts sending it down the pipeline.  This can introduce startup latency, so setting this to 50ms (msdn suggests 80ms) may be a better idea here.  The timestamps on the data will be right, it will just have added (unneeded) latency if you don't specify this.
+
+== Synchronizing ==
+
+The "copyts" flag might be useful to helping streams keep their input timestamps.  Especially if you have multiple "-f dshow -i XXX -f dshow -i YYY" style inputs, the latter capture graph might get started up slightly after the former.  If you desire to have more than "2 inputs, one audio, one video" to increase synconicity please request so.
+
+== Crossbar ==
+
+Some capture devices have "multiple inputs" for this type of capture device, you'll want to specify the "input pin" of video you want, and "input pin" of audio you want. See  [http://ffmpeg.org/ffmpeg-devices.html#dshow FFmpeg dshow input device documentation] 
+
+== Preview ==
+
+You can preview it using ffplay, ex:
+{{{
+ffplay -f dshow -video_size 1280x720 -rtbufsize 702000k -framerate 60 -i video="XX":audio="YY"
+}}}
+
+To "preview while you record" however you'd need to use the "SDL out" filter or output to a jpeg file and read that with some other application (tricky though as you'd have to avoid conflicting with ffmpeg re-writing the same file, recommend rename it first or something).
+
+== Troubleshooting ==
+
+ email rogerdpack@gmail.com 
+
+If you only get "one packet" at times, you may need/want to add the "-vsync" flag.
+
+== Using !DirectShow with libav* ==
+
+You can use dshow input via the libavXXX libraries (i.e. directly into your own program) instead of calling out to ffmpeg.exe.  See [[Using libav*]] for an intro to using libav.  See also http://ffmpeg.zeranoe.com/forum/viewtopic.php?f=15&t=274&p=902&hilit=dictionary#p902
+
+== How to programmatically enumerate devices ==
+
+FFmpeg does not provide a native way to do this yet, but you can lookup the devices yourself or just parse standard out from FFmpeg: http://ffmpeg.zeranoe.com/forum/viewtopic.php?f=15&t=651&p=2963&hilit=enumerate#p2963
+
+= Related =
+
+== screen capture ==
+
+For details on capturing the screen (which sometimes can use a dshow device) see [[Capture/Desktop#Windows]].
+
+== !AviSynth Input ==
+
+FFmpeg can also take arbitrary !DirectShow input by creating an avisynth file (.avs file) that itself gets input from a graphedit file, which graphedit file exposes a pin of your capture source or any filter really, ex (`yo.avs`) with this content:
+
+{{{DirectShowSource("push2.GRF", fps=35, audio=False, framecount=1000000)}}}
+
+By default dshow just creates a graph with a couple of source filters.  So AviSynth could be used to get input from more complex graphs (ping roger if you'd like anything more complex in the dshow source).
+
+== Running `ffmpeg.exe` without opening a console window ==
+
+If you want to run your ffmpeg "from a gui" without having it popup a console window which spits out all of ffmpeg's input, a few things that may help:
+
+* If you can start your program like `rubyw.exe` or `javaw.exe` then all command line output (including child processes') is basically not attached to a console.
+* If your program has an option to run a child program "hidden" or the like, that might work.  If you redirect stderr and stdout to something you receive, that might work (but might be tricky because you may need to read from both pipes in different threads, etc.)
+
+= ffdshow tryouts =
+
+[http://ffdshow-tryout.sourceforge.net/ ffdshow tryouts] is a separate project that basically wraps FFmpeg's core source (libavcodec, etc.) and then presents them as filter wrappers that your normal Windows applications can use for decoding video, etc. It's not related to FFmpeg itself, per se, though uses it internally.  see also [LavFilters https://github.com/Nevcairiel/LAVFilters]
+
+= Support =
+
+You can ask questions/comments about DirectShow on the [http://ffmpeg.zeranoe.com/forum/ Zeranoe FFmpeg Forum]. or email roger.
+
+== Known !Bugs/Feature Requests ==
+
+{{{
+#!div style="border: 1pt dotted; margin: 1em; background-color: #fffff9;"
+Send a message to rogerdpack@gmail.com if you want to discuss these issues.
+}}}
+* Do you have a feature request? Anything you want added? digital capture card support added? analog tv tuner support added? email me (see above).  Want any of the below fixed? email me...
+* currently there is no ability to "push back" against upstream sources if ffmpeg is unable to encode fast enough, this might be nice to have in certain circumstances, instead of dropping it when the rtbuffer is full.
+* currently no ability to select "i420" from various yuv options [screen capture recorder] meh 
+* could use an option "trust video timestamps" today it just uses wall clock time...
+* cannot take more than 2 inputs [today] per invocation. this can be arranged, please ask if it is a desired feature
+* no device enumeration API as of yet (for libav users).  At least do the name!
+* my large list
+* libav "input" to a directshow filter...could use my recycled screen-capture-recorder filter, woot LOL.
+* 3D audio support'ish (non dshow but mentioning it here)
+* passthrough so it can use locally installed dshow codecs on windows
+* echo cancelling support (non dshow but mentioning it here)

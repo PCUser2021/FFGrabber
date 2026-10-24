@@ -48,3 +48,14 @@ Some switches appear only when a component was compiled into FFmpeg. Hardware en
 Open **Options… → Save Logs…** and choose where the ZIP should be written. The support ZIP includes the complete current session log (not the abbreviated on-screen preview), historical FFGrabber session logs found in the local log folder, OS/runtime details, current setting values, active job settings, pending job settings, queue display snapshot, FFmpeg/ffprobe/ffplay versions, FFmpeg build configuration, and full help/capability reports supported by the installed binaries. It does not include the contents of source media. Review the bundle for local paths or sensitive command-line options before sharing it.
 
 FFGrabber installers contain no FFmpeg; the support ZIP reports whichever build you imported. Session logs are stored under `%LOCALAPPDATA%\FFGrabber\Logs`.
+
+
+## Capture, device and hardware-acceleration guides (0.5.6)
+
+The searchable index now includes the six currently accessible Dropbox capture/hardware notes: DirectShow, hardware acceleration, ALSA capture, desktop capture, webcam capture and lightning buffering. Dedicated controls cover input frame rate/size/pixel format/capture codec, realtime and audio buffers, desktop region offsets, region outline, camera index, capture audio channel/sample-rate fields, timestamp preservation, hardware decoder API/device/output format, device initialization, filter devices, extra hardware frames, benchmarking and automatic-scale suppression.
+
+Windows starter profiles cover gdigrab desktop/region capture, DirectShow raw/MJPEG webcam capture, camera plus microphone, low-latency buffering, DDAgrab/D3D11 and gfxcapture source-filter graphs. Source-filter mode does not synthesize a fake primary input; it adds a filter graph directly and avoids invalid primary-input metadata mapping. Automated two-pass is rejected for live source-filter capture.
+
+The six currently available capture/hardware source files are preserved verbatim under docs/source-guides/dropbox. The previous release's 14 encoding-guide index/profiles remain in the application; their original Dropbox IDs are not accessible in the current reference set, so this update does not claim to contain raw copies of those 14 source files.
+
+The references include platform-specific Linux/macOS examples, old FFmpeg versions, external tool syntax and build-time flags. Diagnostic entries are informational rather than normal encode options. The unsupported -delay example and external tool syntax are retained in source documentation but are not presented as working FFmpeg features.

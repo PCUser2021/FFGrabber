@@ -1,0 +1,127 @@
+= Creating Multiple Outputs =
+[[PageOutline(2-3, Contents)]]
+
+== Introduction ==
+
+The following example command lines, that are usually written in one line, have been split into multiple lines, using the new-line delimiter character `\` for more clarity. So, if the example shows something like this:
+{{{
+ffmpeg -i input \
+	-acodec … \
+	-vcodec … \
+	output1
+}}}
+that means the actual command line, typed in the shell, would be:
+{{{
+ffmpeg -i input -acodec … -vcodec … output1
+}}}
+but either version will work in a sane shell.  If you are on Windows, you can replace the `\` at the end of each line with a `^` or you can combine the separated lines into "one very long one".
+
+== Different parallel outputs ==
+
+=== No filtering ===
+[[Image(creating_multiple_outputs2.png)]]
+
+`ffmpeg` supports multiple outputs created out of the same input(s) in the same process. The usual way to accomplish this is:
+{{{
+ffmpeg -i input1 -i input2 \
+	-acodec … -vcodec … output1 \
+	-acodec … -vcodec … output2 \
+	-acodec … -vcodec … output3
+}}}
+This way `ffmpeg` can create several '''different outputs''' out of the same input(s).
+
+For example, to encode your video in HD, VGA and QVGA resolution, at the same time, you would use something like this:
+{{{
+ffmpeg -i input \
+	-s 1280x720 -acodec … -vcodec … output1 \
+	-s 640x480  -acodec … -vcodec … output2 \
+	-s 320x240  -acodec … -vcodec … output3
+}}}
+
+=== Same filtering for all outputs ===
+
+If you would like to use filtering, but with the same filter applied to all outputs, simply use `-filter_complex` with the `split` filter.
+
+For example, to encode your video in HD, VGA and QVGA resolution, at the same time, but with the yadif filter applied, you would use something like this:
+{{{
+#!sh
+# the `split=3` means split to three streams
+ffmpeg -i input -filter_complex '[0:v]yadif,split=3[out1][out2][out3]' \
+	-map '[out1]' -s 1280x720 -acodec … -vcodec … output1 \
+	-map '[out2]' -s 640x480  -acodec … -vcodec … output2 \
+	-map '[out3]' -s 320x240  -acodec … -vcodec … output3
+}}}
+
+=== One filtering instance per each output ===
+
+If you would like to use filtering, with the **different** filter(s) applied to each outputs, use `-filter_complex` and `split`, but using `split` directly to the input.
+
+For example, to encode your video to three different outputs, at the same time, but with the boxblur, negate, yadif filter applied to the different outputs respectively, you would use something like this:
+{{{
+#!sh
+# the `split=3` means split to three streams
+ffmpeg -i input -filter_complex '[0:v]split=3[in1][in2][in3];[in1]boxblur[out1];[in2]negate[out2];[in3]yadif[out3]' \
+	-map '[out1]' -acodec … -vcodec … output1 \
+	-map '[out2]' -acodec … -vcodec … output2 \
+	-map '[out3]' -acodec … -vcodec … output3
+}}}
+
+== Duplicate outputs ==
+
+[[Image(creating_multiple_outputs1.png)]]
+
+But, what if you want to have duplicate outputs of your encoding? For example, when you are streaming a live audio/video and want to save a duplicate of that stream into the file at the same time.  You don't want to encode twice, that wastes cpu.
+
+=== Tee pseudo-muxer ===
+
+The [https://ffmpeg.org/ffmpeg-formats.html#tee tee pseudo-muxer] was added to `ffmpeg` on 2013-02-03, and allows you to duplicate the output to multiple files with a single instance of `ffmpeg`.
+
+The example below outputs an MKV file, and a UDP stream. Streams are separated by the `|` symbol. Options can be applied to an individual output: `[f=mpegts]` is equivalent to `-f mpegts` in a normal ffmpeg command-line. Multiple options can be separated with a `:`, which means that any `:` have to be escaped (so use `\:`).
+
+{{{
+ffmpeg -i input.file -c:v libx264 -c:a mp2 \
+-f tee -map 0:v -map 0:a "output.mkv|[f=mpegts]udp://10.0.1.255:1234/"
+}}}
+
+If you want to choose specific streams then use the `select` option. In this next example the video stream is split and scaled to two different sized outputs, and the audio is encoded only once but used by both outputs. Otherwise you would have to unnecessarily re-encode the same audio multiple times. The `ignore` value for the `onfail` option in the last output will keep the other outputs running even if that last output fails. The default value for `onfail` is `abort`.
+
+{{{
+ffmpeg -i input -filter_complex \
+"[0:v]split=2[s0][s1]; \
+ [s0]scale=1280:-2[v0]; \
+ [s1]scale=640:-2[v1]" \
+-map "[v0]" -map "[v1]" -map 0:a -c:v libx264 -c:a aac -f tee \
+"[select=\'v:0,a\']local0.mkv| \
+ [select=\'v:0,a\':f=flv]rtmp://server0/app/instance/playpath| \
+ [select=\'v:1,a\']local1.mkv| \
+ [select=\'v:1,a\':f=flv:onfail=ignore]rtmp://server1/app/instance/playpath"
+}}}
+
+
+
+=== Piped processes ===
+
+Older versions of ffmpeg can also do this, using 2 piped processes, where the first process is used to encode the stream(s) and second process is used to duplicate that to several outputs.
+{{{
+ffmpeg -i input1 -i input2 -acodec … -vcodec … -f mpegts - | \
+	ffmpeg -f mpegts -i - \
+		-c copy output1 \
+		-c copy output2 \
+		-c copy output3 \
+}}}
+
+{{{
+#!div style="border: 1pt dotted; margin: 1em; background-color: #fffff9;"
+'''Note:''' If you are using older `ffmpeg` and `-c copy` is not recognized, then you can replace it with `-acodec copy -vcodec copy`.
+}}}
+
+{{{
+ffmpeg -f v4l2 -i /dev/video0 -vcodec libx264 -f mpegts - | \
+	ffmpeg -f mpegts -i - \
+		-c copy -f mpegts udp://1.2.3.4:5678 \
+		-c copy -f mpegts local.ts
+}}}
+
+=== Parallel encoding ===
+
+Outputting and re encoding multiple times in the same FFmpeg process will typically slow down to the "slowest encoder" in your list.  Some encoders (like libx264) perform their encoding "threaded and in the background" so they will effectively allow for parallel encodings, however audio encoding may be serial and become the bottleneck, etc.  It seems that if you do have any encodings that are serial, it will be treated as "real serial" by FFmpeg and thus your FFmpeg may not use all available cores.  One work around to this is to use multiple ffmpeg instances running in parallel, or possible piping from one ffmpeg to another to "do the second encoding" etc.  Or if you can avoid the limiting encoder (ex: using a different faster one [ex: raw format] or just doing a raw stream copy) that might help.

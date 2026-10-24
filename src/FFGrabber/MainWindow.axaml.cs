@@ -170,9 +170,9 @@ public partial class MainWindow : Window
         brandRow.Children.Add(new Border
         {
             Classes = { "brandMark" },
-            Width = 56,
-            Height = 56,
-            CornerRadius = new CornerRadius(16),
+            Width = 48,
+            Height = 48,
+            CornerRadius = new CornerRadius(12),
             Background = Brush("#084BC0"),
             BorderBrush = Brush("#60E3FF"),
             BorderThickness = new Thickness(1),
@@ -548,32 +548,18 @@ public partial class MainWindow : Window
         return row;
     }
 
-    private static Control BuildBrandGlyph()
-    {
-        var glyph = new Grid();
-        glyph.Children.Add(new Border
+    private static Control BuildBrandGlyph() =>
+        new TextBlock
         {
-            Width = 32, Height = 35, CornerRadius = new CornerRadius(10),
-            BorderThickness = new Thickness(3), BorderBrush = Brush("#61E2FF"),
-            Background = Brush("#0A3D96"), HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center, RenderTransform = new RotateTransform(-12)
-        });
-        glyph.Children.Add(new Border
-        {
-            Width = 32, Height = 35, CornerRadius = new CornerRadius(10),
-            BorderThickness = new Thickness(3), BorderBrush = Brush("#F0FDFF"),
-            Background = Brush("#175DCE"), HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center, RenderTransform = new RotateTransform(10)
-        });
-        glyph.Children.Add(new Border
-        {
-            Width = 11, Height = 11, CornerRadius = new CornerRadius(6),
-            Background = Brush("#4FE9FF"), BorderBrush = Brush("#FFFFFF"),
-            BorderThickness = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        return glyph;
-    }
+            Text = "F",
+            FontFamily = new FontFamily("Segoe UI Variable"),
+            FontSize = 29,
+            FontWeight = FontWeight.Bold,
+            Foreground = Brush("#FFFFFF"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, -2, 0, 0)
+        };
 
     private static Control ButtonContent(string glyph, string label)
     {

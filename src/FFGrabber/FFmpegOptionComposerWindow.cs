@@ -16,10 +16,10 @@ namespace FFGrabber;
 /// </summary>
 public sealed class FFmpegOptionComposerWindow : Window
 {
-    private sealed record OptionEntry(string Name, string HelpLine);
+    private sealed record OptionEntry(string Name, string HelpLine, bool IsRunnable = true);
 
     private static readonly Regex OptionNamePattern = new(
-        @"^\\s{0,8}(?<name>-{1,2}[A-Za-z0-9][A-Za-z0-9_.:+-]*)(?<tail>.*)$",
+        @"^\s{0,8}(?<name>-{1,2}[A-Za-z0-9][A-Za-z0-9_.:+-]*)(?<tail>.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly string? _ffmpegPath;
@@ -55,7 +55,8 @@ public sealed class FFmpegOptionComposerWindow : Window
             "Current audio encoder",
             "Current input demuxer",
             "Current output muxer",
-            "Custom component topic"
+            "Custom component topic",
+            "Options from all 14 encoding guide text files"
         },
         SelectedIndex = 0,
         MinWidth = 300
@@ -99,6 +100,7 @@ public sealed class FFmpegOptionComposerWindow : Window
         Foreground = ThemePreferences.Brush("#A4A9B6")
     };
 
+    private bool _selectedOptionIsRunnable = true;
     private IReadOnlyList<OptionEntry> _allOptions = Array.Empty<OptionEntry>();
     private IReadOnlyList<OptionEntry> _visibleOptions = Array.Empty<OptionEntry>();
 
@@ -233,6 +235,9 @@ public sealed class FFmpegOptionComposerWindow : Window
             case "Custom component topic":
                 await LoadCustomComponentAsync();
                 break;
+            case "Options from all 14 encoding guide text files":
+                LoadGuideOptionIndex();
+                break;
             default:
                 _status.Text = "Choose a catalogue source.";
                 break;
@@ -259,7 +264,7 @@ public sealed class FFmpegOptionComposerWindow : Window
             return;
         }
 
-        if (tokens.Count != 1 || tokens[0].StartsWith('-', StringComparison.Ordinal))
+        if (tokens.Count != 1 || tokens[0].StartsWith("-", StringComparison.Ordinal))
         {
             _status.Text = "Enter one component topic such as encoder=libx265, filter=scale, muxer=hls, demuxer=mov, decoder=h264, bsf=h264_mp4toannexb, or protocol=https.";
             return;
@@ -318,6 +323,19 @@ public sealed class FFmpegOptionComposerWindow : Window
         }
     }
 
+    private void LoadGuideOptionIndex()
+    {
+        _allOptions = EncodingGuideOptionIndex.All
+            .Select(option => new OptionEntry(
+                option.Name,
+                $"{option.Name}  [{option.Group}]  {option.Description}  | Source: {option.SourceFiles}",
+                !string.Equals(option.Group, "Build capability note", StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        _search.Text = string.Empty;
+        ApplySearch();
+        _status.Text = $"Loaded {_allOptions.Count:N0} unique option entries extracted from {EncodingGuideOptionIndex.SourceFiles.Count:N0} Dropbox .txt guides. Build-time flags are explanatory only.";
+    }
+
     private static IReadOnlyList<OptionEntry> ParseOptions(string help)
     {
         var entries = new Dictionary<string, OptionEntry>(StringComparer.OrdinalIgnoreCase);
@@ -330,7 +348,7 @@ public sealed class FFmpegOptionComposerWindow : Window
             var name = match.Groups["name"].Value;
             var tail = match.Groups["tail"].Value.Trim();
             // Avoid treating unindented examples/headers as command-line option rows.
-            if (!name.StartsWith('-', StringComparison.Ordinal) || name.Length < 2)
+            if (!name.StartsWith("-", StringComparison.Ordinal) || name.Length < 2)
                 continue;
 
             if (!entries.ContainsKey(name))
@@ -371,6 +389,7 @@ public sealed class FFmpegOptionComposerWindow : Window
         var entry = _visibleOptions[index];
         _optionName.Text = entry.Name;
         _description.Text = entry.HelpLine;
+        _selectedOptionIsRunnable = entry.IsRunnable;
     }
 
     private void AddSelectedOption()
@@ -378,9 +397,15 @@ public sealed class FFmpegOptionComposerWindow : Window
         var optionName = _optionName.Text?.Trim() ?? string.Empty;
         var optionArguments = _optionArguments.Text?.Trim() ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(optionName) || !optionName.StartsWith('-', StringComparison.Ordinal) || optionName.Length < 2)
+        if (string.IsNullOrWhiteSpace(optionName) || !optionName.StartsWith("-", StringComparison.Ordinal) || optionName.Length < 2)
         {
             _status.Text = "Enter a valid FFmpeg option beginning with a hyphen, for example -movflags.";
+            return;
+        }
+
+        if (!_selectedOptionIsRunnable)
+        {
+            _status.Text = "This guide entry is a build-time configure flag, not a runtime ffmpeg option. It cannot be added to an encode command.";
             return;
         }
 

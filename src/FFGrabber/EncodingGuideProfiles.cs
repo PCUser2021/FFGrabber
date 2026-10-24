@@ -60,7 +60,7 @@ public sealed record EncodingGuideProfile
 
 public static class EncodingGuideProfiles
 {
-    public static IReadOnlyList<EncodingGuideProfile> All { get; } = Array.AsReadOnly(
+    public static IReadOnlyList<EncodingGuideProfile> All { get; } = Array.AsReadOnly<EncodingGuideProfile>(
     [
         new()
         {

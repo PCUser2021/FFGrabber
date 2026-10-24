@@ -86,22 +86,42 @@ public sealed class GuideLibraryWindow : Window
         Grid.SetColumnSpan(heading, 2);
         root.Children.Add(heading);
 
-        var listPanel = new StackPanel { Spacing = 10, Margin = new Thickness(0, 0, 14, 0) };
+        var listPanel = new Grid { Margin = new Thickness(0, 0, 14, 0) };
+        listPanel.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        listPanel.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        listPanel.RowDefinitions[0].Height = GridLength.Auto;
+        Grid.SetRow(_search, 0);
         listPanel.Children.Add(_search);
-        listPanel.Children.Add(new Border { Classes = { "panel" }, Child = _documents });
+        var documentListSurface = new Border
+        {
+            Classes = { "panel" },
+            Child = _documents,
+            Margin = new Thickness(0, 10, 0, 0)
+        };
+        Grid.SetRow(documentListSurface, 1);
+        listPanel.Children.Add(documentListSurface);
         Grid.SetRow(listPanel, 1);
         Grid.SetColumn(listPanel, 0);
         root.Children.Add(listPanel);
 
-        var details = new StackPanel { Spacing = 10 };
+        var details = new Grid();
+        details.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        details.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        details.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        _selectedTitle.Margin = new Thickness(0, 0, 0, 3);
+        Grid.SetRow(_selectedTitle, 0);
         details.Children.Add(_selectedTitle);
+        _selectedSource.Margin = new Thickness(0, 0, 0, 4);
+        Grid.SetRow(_selectedSource, 1);
         details.Children.Add(_selectedSource);
-        details.Children.Add(new Border
+        var viewerSurface = new Border
         {
             Classes = { "panel" },
             Child = _viewer,
-            VerticalAlignment = VerticalAlignment.Stretch
-        });
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+        Grid.SetRow(viewerSurface, 2);
+        details.Children.Add(viewerSurface);
         Grid.SetRow(details, 1);
         Grid.SetColumn(details, 1);
         root.Children.Add(details);

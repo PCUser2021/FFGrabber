@@ -1,12 +1,16 @@
 # FFGrabber roadmap
 
+Version 0.5.8 adds Linux x64/ARM64 packaging in `.deb`, `.rpm`, `.AppImage`, and portable `.tar.gz` formats. FFmpeg stays user-imported and is never bundled.
+
 ## Implemented
 
 - Capture and hardware acceleration controls (0.5.6): Windows gdigrab/DirectShow starter profiles, DDAgrab/gfxcapture source-filter workflows, DirectShow device discovery, capture size/rate/pixel format/codec, realtime/audio buffers, GDI region controls, timestamp preservation, camera index, ALSA-reference audio settings, hardware decode API/output format/device initialization, filter hardware device and extra frames.
 - Custom glossy blue/cyan product icon and unified icon tiles applied to the app UI; the native EXE icon drives the title bar, Setup icon, desktop/Start Menu shortcuts and uninstall display icon. Main window shows version and an About dialog.
 - All 78 original Dropbox .txt source guides are preserved verbatim in docs/source-guides/dropbox, including full codec, audio, filter, capture, streaming, subtitle, and other documentation. They are embedded and displayed in the searchable Source Guide Library; an integrity regression test compares the tracked text against embedded resources. The separate reconstructed profile payloads remain identified as summaries.
 
-- Import-only FFmpeg model (0.4.0): no FFmpeg is bundled or fetched; the app uses only the user-imported `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, validated with `-version` before being saved.
+- Cross-platform import-only FFmpeg model: no FFmpeg is bundled or fetched; the app uses only the user-imported platform-native `ffmpeg`, `ffprobe` and `ffplay` executables (with `.exe` suffix on Windows), validated with `-version` before saving.
+- Linux desktop packages for x64 and ARM64: Debian `.deb`, RPM `.rpm`, AppImage and a portable tarball with per-user install/uninstall scripts; every release package includes a SHA-256 sidecar.
+- Platform-aware capture choices: Linux X11/XWayland desktop and V4L2 webcam examples are selectable on Linux; DirectShow/gdigrab/DDAgrab/gfxcapture examples remain Windows-only.
 - Advanced raw option groups for global, demuxer/input, additional inputs, stream mapping, video encoder, audio encoder, filters, muxer/container and output options, with a searchable editor that exposes live `-h full` plus 124 indexed switches drawn from 14 supplied encoding-guide text files.
 - Runtime FFmpeg capability browser and runtime-discovered encoder/demuxer/muxer selectors from the imported binary.
 - Direct argument-vector process execution without invoking a shell.

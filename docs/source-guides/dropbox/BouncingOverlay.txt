@@ -1,0 +1,31 @@
+= Create a sliding and bouncing overlay =
+
+In this example, the foreground video slides over the background one and bounces on the four edges. The output audio stream selected is the background one.
+
+It can be used "as-is" under Windows. Unix users should replace ending `^` by `\`. The command line below has been splitted to make it more understandable.
+
+{{{
+ffmpeg -i "background.mp4" -i "foreground.mp4" -filter_complex ^
+overlay='^
+if(eq(mod(floor(st(8,t*320)/(W-w)),2),0),^
+mod(ld(8),W-w),^
+W-w-mod(ld(8),W-w))^
+:^
+if(eq(mod(floor(st(9,t*140)/(H-h)),2),0),^
+mod(ld(9),H-h),^
+H-h-mod(ld(9),H-h))^
+:^
+eval=frame^
+:^
+repeatlast=1^
+' ^
+"OUTPUT.mp4"
+}}}
+
+This example works properly with a 1080p (16/9) background and a 360p (16/9) foreground but can be modified to work with any scale.
+
+The horizontal speed (t*320) and the vertical one (t*140) can be tuned. They are stored in internal variables 8 and 9 to avoid duplicates.
+
+Pay attention to the input durations and use either '''repeatlast''' or '''shortest''' options of the overlay filter.
+
+Have in mind that frames are taken from each input video in timestamp order, hence, if their initial timestamps differ, it is a good idea to pass the two inputs through a '''setpts=PTS-STARTPTS''' filter to have them begin in the same zero timestamp. 

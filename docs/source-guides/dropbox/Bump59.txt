@@ -1,0 +1,153 @@
+The major versions of all the libraries were bumped on 2021-04-27. Follows a summary of backwards-incompatible changes.
+
+= libavcodec =
+* old audio/video decoding APIs avcodec_decode_video2 and
+  avcodec_decode_audio4 were removed;
+  they are replaced by avcodec_send_packet/avcodec_receive_frame, which
+  decouple input and output and can return any number of output frames
+  for a single input packet
+* old audio/video encoding APIs avcodec_encode_video2 and
+  avcodec_encode_audio2 were removed;
+  they are replaced by avcodec_send_frame/avcodec_receive_packet, which
+  decouple input and output and can return any number of output packets
+  for a single input frame
+* AVCodecContext.coded_frame removed without replacement
+* AVCodecContext.side_data_only_packets removed, codecs (currently only flacenc)
+  now always behave as if this field was set to 1
+* AVCodecContext.vbv_delay removed, replaced by AV_PKT_DATA_CPB_PROPERTIES side data
+* AVCodecContext.rtp_callback removed without replacement
+* AVCodecContext.*_bits removed without replacement
+* following AVCodecContext fields  removed, replaced by encoder-private options
+    - coder_type and FF_CODER_TYPE*
+    - b_frame_strategy
+    - mpeg_quant
+    - prediction_method and FF_PRED_*
+    - pre_me
+    - scenechange_threshold
+    - noise_reduction
+    - me_penalty_compensation
+    - brd_scale
+    - chromaoffset
+    - b_sensitivity
+    - context_model
+    - frame_skip_*
+    - min/max_prediction_order
+    - timecode_frame_start
+    - rtp_payload_size
+* AVPacket.convergence_duration removed, use AVPacket.duration instead
+* AVPacket API for pre-refcounted memory management were removed
+    - av_dup_packet
+    - av_copy_packet
+    - av_copy_packet_side_data
+    - av_free_packet
+  users should use refcounted packet API instead
+* av_packet_merge_side_data and av_packet_split_side_data removed without replacement,
+  packets with merged side data are no longer supported
+* AVPicture and its related APIs removed; it is replaced either by AVFrame API
+  or imgutils in libavutil
+* old bistream filtering API (using AVBitStreamFilterContext) removed, replaced by the API
+  in libavcodec/bsf.h
+* avcodec_copy_context removed, it never makes sense for users to call this function
+* avcodec_get_context_defaults3 removed, users should allocate a new codec context
+  instead of resettting an old one
+* av_get_codec_tag_string replaced by av_fourcc_make_string/av_fourcc2str
+* avcodec_get_chroma_sub_sample replaced by av_pix_fmt_get_chroma_sub_sample
+* AVCodecContext accessors removed, AVCodecContext fields should be accessed directly
+* AVHWAccel and its related functions removed from public API, as there was no reason
+  for them to be user-visible
+* av_lockmgr_register and AVLockOp removed, libavcodec handles locking internally
+* codec registration APIs removed, all codecs are always registered
+    - avcodec_register
+    - avcodec_register_all
+* av_codec_next replaced by av_codec_iterate
+* AVCPBProperties.max/min/avg_bitrate types changed from int to int64_t
+* avcodec_get_pix_fmt_loss replaced by av_get_pix_fmt_loss
+* avcodec_find_best_pix_fmt_of_2 replaced by av_find_best_pix_fmt_of_2
+* avcodec_find_best_pix_fmt2 removed
+* av_parser_change removed; dump_extradata, remove_extra or extract_extradata
+  should be used instead
+* FF_SUB_TEXT_FMT_ASS_WITH_TIMINGS removed, ASS subtitles are always decoded without timings
+* mpegvideo encoders' rc_strategy option removed, as it had no effect
+* av_vdpau_get_profile removed, users should call av_vdpau_get_profile to set up
+  VDPAU decoding
+* libopenh264 encoder's 'slice_mode' option removed, as it is redundant with 'slices'/'max_nal_size'
+  options
+* libopenh264 encoder's 'cabac' option replaced with 'coder cabac'
+* 'nvenc' encoder renamed to 'h264_nvenc'
+* struct vaapi_context removed, AVCodecContext.hw_frames_ctx in combination with the API
+  in libavutil/hwcontext.h should be used instead
+
+= libavformat =
+* AVFormatContext.open_cb replaced by io_open/io_close
+* AVStream.codec removed; stream information is now exported through
+  AVStream.codecpar; for decoding/encoding the users should allocate
+  a separate codec context
+* HTTP and RTSP protocol's 'user-agent' option renamed to 'user_agent'
+* HLS muxer's 'hls_wrap' option removed, users should use
+  'hls_list_size'/'hls_flags delete_segments' instead
+* HLS muxer's 'user_localtime'/'use_localtime_mkdir' options removed, users
+  should use 'strftime'/'strftime_mkdir' instead
+* AVFMT_FLAG_KEEP_SIDE_DATA removed, it has had no effect since last major bump
+* mov muxer/demuxer no longer read/export the "rotate" tag, use
+  AV_PKT_DATA_DISPLAYMATRIX instead
+* AVFormatContext accessors removed, AVFormatContext fields should be accessed
+  directly
+* custom AVIOContext instances may no longer return 0 on EOF, they should return
+  AVERROR_EOF or another appropriate error code
+* APIs related to ffserver removed without replacement, as ffserver itself has been
+  removed
+    - AVStream.recommended_encoder_configuration
+    - av_stream_get_recommended_encoder_configuration
+    - av_stream_set_recommended_encoder_configuration
+* AVFormatContext.filename replaces with AVFormatContext.url
+* format registration APIs removed, all formats are always registered
+    - av_register_all
+    - av_register_input_format
+    - av_register_output_format
+* av_iformat_next replaced with av_demuxer_iterate
+* av_oformat_next replaced with av_muxer_iterate
+* DASH muxer's 'min_seg_duration' option replaced with 'seg_duration'
+* AVFMT_FLAG_MP4A_LATM removed, as it had no effect since 2011
+* all instances of AVOutputFormat/AVInputFormat visible through the API
+  are now const-qualified
+  this is only a type change, as the caller was never allowed to modify them
+* av_demuxer_open removed, use avformat_open_input with an options dictionary
+* AVChapter.id type changed from int to int64_t
+
+= libavutil =
+* old VAAPI pixel formats
+    - AV_PIX_FMT_VAAPI_IDCT and AV_PIX_FMT_VAAPI_MOCO were never-used - just removed
+    - AV_PIX_FMT_VAAPI_VLD renamed to just AV_PIX_FMT_VAAPI
+* QP tables in AVFrame were removed, as they were not flexible enough for new codecs
+    - qscale_table
+    - qstride
+    - qscale_type
+    - qp_table_buf
+  they were replaced by the API in libavutil/video_enc_params.h
+* AVFrame.error removed without replacement
+* AVFrame.pkt_pts replaced with AVFrame.pts
+* AVFrame accessors were removed, AVFrame fields should be accessed directly
+* types of arguments/return values of the following functions changed from
+  (unsigned) int to size_t:
+    - av_adler32_update
+    - av_hash_update
+    - av_md5_update
+    - av_md5_sum
+    - av_murmur3_update
+    - av_ripemd_update
+    - av_sha_update
+    - av_sha512_update
+    - av_buffer_alloc
+    - av_buffer_allocz
+    - av_buffer_create
+    - av_buffer_realloc
+    - av_buffer_pool_init
+    - av_buffer_pool_init2
+* AVBufferRef.size changed from int to size_t
+* "compressed" AVComponentDescriptor fields
+    - step_minus1
+    - depth_minus1
+    - offset_plus1
+  were replaced by same fields without the offset
+* AV_PIX_FMT_FLAG_PSEUDOPAL removed, pixel formats previously flagged with it
+  are no longer treated as paletted

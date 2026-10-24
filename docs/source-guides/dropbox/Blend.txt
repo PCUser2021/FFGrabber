@@ -1,0 +1,33 @@
+[[PageOutline]]
+
+Blend modes with blend and tblend filter:
+
+|| [[Image(addition.png)]] || [[Image(and.png)]] || [[Image(average.png)]] || [[Image(bleach.png)]] || [[Image(burn.png)]] ||
+||  addition  ||  and  ||  average  ||  bleach  ||  burn  ||
+|| [[Image(darken.png)]] || [[Image(difference.png)]] || [[Image(divide.png)]] || [[Image(dodge.png)]] || [[Image(exclusion.png)]] ||
+||  darken  ||  difference  ||  divide  ||  dodge  ||  exclusion  ||
+|| [[Image(extremity.png)]] || [[Image(freeze.png)]] || [[Image(geometric.png)]] || [[Image(glow.png)]] || [[Image(grainextract.png)]] ||
+||  extremity  ||  freeze  ||  geometric  ||  glow  ||  grainextract  ||
+|| [[Image(grainmerge.png)]] || [[Image(hardlight.png)]] || [[Image(hardmix.png)]] || [[Image(hardoverlay.png)]] || [[Image(harmonic.png)]] ||
+||  grainmerge  ||  hardlight  ||  hardmix  ||  hardoverlay  ||  harmonic  ||
+|| [[Image(heat.png)]] || [[Image(interpolate.png)]] || [[Image(lighten.png)]] || [[Image(linearlight.png)]] || [[Image(multiply128.png)]] ||
+||  heat  ||  interpolate  ||  lighten  ||  linearlight  ||  multiply128  ||
+|| [[Image(multiply.png)]] || [[Image(negation.png)]] || [[Image(normal.png)]] || [[Image(normal_all_opacity_05.png)]] || [[Image(normal_all_opacity_0.png)]] || 
+||  multiply  ||  negation  ||  normal (all_opacity = 1)  ||  normal (all_opacity = 0.5)  ||  normal (all_opacity = 0)  ||
+|| [[Image(or.png)]] || [[Image(overlay.png)]] || [[Image(phoenix.png)]] || [[Image(pinlight.png)]] || [[Image(reflect.png)]] ||
+||  or  ||  overlay  ||  phoenix  ||  pinlight  ||  reflect  ||
+|| [[Image(screen.png)]] || [[Image(softdifference.png)]] || [[Image(softlight.png)]] || [[Image(stain.png)]] || [[Image(subtract.png)]] ||
+||  screen  ||  softdifference  ||  softlight  ||  stain  ||  subtract  ||
+|| [[Image(vividlight.png)]] || [[Image(xor.png)]] ||
+||  vividlight  ||  xor  ||
+
+These images can be made with these command lines:
+
+ffmpeg -f lavfi -i color=s=256x256,geq=r='H-1-Y':g='H-1-Y':b='H-1-Y' -frames 1 -y test.png
+
+ffmpeg -i test.png -vf "split[a][b];[b]transpose[b];[a][b]blend=all_mode=harmonic,pseudocolor=preset=turbo" -y harmonic.png
+
+These are the input images before and after transposing:
+
+|| [[Image(test.png)]] || [[Image(test_transposed.png)]] || 
+||  test.png  ||  test_transposed.png  ||

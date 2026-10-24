@@ -1,20 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType Condition="'$(OS)' == 'Windows_NT'">WinExe</OutputType>
+    <OutputType Condition="'$(OS)' != 'Windows_NT'">Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>FFGrabber</AssemblyName>
     <RootNamespace>FFGrabber</RootNamespace>
-    <Version>0.5.7</Version>
+    <Version>0.5.8</Version>
     <Authors>FFGrabber contributors</Authors>
-    <Description>A Windows graphical frontend for a user-imported FFmpeg (no FFmpeg is bundled).</Description>
+    <Description>A cross-platform graphical frontend for a user-imported FFmpeg (no FFmpeg is bundled).</Description>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Assets\FFGrabber.ico</ApplicationIcon>
+    <ApplicationManifest Condition="'$(OS)' == 'Windows_NT'">app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="'$(OS)' == 'Windows_NT'">Assets\FFGrabber.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Assets/**/*" />
     <EmbeddedResource Include="../../docs/source-guides/dropbox/*.txt" LogicalName="FFGrabber.source-guides.dropbox.%(Filename)%(Extension)" />
     <PackageReference Include="Avalonia" Version="12.1.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
@@ -28,7 +29,7 @@
       <_ForbiddenFFmpegPayload Include="$(PublishDir)ffmpeg.exe" Condition="Exists('$(PublishDir)ffmpeg.exe')" />
       <_ForbiddenFFmpegPayload Include="$(PublishDir)ffprobe.exe" Condition="Exists('$(PublishDir)ffprobe.exe')" />
       <_ForbiddenFFmpegPayload Include="$(PublishDir)ffplay.exe" Condition="Exists('$(PublishDir)ffplay.exe')" />
-      <_ForbiddenFFmpegPayload Include="$(PublishDir)**/ffmpeg.exe;$(PublishDir)**/ffprobe.exe;$(PublishDir)**/ffplay.exe" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)**/ffmpeg.exe;$(PublishDir)**/ffprobe.exe;$(PublishDir)**/ffplay.exe;$(PublishDir)**/ffmpeg;$(PublishDir)**/ffprobe;$(PublishDir)**/ffplay" />
     </ItemGroup>
     <Error Condition="'@(_ForbiddenFFmpegPayload)' != ''" Text="FFGrabber packaging violation: FFmpeg executables must not be included in the published payload. Import a user-owned FFmpeg toolset at runtime." />
     <Error Condition="Exists('$(PublishDir)tools/ffmpeg') Or Exists('$(PublishDir)tools\ffmpeg')" Text="FFGrabber packaging violation: tools/ffmpeg must not be included in the published payload." />

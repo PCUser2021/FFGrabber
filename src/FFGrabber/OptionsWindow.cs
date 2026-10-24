@@ -43,7 +43,7 @@ public sealed class OptionsWindow : Window
         root.Children.Add(new TextBlock { Text = "Options", FontSize = 24, FontWeight = FontWeight.SemiBold });
         root.Children.Add(new TextBlock
         {
-            Text = "Export a complete support bundle or open the capability browser for the exact FFmpeg build installed with this application.",
+            Text = "Export a complete support bundle or open the capability browser for the exact FFmpeg build you imported.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Color.Parse("#A4A9B6"))
         });

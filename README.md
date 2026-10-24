@@ -1,70 +1,61 @@
 # FFGrabber
 
-**FFGrabber** is a Windows-first graphical frontend for the real FFmpeg command-line tools. It launches `ffmpeg.exe`, `ffprobe.exe`, and `ffplay.exe` directly; it does not embed a separate media engine.
+**FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.3.0).** FFGrabber provides a native Avalonia GUI, direct FFmpeg process invocation, basic transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, process logging, cancellation, and x64/ARM64 installer builds. It is not yet a feature-complete replacement for a professional mastering suite.
+> **Status: active preview (0.4.0).** Native Avalonia GUI, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
 
 ## Downloads
 
-**Official permanent download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
+**Official download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
 
-- **Windows x64 (Intel/AMD):** [Download the installer](https://github.com/PCUser2021/FFGrabber/releases/download/v0.3.0/FFGrabber-Setup-x64-v0.3.0.exe) · [SHA-256 file](https://github.com/PCUser2021/FFGrabber/releases/download/v0.3.0/FFGrabber-Setup-x64-v0.3.0.exe.sha256)
-- **Windows ARM64:** [Download the installer](https://github.com/PCUser2021/FFGrabber/releases/download/v0.3.0/FFGrabber-Setup-arm64-v0.3.0.exe) · [SHA-256 file](https://github.com/PCUser2021/FFGrabber/releases/download/v0.3.0/FFGrabber-Setup-arm64-v0.3.0.exe.sha256)
-- **Combined checksum manifest:** [SHA256SUMS.txt](https://github.com/PCUser2021/FFGrabber/releases/download/v0.3.0/SHA256SUMS.txt)
+- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.4.0.exe`
+- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.4.0.exe`
+- **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
 
-The Windows CI workflow publishes this release only after both architecture builds, FFmpeg verification, PE architecture checks, and Inno Setup compilation pass. Release assets remain available from the Releases page rather than depending on short-lived Actions artifact retention.
+## First run: import FFmpeg
 
-## Stack
+FFmpeg is not included, not downloaded, and not read from `PATH` or the install folder.
 
-- C# / .NET 10.0.13 runtime and .NET SDK 10.0.402
-- Avalonia UI 12.1.4 (latest stable checked 2026-10-23)
-- FluentAvaloniaUI 3.1.0 (latest stable checked 2026-10-23)
-- Inno Setup 7.1.0 for Windows installers
-- FFmpeg 9.0.2 compiled from the official upstream `n9.0.2` source tag for x64 and ARM64, using BtbN’s pinned static GPL dependency build tooling. The source commit is verified against `946fcce07b6dcd0331c8cc609192aeff5e1924f8`.
+1. Get an FFmpeg build for your platform from [ffmpeg.org/download.html](https://ffmpeg.org/download.html) and extract it.
+2. Start FFGrabber and click **Import FFmpeg…**.
+3. Select the folder containing `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe` (an extracted package root with a `bin` subfolder also works).
+4. FFGrabber runs `-version` on all three. Only if every check passes is the folder saved to `%LOCALAPPDATA%\FFGrabber\ffmpeg-import.json`. A failed import leaves the previous selection unchanged.
+
+Use a build that matches your CPU architecture. Until a valid import exists, encoding, probing and playback are disabled and the window says so.
 
 ## Features
 
-- Advanced raw FFmpeg options for global/input-demuxer, stream mapping, video encoder, audio encoder, filter graph, muxer/container, and output settings.
-- FFmpeg capability browser for full help, encoders, decoders, formats, muxers, demuxers, filters, protocols, devices, hardware accelerators, pixel formats, sample formats, bitstream filters and channel layouts.
-- Full support ZIP export through **Options → Save Logs…**, including the untruncated session log, prior local session logs, system/runtime details, current settings, active and pending job settings, FFmpeg build configuration, and tool capability reports.
-- **Import FFmpeg…** button to select a user FFmpeg folder with `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`; all three executables are version-tested, the selected folder is saved between launches, and encoding/probing/playback/capability reports use the imported tool set.
-- Runtime-discovered video/audio encoder lists and complete muxer/demuxer selectors populated from the active FFmpeg binary.
-- GitHub Actions compiles FFmpeg from the verified upstream 9.0.2 source tag for both supported Windows architectures, uses the static GPL dependency profile, records source/build provenance, validates PE machine types, and emits SHA-256 manifests for the resulting binaries. The GyanD 9.0.2 repository ZIP is a mirror/support archive, not the FFmpeg source tree; the script verifies that fact and compiles the upstream source it references.
+- Standard controls for transcode, stream-copy/remux, audio extraction and video-only output.
+- Video/audio encoder, input demuxer and output muxer lists discovered from the imported `ffmpeg.exe`.
+- Advanced raw option fields (global, input, mapping, video/audio encoder, filters, muxer, output) passed as argument vectors, never through a shell.
+- Capability browser for help, encoders, decoders, formats, filters, protocols, devices, hardware accelerators, pixel/sample formats and channel layouts of the imported build.
+- Local files, URLs, pipes, protocol targets and device expressions as input/output.
+- Command preview, sequential queue, live log, cancellation.
+- ffprobe JSON metadata inspection and ffplay preview.
+- Full support ZIP via **Options → Save Logs…**.
 
-- Convert using H.264 (`libx264`), HEVC (`libx265`) or AV1 (`libsvtav1`) where the chosen FFmpeg build supports them.
-- Configure encoder preset, CRF or target bitrate, output resolution, frame rate, pixel format, audio codec and bitrate.
-- Remux with stream copy, extract audio, or copy video without audio.
-- Accept local files, network URLs, pipes, FFmpeg protocol targets and device expressions in the input/output fields; protocol and capture-device flags can be supplied in advanced input/output options.
-- Preview generated FFmpeg arguments before running.
-- Queue jobs sequentially, stream process output into the log, and cancel the active process.
-- Inspect container and stream metadata using ffprobe JSON output.
-- Launch ffplay to preview a source file.
-- Discover bundled tools or executables available on `PATH`.
-- Build self-contained Windows x64 and ARM64 packages with pinned, checksum-verified FFmpeg 9.0.2 executables.
+## Stack
+
+- C# / .NET 10 (SDK 10.0.402), Avalonia UI 12.1.4, FluentAvaloniaUI 3.1.0
+- Inno Setup 7.1.0 for installers
 
 ## Build on Windows
 
-Prerequisites: .NET 10 SDK, PowerShell 7 recommended, and network access to fetch FFmpeg. Inno Setup 7 is required only when building an installer locally.
+Prerequisites: .NET 10 SDK and PowerShell 7. Inno Setup 7.1.0+ only for local installers.
 
 ```powershell
 ./scripts/Build.ps1 -Architecture x64
 ./scripts/Build.ps1 -Architecture arm64
-./scripts/Build.ps1 -Architecture x64 -Version 0.3.0 -Installer
+./scripts/Build.ps1 -Architecture x64 -Version 0.4.0 -Installer
 ```
-
-Add `-SkipFfmpegDownload` to publish the application without bundling FFmpeg. This local PowerShell helper uses the checksummed prebuilt archive route; the GitHub Actions installer pipeline compiles FFmpeg from source. To source-build the Windows FFmpeg tools yourself, run `scripts/Build-FFmpegFromSource.sh` in Linux/WSL2 with Docker.
 
 ## GitHub Actions
 
-The workflow in `.github/workflows/build.yml` first compiles FFmpeg 9.0.2 from the verified upstream source tag for Windows x64 and ARM64, then packages those locally built binaries into the FFGrabber installers. CI validates source provenance, PE machine headers, x64 runtime version, GPL build flags, signed Inno Setup, and installer checksums. The local `scripts/Build.ps1` convenience command still downloads a pinned prebuilt FFmpeg archive; use `scripts/Build-FFmpegFromSource.sh` from Linux/WSL2 with Docker to compile FFmpeg locally. A push of a new feature commit to `main` creates the version configured in the workflow; later releases are produced by changing the project version or pushing a version tag. Existing releases are not overwritten by routine pushes to `main`.
-
-The previous `v0.1.0` and `v0.2.0` installers and source remain preserved in release history, and the pre-expansion source snapshot is kept on branch `backup/2026-10-23-pre-encoder-expansion`.
+`.github/workflows/build.yml` builds the x64 and ARM64 apps, checks the PE machine type, **fails if any FFmpeg executable or `tools/ffmpeg` folder is present in the payload**, compiles the installers with a signature- and SHA-256-verified Inno Setup, and writes installer checksums. Pushes to `main` and `v*` tags publish a GitHub Release for the configured version; an existing release is never overwritten.
 
 ## FFmpeg licensing
 
-The build helper selects a static GPL FFmpeg build to include common codecs such as x264/x265. FFmpeg and its bundled third-party libraries have separate license obligations. Check the bundled license notices and applicable source-distribution obligations before redistributing installers. This is not legal advice.
-
-References: [FFmpeg legal](https://ffmpeg.org/legal.html) · [BtbN builds](https://github.com/BtbN/FFmpeg-Builds) · [Avalonia](https://avaloniaui.net/) · [FluentAvalonia](https://github.com/amwx/FluentAvalonia) · [Inno Setup](https://jrsoftware.org/isinfo.php)
+FFGrabber does not distribute FFmpeg, so it carries no FFmpeg license obligations itself. The FFmpeg build you import is governed by its own license (LGPL or GPL, depending on how it was built). See [FFmpeg legal](https://ffmpeg.org/legal.html). This is not legal advice.
 
 ## Roadmap
 
@@ -72,4 +63,4 @@ See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## License
 
-FFGrabber application code is offered under the MIT License. Bundled FFmpeg and third-party components are not covered by that application license; see third-party notices and upstream licenses.
+FFGrabber application code is offered under the MIT License. Third-party components are covered by their own licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

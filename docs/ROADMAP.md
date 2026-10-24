@@ -1,15 +1,13 @@
 # FFGrabber roadmap
 
-## Implemented in the 0.3.0 upgrade
+## Implemented
 
-- Advanced raw option groups for global, demuxer/input, stream mapping, video encoder, audio encoder, filters/filter graphs, muxer/container and output options.
-- Runtime FFmpeg capability browser for generic help and compiled encoders, decoders, codecs, formats, muxers, demuxers, filters, bitstream filters, protocols, devices, hardware acceleration, pixel formats, sample formats, and channel layouts.
+- Import-only FFmpeg model (0.4.0): no FFmpeg is bundled or fetched; the app uses only the user-imported `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, validated with `-version` before being saved.
+- Advanced raw option groups for global, demuxer/input, stream mapping, video encoder, audio encoder, filters, muxer/container and output options.
+- Runtime FFmpeg capability browser and runtime-discovered encoder/demuxer/muxer selectors from the imported binary.
 - Direct argument-vector process execution without invoking a shell.
-- Untruncated append-only session logging and **Options → Save Logs…** ZIP export.
-- Support bundles containing current and previous session logs, system/runtime details, current settings, queue snapshot, FFmpeg build configuration, and capability reports from ffmpeg/ffprobe/ffplay.
-- Runtime-discovered encoder selectors and input demuxer/output muxer format selectors, populated from the installed FFmpeg executable.
-- Pinned FFmpeg 9.0.2 full GPL builds: GyanD full_build for x64 and an architecture-matched BtbN build for ARM64, each verified using a fixed SHA-256 digest.
-- CI checks for PE architecture, pinned FFmpeg provenance/version and archive integrity, x64 tool smoke tests, installer compilation and checksum generation.
+- Untruncated session logging and **Options → Save Logs…** ZIP export.
+- CI checks for PE architecture, absence of bundled FFmpeg, installer compilation and checksum generation.
 
 ## Next development targets
 

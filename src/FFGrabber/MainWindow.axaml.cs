@@ -284,7 +284,7 @@ public partial class MainWindow : Window
         var executable = FFmpegLocator.Find("ffmpeg");
         if (executable is null)
         {
-            AppendLog("FFmpeg was not found; import a folder containing ffmpeg.exe, ffprobe.exe and ffplay.exe, or add the folder to PATH.");
+            AppendLog("No FFmpeg imported yet. Click \"Import FFmpeg…\" and select the folder containing ffmpeg.exe, ffprobe.exe and ffplay.exe.");
             return;
         }
 
@@ -363,7 +363,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _ffmpegStatus.Text = $"Active FFmpeg source: bundled tools or PATH{Environment.NewLine}{FFmpegLocator.Find("ffmpeg") ?? "ffmpeg.exe not found"}";
+        _ffmpegStatus.Text = "No FFmpeg imported. FFGrabber does not include FFmpeg: click \"Import FFmpeg…\" and select your folder containing ffmpeg.exe, ffprobe.exe and ffplay.exe.";
     }
 
     private async Task ImportFFmpegAsync()
@@ -459,7 +459,7 @@ public partial class MainWindow : Window
         var executable = FFmpegLocator.Find("ffmpeg");
         if (executable is null)
         {
-            AppendLog("ffmpeg.exe was not found. Bundle the matching FFmpeg build or add its folder to PATH.");
+            AppendLog("No FFmpeg imported. Click \"Import FFmpeg…\" and select the folder containing ffmpeg.exe, ffprobe.exe and ffplay.exe.");
             return;
         }
 

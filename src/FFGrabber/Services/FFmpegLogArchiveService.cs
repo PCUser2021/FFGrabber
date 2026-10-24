@@ -82,8 +82,7 @@ public static class FFmpegLogArchiveService
             var metadataCandidates = new[]
             {
                 Path.Combine(ffmpegDirectory, "ffmpeg-build.json"),
-                Path.Combine(Directory.GetParent(ffmpegDirectory)?.FullName ?? ffmpegDirectory, "ffmpeg-build.json"),
-                Path.Combine(AppContext.BaseDirectory, "tools", "ffmpeg", FFmpegLocator.ArchitectureFolder, "ffmpeg-build.json")
+                Path.Combine(Directory.GetParent(ffmpegDirectory)?.FullName ?? ffmpegDirectory, "ffmpeg-build.json")
             };
             var metadataPath = metadataCandidates.FirstOrDefault(File.Exists);
             if (metadataPath is not null)
@@ -109,7 +108,7 @@ public static class FFmpegLogArchiveService
         else
         {
             reportEntries.Add(("diagnostics/ffmpeg/tool-not-found.txt",
-                "ffmpeg.exe was not found beside FFGrabber or on PATH. The session log still has been preserved."));
+                "No FFmpeg has been imported into FFGrabber. The session log still has been preserved."));
         }
 
         if (!string.IsNullOrWhiteSpace(ffprobe))

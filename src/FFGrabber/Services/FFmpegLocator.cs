@@ -1,9 +1,12 @@
-using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace FFGrabber.Services;
 
-/// <summary>Resolves FFmpeg tools, preferring a complete user-imported tool set over bundled tools and PATH.</summary>
+/// <summary>
+/// Resolves FFmpeg tools. FFGrabber ships no FFmpeg binaries: the only tool source is the complete
+/// ffmpeg.exe / ffprobe.exe / ffplay.exe set that the user imported. Nothing is read from the install
+/// folder or from PATH.
+/// </summary>
 public static class FFmpegLocator
 {
     private static readonly object Sync = new();
@@ -12,9 +15,6 @@ public static class FFmpegLocator
         "FFGrabber",
         "ffmpeg-import.json");
     private static string? _importedDirectory = LoadImportedDirectory();
-
-    public static string ArchitectureFolder =>
-        RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "arm64" : "x64";
 
     /// <summary>Directory holding the active user-imported executables, or null when no valid import is active.</summary>
     public static string? ImportedDirectory
@@ -79,38 +79,12 @@ public static class FFmpegLocator
         if (tool is not ("ffmpeg" or "ffprobe" or "ffplay"))
             throw new ArgumentOutOfRangeException(nameof(tool));
 
-        var file = tool + ".exe";
         var imported = ImportedDirectory;
-        if (imported is not null)
-        {
-            var candidate = Path.Combine(imported, file);
-            if (File.Exists(candidate))
-                return candidate;
-        }
+        if (imported is null)
+            return null;
 
-        var root = AppContext.BaseDirectory;
-        var paths = new[]
-        {
-            Path.Combine(root, "tools", "ffmpeg", ArchitectureFolder, "bin", file),
-            Path.Combine(root, "tools", "ffmpeg", "bin", file),
-            Path.Combine(root, "bin", file),
-            Path.Combine(root, file)
-        };
-        foreach (var candidate in paths)
-            if (File.Exists(candidate)) return candidate;
-
-        var path = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrWhiteSpace(path)) return null;
-        foreach (var folder in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            try
-            {
-                var candidate = Path.Combine(folder, file);
-                if (File.Exists(candidate)) return candidate;
-            }
-            catch (ArgumentException) { }
-        }
-        return null;
+        var candidate = Path.Combine(imported, tool + ".exe");
+        return File.Exists(candidate) ? candidate : null;
     }
 
     private static bool HasCompleteToolSet(string? directory) =>

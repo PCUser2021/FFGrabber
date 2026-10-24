@@ -141,7 +141,7 @@ public sealed class FFmpegCapabilitiesWindow : Window
     {
         if (string.IsNullOrWhiteSpace(_ffmpegPath) || !File.Exists(_ffmpegPath))
         {
-            _status.Text = "ffmpeg.exe was not found. Bundle the matching FFmpeg build or add its folder to PATH.";
+            _status.Text = "No FFmpeg imported. Close this window and use \"Import FFmpeg…\" on the main window.";
             _output.Text = string.Empty;
             return;
         }

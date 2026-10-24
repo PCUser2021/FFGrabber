@@ -1,11 +1,11 @@
 #ifndef AppVersion
-  #define AppVersion "0.3.0"
+  #define AppVersion "0.4.0"
 #endif
 #ifndef AppArch
   #define AppArch "x64"
 #endif
 #ifndef AppFileVersion
-  #define AppFileVersion "0.2.0.0"
+  #define AppFileVersion "0.4.0.0"
 #endif
 #define AppName "FFGrabber"
 #define AppPublisher "FFGrabber contributors"
@@ -33,7 +33,7 @@ Uninstallable=yes
 SetupLogging=yes
 VersionInfoVersion={#AppFileVersion}
 VersionInfoProductName=FFGrabber
-VersionInfoDescription=FFGrabber Windows media workstation
+VersionInfoDescription=FFGrabber graphical frontend for a user-imported FFmpeg
 CloseApplications=yes
 RestartApplications=no
 #if AppArch == "arm64"
@@ -51,7 +51,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Files]
-Source: "..\artifacts\publish\{#AppArch}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; FFGrabber intentionally installs no FFmpeg binaries. Users import their own ffmpeg.exe, ffprobe.exe and ffplay.exe.
+Source: "..\artifacts\publish\{#AppArch}\*"; DestDir: "{app}"; Excludes: "ffmpeg.exe,ffprobe.exe,ffplay.exe,tools\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\FFGrabber"; Filename: "{app}\FFGrabber.exe"

@@ -3,12 +3,10 @@ param(
     [ValidateSet('x64', 'arm64')]
     [string] $Architecture = 'x64',
     [ValidatePattern('^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$')]
-    [string] $Version = '0.3.0',
-    [switch] $SkipFfmpegDownload,
+    [string] $Version = '0.4.0',
     [switch] $Installer
 )
 $ErrorActionPreference = 'Stop'
-if ($Installer -and $SkipFfmpegDownload) { throw 'A complete installer must bundle FFmpeg. Remove -SkipFfmpegDownload when using -Installer.' }
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $rid = if ($Architecture -eq 'arm64') { 'win-arm64' } else { 'win-x64' }
@@ -18,10 +16,6 @@ New-Item -ItemType Directory -Path $publish -Force | Out-Null
 dotnet publish (Join-Path $root 'src/FFGrabber/FFGrabber.csproj') -c Release -r $rid --self-contained true -p:PublishSingleFile=false "-p:Version=$Version" -o $publish
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
 Copy-Item (Join-Path $root 'LICENSE'), (Join-Path $root 'THIRD-PARTY-NOTICES.md') -Destination $publish -Force
-if (-not $SkipFfmpegDownload) {
-    & (Join-Path $PSScriptRoot 'Fetch-FFmpeg.ps1') -Architecture $Architecture -OutputDirectory (Join-Path $publish "tools/ffmpeg/$Architecture")
-    if ($LASTEXITCODE -ne 0) { throw 'FFmpeg download or checksum verification failed.' }
-}
 if ($Installer) {
     $candidates = [System.Collections.Generic.List[string]]::new()
     $standardPath = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\ISCC.exe'

@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-if [ -n "$XDG_DATA_HOME" ]; then DATA_HOME="$XDG_DATA_HOME"; else DATA_HOME="$HOME/.local/share"; fi
+DATA_HOME="$(printenv XDG_DATA_HOME || true)"
+if [ -z "$DATA_HOME" ]; then DATA_HOME="$HOME/.local/share"; fi
 APP_DIR="$DATA_HOME/ffgrabber"
 BIN_DIR="$HOME/.local/bin"
 APP_MENU_DIR="$DATA_HOME/applications"

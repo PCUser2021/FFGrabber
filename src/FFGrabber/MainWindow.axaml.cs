@@ -103,7 +103,7 @@ public partial class MainWindow : Window
         heroContent.Children.Add(brandRow);
         heroContent.Children.Add(new TextBlock
         {
-            Text = "A translucent local workstation for your own FFmpeg toolset. No FFmpeg executables are bundled or downloaded; formats, codecs, and detailed options are queried from the binaries you import.",
+            Text = "A theme-aware local workstation for your own FFmpeg toolset. No FFmpeg executables are bundled or downloaded; formats, codecs, and detailed options are queried from the binaries you import.",
             Foreground = Brush("#B7BECC"),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13

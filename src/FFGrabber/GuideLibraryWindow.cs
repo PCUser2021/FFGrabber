@@ -13,6 +13,7 @@ namespace FFGrabber;
 public sealed class GuideLibraryWindow : Window
 {
     private sealed record GuideDocument(string Title, string Source, string Content);
+    private sealed record RelatedProfile(string Label, string ProfileName, bool IsCapture);
 
     private readonly TextBox _search = new()
     {
@@ -51,10 +52,15 @@ public sealed class GuideLibraryWindow : Window
         FontSize = 12,
         Foreground = ThemePreferences.Brush("#A4A9B6")
     };
+    private readonly ComboBox _relatedProfiles = new() { MinWidth = 360 };
+    private readonly Button _applyRelatedProfile = new() { Content = "Apply to workspace", Classes = { "primary" }, IsEnabled = false };
     private readonly List<GuideDocument> _allDocuments;
+    private readonly Action<string, bool>? _applyProfile;
+    private List<RelatedProfile> _relatedActions = [];
 
-    public GuideLibraryWindow()
+    public GuideLibraryWindow(Action<string, bool>? applyProfile = null)
     {
+        _applyProfile = applyProfile;
         Title = "FFGrabber — Source guide library";
         Width = 1120;
         Height = 790;
@@ -107,6 +113,7 @@ public sealed class GuideLibraryWindow : Window
         var details = new Grid();
         details.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         details.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        details.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         details.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
         _selectedTitle.Margin = new Thickness(0, 0, 0, 3);
         Grid.SetRow(_selectedTitle, 0);
@@ -114,13 +121,43 @@ public sealed class GuideLibraryWindow : Window
         _selectedSource.Margin = new Thickness(0, 0, 0, 4);
         Grid.SetRow(_selectedSource, 1);
         details.Children.Add(_selectedSource);
+
+        var relatedRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Margin = new Thickness(0, 8, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        relatedRow.Children.Add(new TextBlock
+        {
+            Text = "Related settings",
+            FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        relatedRow.Children.Add(_relatedProfiles);
+        _applyRelatedProfile.Click += (_, _) =>
+        {
+            var selectedLabel = _relatedProfiles.SelectedItem?.ToString();
+            var action = _relatedActions.FirstOrDefault(item =>
+                string.Equals(item.Label, selectedLabel, StringComparison.Ordinal));
+            if (action is null || _applyProfile is null)
+                return;
+
+            _applyProfile(action.ProfileName, action.IsCapture);
+            _status.Text = $"Applied \"{action.ProfileName}\" to the main workspace. Review the generated command before queueing a job.";
+        };
+        relatedRow.Children.Add(_applyRelatedProfile);
+        Grid.SetRow(relatedRow, 2);
+        details.Children.Add(relatedRow);
+
         var viewerSurface = new Border
         {
             Classes = { "panel" },
             Child = _viewer,
             Margin = new Thickness(0, 8, 0, 0)
         };
-        Grid.SetRow(viewerSurface, 2);
+        Grid.SetRow(viewerSurface, 3);
         details.Children.Add(viewerSurface);
         Grid.SetRow(details, 1);
         Grid.SetColumn(details, 1);
@@ -199,6 +236,11 @@ public sealed class GuideLibraryWindow : Window
             _selectedTitle.Text = "No matching source";
             _selectedSource.Text = "Change or clear the search text.";
             _viewer.Text = string.Empty;
+            _relatedActions = [];
+            _relatedProfiles.ItemsSource = Array.Empty<string>();
+            _relatedProfiles.SelectedIndex = -1;
+            _relatedProfiles.IsEnabled = false;
+            _applyRelatedProfile.IsEnabled = false;
             return;
         }
 
@@ -217,5 +259,52 @@ public sealed class GuideLibraryWindow : Window
         _selectedTitle.Text = document.Title;
         _selectedSource.Text = document.Source;
         _viewer.Text = document.Content;
+        RefreshRelatedProfiles(document);
+    }
+
+    private void RefreshRelatedProfiles(GuideDocument document)
+    {
+        var sourceFiles = document.Source
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var actions = new List<RelatedProfile>();
+
+        // The virtual option index can link into any of the curated encoder profiles.
+        if (document.Source.Contains(nameof(EncodingGuideOptionIndex), StringComparison.OrdinalIgnoreCase))
+        {
+            actions.AddRange(EncodingGuideProfiles.All.Select(profile =>
+                new RelatedProfile(profile.Name, profile.Name, IsCapture: false)));
+        }
+        else
+        {
+            actions.AddRange(EncodingGuideProfiles.All
+                .Where(profile => profile.SourceFile
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Any(source => sourceFiles.Contains(source, StringComparer.OrdinalIgnoreCase)))
+                .Select(profile => new RelatedProfile(profile.Name, profile.Name, IsCapture: false)));
+
+            actions.AddRange(CaptureGuideProfiles.All
+                .Where(profile => profile.SourceFile
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Any(source => sourceFiles.Contains(source, StringComparer.OrdinalIgnoreCase)))
+                .Select(profile => new RelatedProfile(profile.Name, profile.Name, IsCapture: true)));
+        }
+
+        _relatedActions = actions
+            .DistinctBy(action => (action.Label, action.IsCapture))
+            .OrderBy(action => action.IsCapture ? 1 : 0)
+            .ThenBy(action => action.Label, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _relatedProfiles.ItemsSource = _relatedActions.Select(action => action.Label).ToArray();
+        _relatedProfiles.SelectedIndex = _relatedActions.Count == 0 ? -1 : 0;
+        _relatedProfiles.IsEnabled = _relatedActions.Count > 0;
+        _applyRelatedProfile.IsEnabled = _applyProfile is not null && _relatedActions.Count > 0;
+
+        if (_relatedActions.Count == 0)
+            _status.Text = "No preconfigured one-click profile is linked to this reference. The complete text remains searchable and readable above.";
+        else if (_applyProfile is null)
+            _status.Text = $"{_relatedActions.Count} related profile(s) found. Open this library from the FFGrabber workspace to apply one.";
+        else
+            _status.Text = $"{_relatedActions.Count} related profile(s) found. Select one and apply it to populate the main controls.";
     }
 }

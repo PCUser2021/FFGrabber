@@ -401,6 +401,138 @@ public static class EncodingGuideProfiles
             Mode = "Remux / stream copy", VideoCodec = "copy", AudioCodec = "copy",
             Preset = "encoder default", RateControl = "Encoder-specific options",
             AudioBitrate = "", OutputFormat = "auto", FastStart = true
+        },
+        // Reconstructed payloads supplied during recovery. These profiles map each
+        // summary's recommended flags into the normal GUI controls so the settings can
+        // be reviewed, adjusted and previewed before a job is queued.
+        new()
+        {
+            Name = "Recovered — H.264 Master Reference",
+            SourceFile = "h264_master_guide.txt",
+            Description = "Recovered profile payload: libx264 slow, CRF 22 and yuv420p. A general compatibility-oriented H.264 starting point; review the target's requirements before encoding.",
+            VideoCodec = "libx264", AudioCodec = "copy", Preset = "slow",
+            RateControl = "CRF quality", Crf = "22", PixelFormat = "yuv420p"
+        },
+        new()
+        {
+            Name = "Recovered — H.265 HEVC Deep Dive",
+            SourceFile = "h265_hevc_deep_dive.txt",
+            Description = "Recovered profile payload: libx265 medium, CRF 28 and 10-bit yuv420p10le. Ten-bit output does not by itself make SDR content HDR; preserve color metadata only when it matches the source/master.",
+            VideoCodec = "libx265", AudioCodec = "copy", Preset = "medium",
+            RateControl = "CRF quality", Crf = "28", PixelFormat = "yuv420p10le"
+        },
+        new()
+        {
+            Name = "Recovered — AV1 NextGen Delivery",
+            SourceFile = "av1_nextgen_delivery.txt",
+            Description = "Recovered profile payload: libaom-av1 constant-quality mode with CRF 30 and bitrate zero. The supplied -strict experimental flag is retained as a raw option for traceability; modern FFmpeg builds may not need it.",
+            VideoCodec = "libaom-av1", AudioCodec = "copy", Preset = "encoder default",
+            RateControl = "Encoder-specific options",
+            VideoEncoderOptions = "-crf 30 -b:v 0 -strict experimental"
+        },
+        new()
+        {
+            Name = "Recovered — VP9 WebM Publishing",
+            SourceFile = "vp9_webm_publishing.txt",
+            Description = "Recovered profile payload: libvpx-vp9 CRF 31 with bitrate zero in WebM. Confirm that the imported FFmpeg build includes libvpx-vp9.",
+            VideoCodec = "libvpx-vp9", AudioCodec = "copy", Preset = "encoder default",
+            RateControl = "Encoder-specific options", OutputFormat = "webm",
+            VideoEncoderOptions = "-crf 31 -b:v 0"
+        },
+        new()
+        {
+            Name = "Recovered — FFV1 Lossless Archive",
+            SourceFile = "ffv1_lossless_archive.txt",
+            Description = "Recovered profile payload: FFV1 level 3 with range coder and context 1. This is a lossless video encode; keep the source pixel format unless a deliberate conversion is required.",
+            VideoCodec = "ffv1", AudioCodec = "copy", Preset = "encoder default",
+            RateControl = "Encoder-specific options", OutputFormat = "matroska",
+            VideoEncoderOptions = "-level 3 -coder 1 -context 1"
+        },
+        new()
+        {
+            Name = "Recovered — ProRes VFX Intermediate",
+            SourceFile = "prores_vfx_intermediate.txt",
+            Description = "Recovered profile payload: ProRes HQ profile 3, ap10 vendor tag and 10-bit 4:2:2 pixel format. The supplied vendor tag is preserved exactly; inspect the imported encoder help if it rejects that value.",
+            VideoCodec = "prores_ks", AudioCodec = "copy", Preset = "encoder default",
+            RateControl = "Encoder-specific options", OutputFormat = "mov",
+            PixelFormat = "yuv422p10le", VideoProfile = "3",
+            VideoEncoderOptions = "-vendor ap10"
+        },
+        new()
+        {
+            Name = "Recovered — MPEG-4 Legacy Compatibility",
+            SourceFile = "mpeg4_legacy_compatibility.txt",
+            Description = "Recovered profile payload: native MPEG-4 Part 2 with Xvid FourCC and qscale 4. This is a legacy compatibility profile; modern delivery targets usually prefer H.264, HEVC or AV1.",
+            VideoCodec = "mpeg4", AudioCodec = "copy", Preset = "encoder default",
+            RateControl = "Encoder-specific options", OutputFormat = "avi",
+            VideoQscale = "4", VideoEncoderOptions = "-vtag xvid"
+        },
+        new()
+        {
+            Name = "Recovered — Theora Ogg Fallback",
+            SourceFile = "theora_ogg_fallback.txt",
+            Description = "Recovered profile payload: Theora video qscale 6 and Vorbis audio qscale 5 in Ogg. The exact quality scale and library availability depend on the imported build.",
+            VideoCodec = "libtheora", AudioCodec = "libvorbis", Preset = "encoder default",
+            RateControl = "Encoder-specific options", OutputFormat = "ogg",
+            VideoQscale = "6", AudioQscale = "5", AudioBitrate = ""
+        },
+        new()
+        {
+            Name = "Recovered — AAC Audio Standards",
+            SourceFile = "aac_audio_standards.txt",
+            Description = "Recovered profile payload: extract audio using the native AAC encoder at 192 kbit/s. The output container defaults to M4A for a common audio-only delivery target.",
+            Mode = "Extract audio", VideoCodec = "copy", AudioCodec = "aac",
+            Preset = "encoder default", RateControl = "Encoder-specific options",
+            AudioBitrate = "192k", OutputFormat = "ipod", FastStart = true
+        },
+        new()
+        {
+            Name = "Recovered — MP3 Vintage Distribution",
+            SourceFile = "mp3_vintage_distribution.txt",
+            Description = "Recovered profile payload: libmp3lame VBR quality scale 2. Lower LAME qscale values generally mean higher quality and larger files; no fixed bitrate is added.",
+            Mode = "Extract audio", VideoCodec = "copy", AudioCodec = "libmp3lame",
+            Preset = "encoder default", RateControl = "Encoder-specific options",
+            AudioQscale = "2", AudioBitrate = "", OutputFormat = "mp3"
+        },
+        new()
+        {
+            Name = "Recovered — Opus Interactive Telephony",
+            SourceFile = "opus_interactive_telephony.txt",
+            Description = "Recovered profile payload: Opus at 128 kbit/s with VBR enabled. Low latency also depends on the surrounding input, buffering and muxing choices; this profile does not force a real-time protocol.",
+            Mode = "Extract audio", VideoCodec = "copy", AudioCodec = "libopus",
+            Preset = "encoder default", RateControl = "Encoder-specific options",
+            AudioBitrate = "128k", AudioVbr = "on",
+            AudioEncoderOptions = "-b:a 128k", OutputFormat = "matroska"
+        },
+        new()
+        {
+            Name = "Recovered — FLAC Bit-Perfect Master",
+            SourceFile = "flac_bit_perfect_master.txt",
+            Description = "Recovered profile payload: FLAC audio extraction with compression level 5. FLAC preserves decoded audio samples, but cannot restore information already lost in a lossy source.",
+            Mode = "Extract audio", VideoCodec = "copy", AudioCodec = "flac",
+            Preset = "encoder default", RateControl = "Encoder-specific options",
+            AudioBitrate = "", AudioEncoderOptions = "-compression_level 5",
+            OutputFormat = "flac"
+        },
+        new()
+        {
+            Name = "Recovered — YouTube Upload Recipes",
+            SourceFile = "youtube_upload_recipes.txt",
+            Description = "Recovered profile payload: libx264 slow CRF 18, B-frames 2, GOP 30 and AAC 384 kbit/s. GOP 30 is a one-second interval only for 30 fps material; verify current platform ingest guidance for the target upload.",
+            VideoCodec = "libx264", AudioCodec = "aac", Preset = "slow",
+            RateControl = "CRF quality", Crf = "18", PixelFormat = "yuv420p",
+            GopSize = "30", VideoEncoderOptions = "-bf 2",
+            AudioBitrate = "384k", OutputFormat = "mp4", FastStart = true
+        },
+        new()
+        {
+            Name = "Recovered — Streaming Live Delivery",
+            SourceFile = "streaming_live_delivery.txt",
+            Description = "Recovered profile payload: libx264 veryfast, zerolatency tune, 4 Mbit/s target and maxrate with an 8 Mbit buffer. FLV is set as a typical RTMP target; switch the output muxer to HLS when producing an HLS playlist instead.",
+            VideoCodec = "libx264", AudioCodec = "copy", Preset = "veryfast",
+            RateControl = "Target bitrate", VideoBitrate = "4000k",
+            MaxVideoBitrate = "4000k", BufferSize = "8000k",
+            VideoTune = "zerolatency", OutputFormat = "flv"
         }
     ]);
 

@@ -5,7 +5,7 @@ using Avalonia.Styling;
 namespace FFGrabber;
 
 /// <summary>
-/// Persists the user's appearance preference and supplies theme-aware brushes for
+/// Persists the user's appearance preference and supplies system-aware, theme-aware brushes for
 /// dynamically constructed controls. FFGrabber deliberately uses opaque surfaces;
 /// the theme never depends on desktop pixels or backdrop transparency.
 /// </summary>
@@ -43,10 +43,10 @@ public static class ThemePreferences
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // If the preference cannot be read, use the Light theme without blocking startup.
+            // If the preference cannot be read, follow the Windows theme without blocking startup.
         }
 
-        return "Light";
+        return "System";
     }
 
     public static void ApplyChoice(string? choice)
@@ -89,16 +89,17 @@ public static class ThemePreferences
     private static string NormalizeChoice(string? choice) =>
         choice?.Trim().ToLowerInvariant() switch
         {
+            "system" => "System",
             "light" => "Light",
             "dark" => "Dark",
-            _ => "Light"
+            _ => "System"
         };
 
     private static ThemeVariant ToVariant(string choice) => choice switch
     {
         "Light" => ThemeVariant.Light,
         "Dark" => ThemeVariant.Dark,
-        _ => ThemeVariant.Light
+        _ => ThemeVariant.Default
     };
 
     private static bool IsLight =>

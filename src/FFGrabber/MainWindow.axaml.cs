@@ -134,6 +134,7 @@ public partial class MainWindow : Window
     private readonly Button _cancelButton = new() { Content = "Cancel active job", IsEnabled = false };
     private CancellationTokenSource? _cancellation;
     private EncodingSettings? _activeJobSettings;
+    private Action<int>? _navigateToWorkspace;
 
     private static string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.5.6";
 
@@ -148,7 +149,7 @@ public partial class MainWindow : Window
         {
             _sessionLog.Write("Could not load embedded FFGrabber icon: " + ex.Message);
         }
-        Title = $"FFGrabber v{AppVersion} — FFmpeg workstation";
+        Title = $"FFGrabber v{AppVersion} — Fluent media workspace";
         Width = 1260;
         Height = 1000;
         MinWidth = 900;
@@ -183,7 +184,7 @@ public partial class MainWindow : Window
         {
             Classes = { "tagPill" },
             VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock { Text = "FLUENT WORKSPACE  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#C2F970") }
+            Child = new TextBlock { Text = "WINDOWS FLUENT  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#C2F970") }
         });
         brandRow.Children.Add(new Border
         {
@@ -195,6 +196,43 @@ public partial class MainWindow : Window
             Child = new TextBlock { Text = $"v{AppVersion}", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Brush("#0067C0") }
         });
         heroContent.Children.Add(brandRow);
+        var capabilityBadges = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        capabilityBadges.Children.Add(new Border
+        {
+            Classes = { "tagPill" },
+            Child = new TextBlock
+            {
+                Text = $"{EncodingGuideProfiles.All.Count} encoding profiles",
+                FontSize = 11,
+                FontWeight = FontWeight.SemiBold
+            }
+        });
+        capabilityBadges.Children.Add(new Border
+        {
+            Classes = { "tagPill" },
+            Child = new TextBlock
+            {
+                Text = $"{CaptureGuideProfiles.All.Count} capture presets",
+                FontSize = 11,
+                FontWeight = FontWeight.SemiBold
+            }
+        });
+        capabilityBadges.Children.Add(new Border
+        {
+            Classes = { "tagPill" },
+            Child = new TextBlock
+            {
+                Text = "System / Light / Dark",
+                FontSize = 11,
+                FontWeight = FontWeight.SemiBold
+            }
+        });
+        heroContent.Children.Add(capabilityBadges);
         heroContent.Children.Add(new TextBlock
         {
             Text = "A theme-aware local workstation for your own FFmpeg toolset. No FFmpeg executables are bundled or downloaded; formats, codecs, and detailed options are queried from the binaries you import.",
@@ -384,6 +422,8 @@ public partial class MainWindow : Window
                 navigationButtons[index].Classes.Add("selected");
         }
 
+        _navigateToWorkspace = NavigateTo;
+
         var navigation = new StackPanel { Spacing = 6, Margin = new Thickness(12, 18, 12, 18) };
         navigation.Children.Add(new TextBlock
         {
@@ -424,7 +464,7 @@ public partial class MainWindow : Window
         });
         var themePicker = new ComboBox
         {
-            ItemsSource = new[] { "Light", "Dark" },
+            ItemsSource = new[] { "System", "Light", "Dark" },
             SelectedItem = ThemePreferences.GetSavedChoice(),
             MinWidth = 150,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -1496,7 +1536,23 @@ public partial class MainWindow : Window
 
     private async Task OpenGuideLibraryAsync()
     {
-        var window = new GuideLibraryWindow();
+        var window = new GuideLibraryWindow((profileName, isCapture) =>
+        {
+            if (isCapture)
+            {
+                SetComboValue(_capturePreset, profileName);
+                ApplyCapturePreset();
+                _navigateToWorkspace?.Invoke(1);
+            }
+            else
+            {
+                SetComboValue(_guideProfile, profileName);
+                ApplyGuideProfile();
+                _navigateToWorkspace?.Invoke(0);
+            }
+
+            AppendLog($"Applied related guide-library profile: {profileName}");
+        });
         await window.ShowDialog(this);
     }
 

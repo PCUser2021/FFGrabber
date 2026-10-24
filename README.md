@@ -27,15 +27,17 @@ Use a build that matches your CPU architecture. Until a valid import exists, enc
 ## Features
 
 - Standard controls for transcode, stream-copy/remux, audio extraction and video-only output.
-- **35 encoding-guide profiles** distilled from all 14 supplied Dropbox `.txt` guides (H.264/H.265, AV1, VP8/VP9, FFV1, ProRes/MJPEG/VFX, MPEG-4, Theora/Vorbis, AAC, MP3, Opus, FLAC, YouTube and streaming recipes).
+- **49 encoder/audio profiles**: the 35 existing profiles plus 14 one-click profiles mapped to the supplied/reconstructed text payloads. These 14 short payloads are identified as reconstructions, not as the original historical full encoder guides.
 - Dedicated guide-specific controls for minimum/maximum video bitrate, VBV buffer, GOP/keyframe interval, encoder tune/profile, video Qscale/QP, audio Qscale/VBR/profile/cutoff, sample rate/channels, and HDR color primaries/transfer/colorspace.
+- Searchable **Source Guide Library** that reads every embedded `.txt` document in full, searches across the document bodies, and applies associated encoder/audio/capture profiles back to the main workspace.
 - **Automated two-pass encoding** for libx264, native MPEG-4, libvpx/VP9, libaom-av1 and FFV1 profiles. Pass 1 uses the null muxer, pass 2 writes the requested output; managed pass logs are removed after the job. Encoder-private workflows such as x265 pass parameters remain editable in advanced options.
 - Searchable **Complete Settings Editor**: 124 distinct guide-indexed option entries with descriptions and source-file attribution, plus live options from the imported executable's `-h full` catalogue. Options are routed to their recommended input, additional-input, video, audio, filter, muxer, mapping or output field; build-time configure switches and help commands are marked reference-only.
 - Scoped **output temporary-file cleanup**: removes only output-related `.tmp` files created by the current job after FFmpeg exits. Older matching files can be reviewed in a confirmation dialog and manually removed; unrelated temp files are not swept recursively.
 - Video/audio encoder, input demuxer and output muxer lists discovered from the imported `ffmpeg.exe`.
 - Advanced raw option fields (global, input, mapping, video/audio encoder, filters, muxer, output) passed as argument vectors, never through a shell.
 - Capability browser for `-h full`, per-encoder/decoder/demuxer/muxer/filter/bitstream-filter/protocol help, encoders, decoders, formats, filters, protocols, devices, hardware accelerators, pixel/sample formats, channel layouts, and runtime device source/sink discovery from the imported build.
-- Persistent **Options → Application theme** selector for System, Light, and Dark. The UI uses opaque surfaces and theme-aware colors rather than desktop-dependent translucent panels; the preference is saved under `%LOCALAPPDATA%\\FFGrabber\\ui-theme.txt`.
+- Persistent **System / Light / Dark** appearance selector. System follows the Windows color theme dynamically; Light and Dark can be pinned explicitly. The UI uses opaque, theme-aware surfaces rather than desktop-dependent translucent panels.
+- Windows Fluent-inspired workspace with persistent System / Light / Dark appearance, sidebar navigation, consistent rounded controls and a system-aware title bar.
 - Direct links to the official FFmpeg command-line and full component references, ffprobe/ffplay documentation, and the FFmpeg Trac wiki.
 - Local files, URLs, pipes, protocol targets and device expressions as input/output.
 - Command preview, sequential queue, live log, cancellation.

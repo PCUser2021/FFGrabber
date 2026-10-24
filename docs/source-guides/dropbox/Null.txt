@@ -1,0 +1,133 @@
+[[PageOutline]]
+
+There are several ways to utilize "null" in `ffmpeg`.  This can be useful for testing and benchmarking purposes, creating inputs, and filtering. For example:
+
+* testing decoding speed
+* testing encoding speed without the cost of disk writes
+* testing speed of input from a device
+* creating a blank video "canvas" for filtering
+* making silent audio
+* fixing TV media player issues
+
+----
+
+= Null muxer =
+
+The [https://ffmpeg.org/ffmpeg-formats.html#null null muxer] does not generate any output file. It is mainly useful for testing or benchmarking purposes. The null muxer uses a wrapped frame so there is no muxing overhead (i.e. it can accept any type of input codec, doesn't have to be rawvideo for instance).
+
+== Decoding & demuxing ==
+
+To test decoding and demuxing (using null muxer):
+
+{{{
+ffmpeg -i input -f null -
+}}}
+In windows:
+{{{
+ffmpeg -i input -f null NUL
+}}}
+
+== Encoding ==
+
+It can also be used to test encoding without the overhead of outputting a file. This example will map the first video stream, encode with libx264, then discard the output:
+
+{{{
+ffmpeg -i input -map 0:v:0 -c:v libx264 -f null -
+}}}
+
+== With a particular muxer ==
+
+You can output to `/dev/null`, or `NUL` in Windows, if you want to choose a muxer but not actually output a file:
+
+{{{
+ffmpeg -y -i input -c:v mpeg4 -f mp4 /dev/null
+}}}
+
+== `-benchmark` option ==
+
+Adding the `-benchmark` global option will output benchmarking information at the end of an encode which can be informative with the null muxer. Shows CPU time used and maximum memory consumption. Maximum memory consumption is not supported on all systems; it will usually display as 0 if not supported. 
+
+{{{
+$ ffmpeg -benchmark -i input output
+...
+bench: utime=8.483s
+bench: maxrss=52736000kB
+}}}
+
+*nix users can also use the `time` command.
+
+{{{
+$ time ffmpeg -i input output
+...
+real    0m3.365s
+user    0m8.533s
+sys     0m0.541s
+}}}
+
+
+----
+
+
+= Filters =
+
+There is a variety of null filters:
+
+== anull ==
+
+The [https://ffmpeg.org/ffmpeg-filters.html#anull anull] audio filter will pass the audio source unchanged to the output.
+
+== null ==
+
+The [https://ffmpeg.org/ffmpeg-filters.html#null null] video filter will pass the video source unchanged to the output.
+
+See also [[HowToFixTvPlaybackIssues|How to fix TV media player issues]]
+
+== anullsrc ==
+
+The [https://ffmpeg.org/ffmpeg-filters.html#anullsrc anullsrc] audio source filter can create silent audio. For example, to add a silent audio stream to a video:
+
+{{{
+ffmpeg -i input.mp4 -f lavfi -i anullsrc -c:v copy -c:a aac -shortest output.mp4
+}}}
+
+anullsrc can be particularly useful with the [https://ffmpeg.org/ffmpeg-filters.html#concat concat filter] because all inputs to the filter must have the same number of streams. Example where `input0` and `input1` have video and stereo audio with 48000 Hz sample rate, and `input2` has video only:
+
+{{{
+ffmpeg -i input0 -i input1 -i input2 -t 1 -f lavfi -i anullsrc=r=48000:cl=stereo -filter_complex \
+"[0:v][0:a][1:v][1:a][2:v][3:a]concat=n=3:v=1:a=1[v][a]" \
+-map "[v]" -map "[a]" output
+}}}
+
+Note the `-t 1` input option: you do not need to match this duration value with the associated video stream. It only needs to be shorter as the concat filter will pad the remaining duration with additional silence.
+
+Windows users should replace the ending `\` by `^` in the above command.
+
+See also [[HowToFixTvPlaybackIssues|How to fix TV media player issues]]
+
+== nullsrc ==
+
+The [https://ffmpeg.org/ffmpeg-filters.html#nullsrc nullsrc] video source filter returns unprocessed (i.e. "raw uninitialized memory") video frames. It can be used as a foundation for other filters where the input is ignored or you don't mind somewhat random input. Example to generate noise in the luminance plane with the [https://ffmpeg.org/ffmpeg-filters.html#geq geq] filter: 
+
+{{{
+ffmpeg -f lavfi -i nullsrc=s=256x256:d=5 -vf "geq=random(1)*255:128:128" output
+}}}
+
+== anullsink ==
+
+The [https://ffmpeg.org/ffmpeg-filters.html#anullsink anullsink] audio sink with do absolutely nothing with the input audio. 
+
+== nullsink ==
+
+The [https://ffmpeg.org/ffmpeg-filters.html#nullsink nullsink] video sink will do absolutely nothing with the input video. `ffmpeg` is "greedy" and will grab whatever stream it can find, so if your [https://ffmpeg.org/ffmpeg-filters.html#Filtergraph-syntax filtergraph] does not "output" anything it will just re-encode the inputs and ignore the filter. Example:
+
+{{{
+ffmpeg -i input -filter_complex "[0:v]split[a][b];[a]nullsink" -map "[b]" output.mkv
+}}}
+
+In this case the `ffmpeg` output specifies:
+
+{{{
+  split:output1 -> Stream #0:0 (libx264)
+}}}
+
+...which means the second output from the split is being encoded and the first output has been sent to nullsink.

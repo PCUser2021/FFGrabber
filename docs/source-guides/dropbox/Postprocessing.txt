@@ -1,0 +1,99 @@
+Post-processing filters are applied after decoding a low-quality video, usually to make blocking and ringing artifacts less visually annoying.  They operate by blurring the video in a way that reduces blocking and ringing with as little impact as possible on the sharpness of the image.  There is always a tradeoff, though, and once a lossy codec has thrown away information, it can never be recovered without access to the original source.  Some things are more visually annoying than others, and postprocessing can make low-quality videos nicer to watch.
+
+Postprocessing is usually only useful with older codecs.  Newer ones (including h.264, h.265, and VP8/9) all include deblocking filters as part of the codec.  For example, in h.264, the deblocking filter is applied before a decoded frame is used as a reference for future frames, and the deblocking strength is selected by the encoder.  This is why it's called an "in-loop" deblocker, because it's inside the decode / reference loop, and why {{{-skip_loop_filter all}}} causes errors to accumulate.  (Every h.264 decoder must decode a valid h.264 stream to the same bit-identical output, so all of this filtering is specified exactly.  The encoder knows what the decoder is going to do, and thus knows what it's getting when choosing reference frames and sending the difference (residual).)
+
+The end result is that low-bit-rate h.264 video usually already has as good a balance of blurring vs. blocking and ringing as possible.  If you really hate blocking/ringing, and don't mind blurring as much, then you might still want to postprocess.  Or maybe you have a h.264 video where the encoder turned off deblocking (maybe targetting playback on slow CPUs since deblocking costs decoder CPU time), or the user set {{{deblock=-5:-5}}} so the output ended up with more blocking and less blurring than would be ideal.
+
+Anyway, most of the time it won't help to postprocess h.264, HEVC, VP8, or VP9 video.
+
+Postprocessing IS certainly useful for artifacty MPEG2 and MPEG4-ASP (divx, xvid), and even older codecs, as their output is often full of blocking and ringing when the encoder didn't have enough bitrate to make the output look good.
+
+FFmpeg includes the following post-processing filters:
+
+* [https://ffmpeg.org/ffmpeg-filters.html#spp spp] - Simple Postprocessing
+* [https://ffmpeg.org/ffmpeg-filters.html#uspp uspp] - Ultra Simple or Slow Postprocessing
+* [https://ffmpeg.org/ffmpeg-filters.html#fspp fspp] - Fast Simple Postprocessing
+* [https://ffmpeg.org/ffmpeg-filters.html#pp7 pp7] - Postprocessing 7
+* [https://ffmpeg.org/ffmpeg-filters.html#pp pp] - libpostproc wrapper
+
+These filters basically smooth away blocking and other artifacts from low quality sources.  By default, they use information from the decoder to adapt the filter strength to the quality of each block.  (QP = quantization parameter.  Lower number = less rounding off = higher quality.  Every block has its own QP, and ffmpeg's video decoders export this information along with the decoded video so filters can refer to it.)  Higher QP blocks get stronger PP applied, because more of their "detail" is probably actually blocking and ringing that we want to get rid of.
+
+This adaptive filtering is very similar to what h.264 does, but don't try to use x264 as a deblocker.  There isn't an option to tell x264 that you WANT it to try to deblock, so it will still be trying to preserve all the blocking and ringing in the frames you feed it.  It will see the filtered frames from its deblocking filter as worse matches for the input frames, because of the loss of all that "detail" (actually artifacts from the previous encoder, but it takes a human (or AI) to tell the difference).
+
+Transcoding from one lossy codec to another lossy codec will never increase quality.  In fact, it will always lose quality, by definition for lossy codecs.  If you have other reasons for transcoding old artifacty video into something else (e.g. player compatibility, using a clip as part of a longer video, or going to an even lower bitrate), then it can be a good idea to apply some PP before feeding it to the new encoder.
+
+
+{{{uspp}}} uses an encoder, hence, should be used only when one has a powerful CPU. Also, {{{uspp}}} is very slow as compared to other filters. Therefore, for processing large amount of data, {{{fspp}}} is a good option (It gives good results if parameters are chosen wisely).
+
+Postprocessing filters can be used on the {{{ffmpeg}}} commandline like this:
+{{{
+ffmpeg -i INPUT ... -vf PP OUTPUT
+}}}
+
+or can be used to playback the input with {{{ffplay}}} like this:
+{{{
+ffplay INPUT -vf PP
+}}}
+
+where PP is the postprocessing filter with its parameters. 
+
+Let's consider the example of
+
+1. Test sequence from the movie "Matrix" (187 seconds) compressed with ffmpeg's MPEG2 encoder, at 200kbps to introduce lots of blocking and ringing. The following table shows the filter options used, and frame number "123" corresponding to the output video. 
+
+||=      Original Image       =||=       Query Image =||
+||  [[Image(matrix_orig.png)]] || [[Image(matrix_blocky.png)]] ||
+||=       spp=4:10            =||=        spp=6:20            =||=         spp=6:44:1         =||
+|| [[Image(matrix_spp0.png)]]  || [[Image(matrix_spp1.png)]]   || [[Image(matrix_spp2.png)]]   ||
+||=       fspp=4:10           =||=       fspp=4:10:5          =||=         fspp=5:44:10       =||
+|| [[Image(matrix_fspp0.png)]] || [[Image(matrix_fspp1.png)]]  || [[Image(matrix_fspp2.png)]]  ||
+||=       pp7=10:0            =||=         pp7=20:1           =||=          pp7=42            =||
+|| [[Image(matrix_pp70.png)]]  || [[Image(matrix_pp71.png)]]   || [[Image(matrix_pp72.png)]]   ||
+||=       uspp=5:10           =||=         uspp=5:20          =||=         uspp=5:40          =||
+|| [[Image(matrix_uspp0.png)]] || [[Image(matrix_uspp1.png)]]  || [[Image(matrix_uspp2.png)]]  ||
+||=   pp=hb/vb/dr/fq|8        =||=        pp=hb/vb/dr/fq|16   =||=         pp=hb/vb/dr/fq|32  =||
+|| [[Image(matrix_pp0.png)]]   || [[Image(matrix_pp1.png)]]    || [[Image(matrix_pp2.png)]]    ||
+
+2. Test sequence from the movie "Hannibal" (139 seconds) compressed to 200kbps. The following table shows the filter options used, and frame number "121" corresponding to the output video. 
+
+
+||=      Original Image       =||=         Query Image         =||
+||[[Image(hannibal_orig.png)]] || [[Image(hannibal_blocky.png)]]||
+||=      spp=5:10:0:1         =||=          spp=5:20           =||=         spp=5:40:0:1       =||
+|| [[Image(hannibal_spp0.png)]]|| [[Image(hannibal_spp1.png)]]  || [[Image(hannibal_spp2.png)]] ||
+||=      fspp=4:10            =||=          fspp=4:10:10       =||=         fspp=5:20          =||
+||[[Image(hannibal_fspp0.png)]]|| [[Image(hannibal_fspp1.png)]] || [[Image(hannibal_fspp2.png)]]||
+||=      pp7=10:0             =||=          pp7=10:1           =||=         pp7=20             =||
+|| [[Image(hannibal_pp70.png)]]|| [[Image(hannibal_pp71.png)]]  || [[Image(hannibal_pp72.png)]] ||
+||=      uspp=4:10            =||=          uspp=6:20          =||=         uspp=6:44          =||
+||[[Image(hannibal_uspp0.png)]]|| [[Image(hannibal_uspp1.png)]] || [[Image(hannibal_uspp2.png)]]||
+||=     pp=hb/vb/dr/fq|8      =||=          pp=hb/vb/dr/fq|16  =||=         pp=hb/vb/dr/fq|32  =||
+|| [[Image(hannibal_pp0.png)]] || [[Image(hannibal_pp1.png)]]   || [[Image(hannibal_pp2.png)]]  ||
+
+== Benchmarking sample videos ==
+1. Test sequence from the movie "Matrix" (187 seconds) compressed to 200kbps. The following table shows the filter options used, and the corresponding time taken to process the video.
+
+||=       '''spp=4:10'''            =||=        '''spp=6:20'''            =||=         '''spp=6:44:1'''         =||
+||=   Time taken:198.784s     =||=     Time taken:686.319s    =||=      Time taken:678.862s   =||
+||=       '''fspp=4:10'''           =||=       '''fspp=4:10:5'''          =||=         '''fspp=5:44:10'''       =||
+||=   Time taken:107.847s     =||=     Time taken:107.551s    =||=      Time taken:191.128s   =||
+||=       '''pp7=10:0'''            =||=         '''pp7=20:1'''           =||=          '''pp7=42'''            =||
+||=   Time taken:195.468s     =||=     Time taken:192.840s    =||=      Time taken:197.956s   =||
+||=       '''uspp=5:10'''           =||=         '''uspp=5:20'''          =||=         '''uspp=5:40'''         =||
+||=   Time taken:6853.268s    =||=     Time taken:6738.385s   =||=      Time taken:6641.159s  =||
+||=   '''pp=hb/vb/dr/fq|8'''        =||=        '''pp=hb/vb/dr/fq|16'''   =||=         '''pp=hb/vb/dr/fq|32'''  =||
+||=   Time taken:39.978s      =||=     Time taken:45.595s     =||=      Time taken:44.119s    =||
+
+2. Test sequence from the movie "Hannibal" (139 seconds) compressed to 200kbps. The following table shows the filter options used, and the corresponding time taken to process the video.
+
+||=      '''spp=5:10:0:1'''         =||=          '''spp=5:20'''           =||=         '''spp=5:40:0:1'''       =||
+||=    Time taken:85.465s     =||=        Time taken:83.173s   =||=       Time taken:82.045s   =||
+||=      '''fspp=4:10'''            =||=          '''fspp=4:10:10'''       =||=         '''fspp=5:20'''          =||
+||=    Time taken:27.182s     =||=        Time taken:27.146s   =||=       Time taken:44.639s   =||
+||=      '''pp7=10:0'''             =||=          '''pp7=10:1'''           =||=         '''pp7=20'''             =||
+||=    Time taken:46.091s     =||=        Time taken:47.187s   =||=       Time taken:46.791s   =||
+||=      '''uspp=4:10'''            =||=          '''uspp=6:20'''          =||=         '''uspp=6:44'''          =||
+||=    Time taken:782.629s    =||=        Time taken:3053.199s =||=       Time taken:2936.984s =||
+||=     '''pp=hb/vb/dr/fq|8'''      =||=          '''pp=hb/vb/dr/fq|16'''  =||=         '''pp=hb/vb/dr/fq|32'''  =||
+||=    Time taken:14.137s     =||=        Time taken:14.277s   =||=       Time taken:14.053s   =||
+

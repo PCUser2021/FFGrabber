@@ -44,6 +44,7 @@ public sealed class FFmpegCapabilitiesWindow : Window
     private readonly ComboBox _catalog = new() { ItemsSource = Catalogs.Select(c => c.Label).ToArray(), SelectedIndex = 0, MinWidth = 360 };
     private readonly TextBox _helpQuery = new() { PlaceholderText = "Detailed topic, e.g. encoder=libx265, muxer=matroska, demuxer=mov, filter=scale", MinWidth = 450 };
     private readonly TextBox _filter = new() { PlaceholderText = "Filter displayed help text", MinWidth = 300 };
+    private readonly TextBox _deviceType = new() { PlaceholderText = "Device backend, e.g. dshow", MinWidth = 300 };
     private readonly TextBox _output = new()
     {
         IsReadOnly = true,
@@ -91,10 +92,23 @@ public sealed class FFmpegCapabilitiesWindow : Window
         filterRow.Children.Add(Button("Clear filter", (_, _) => { _filter.Text = ""; ApplyFilter(); }));
         root.Children.Add(filterRow);
 
+        var deviceRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        deviceRow.Children.Add(_deviceType);
+        deviceRow.Children.Add(Button("List input sources", async (_, _) => await LoadDeviceListAsync("sources")));
+        deviceRow.Children.Add(Button("List output sinks", async (_, _) => await LoadDeviceListAsync("sinks")));
+        root.Children.Add(deviceRow);
+        root.Children.Add(new TextBlock
+        {
+            Text = "Device source/sink discovery is backend-specific. Enter a backend reported by -devices; the results come from the imported FFmpeg build and current host.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = ThemePreferences.Brush("#A4A9B6")
+        });
+
         var exportRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Left };
         exportRow.Children.Add(Button("Copy displayed text", async (_, _) => await CopyDisplayedTextAsync()));
         exportRow.Children.Add(Button("Save complete help…", async (_, _) => await SaveFullHelpAsync()));
         exportRow.Children.Add(Button("Official documentation ↗", (_, _) => OpenOfficialDocumentation()));
+        exportRow.Children.Add(Button("Complete component reference ↗", (_, _) => OpenUrl("https://ffmpeg.org/ffmpeg-all.html")));
         exportRow.Children.Add(Button("FFmpeg wiki ↗", (_, _) => OpenUrl("https://trac.ffmpeg.org/wiki")));
         root.Children.Add(exportRow);
 
@@ -126,6 +140,19 @@ public sealed class FFmpegCapabilitiesWindow : Window
         var button = new Button { Content = text };
         button.Click += onClick;
         return button;
+    }
+
+    private async Task LoadDeviceListAsync(string direction)
+    {
+        var device = _deviceType.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(device))
+        {
+            _status.Text = "Enter a device backend first, using a name from the imported build's -devices list.";
+            return;
+        }
+
+        var option = direction == "sources" ? "-sources" : "-sinks";
+        await RunHelpAsync([option, device], $"Available {direction} for device backend: {device}");
     }
 
     private async Task LoadSelectedAsync()

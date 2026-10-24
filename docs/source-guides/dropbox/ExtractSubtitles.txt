@@ -1,0 +1,86 @@
+FFmpeg can "read" and/or "extract" subtitles from embedded subtitle tracks.
+
+For instance, if you run ''ffmpeg -i <my_file>'' and you see something like:
+
+{{{
+    Stream #0:2: Subtitle: ssa (default)
+}}}
+or
+{{{
+    Stream #0:2[0x909](eng): Subtitle: dvb_teletext ([6][0][0][0] / 0x0006), 492x250
+}}}
+
+You can extract or convert those subtitles.  To convert to srt from dvb_teletext.
+
+{{{
+ffmpeg -txt_format text -i input_file out.srt
+}}}
+
+Your FFmpeg needs to be configured with --enable-libzvbi for this to work, and results in something like this:
+{{{
+  Stream #0:17 -> #3:0 (dvb_teletext (libzvbi_teletextdec) -> subrip (srt))
+}}}
+
+vbi teletext is a format specification that allows for including text (characters) and a few basic images as metadata between video frames of a broadcast.
+
+libzvbi_teletextdec can decode that, and output in two formats, either "image" output or "text" output.  Default is image.  Text output must be selected in order for it to be converted to other text formats, like, in this instance, srt. See [https://www.ffmpeg.org/ffmpeg-all.html#libzvbi_002dteletext here] for more options.
+
+You can also convert to .ssa format, etc. Here is how to list all the subtitle options available:
+
+{{{
+ffmpeg -codecs | grep subtitle
+ffmpeg version 3.1.3 Copyright (c) 2000-2016 the FFmpeg developers
+  built with Apple LLVM version 7.3.0 (clang-703.0.31)
+  configuration: --prefix=/usr/local/Cellar/ffmpeg/3.1.3 --enable-shared --enable-pthreads --enable-gpl --enable-version3 --enable-hardcoded-tables --enable-avresample --cc=clang --host-cflags= --host-ldflags= --enable-opencl --enable-libx264 --enable-libmp3lame --enable-libxvid --enable-ffplay --disable-lzma --enable-vda
+  libavutil      55. 28.100 / 55. 28.100
+  libavcodec     57. 48.101 / 57. 48.101
+  libavformat    57. 41.100 / 57. 41.100
+  libavdevice    57.  0.101 / 57.  0.101
+  libavfilter     6. 47.100 /  6. 47.100
+  libavresample   3.  0.  0 /  3.  0.  0
+  libswscale      4.  1.100 /  4.  1.100
+  libswresample   2.  1.100 /  2.  1.100
+  libpostproc    54.  0.100 / 54.  0.100
+ DES... ass                  ASS (Advanced SSA) subtitle (decoders: ssa ass ) (encoders: ssa ass )
+ DES... dvb_subtitle         DVB subtitles (decoders: dvbsub ) (encoders: dvbsub )
+ DES... dvd_subtitle         DVD subtitles (decoders: dvdsub ) (encoders: dvdsub )
+ D.S... hdmv_pgs_subtitle    HDMV Presentation Graphic Stream subtitles (decoders: pgssub )
+ ..S... hdmv_text_subtitle   HDMV Text subtitle
+ D.S... jacosub              JACOsub subtitle
+ D.S... microdvd             MicroDVD subtitle
+ D.S... mpl2                 MPL2 subtitle
+ D.S... pjs                  PJS (Phoenix Japanimation Society) subtitle
+ D.S... realtext             RealText subtitle
+ D.S... sami                 SAMI subtitle
+ ..S... srt                  SubRip subtitle with embedded timing
+ ..S... ssa                  SSA (SubStation Alpha) subtitle
+ D.S... stl                  Spruce subtitle format
+ DES... subrip               SubRip subtitle (decoders: srt subrip ) (encoders: srt subrip )
+ D.S... subviewer            SubViewer subtitle
+ D.S... subviewer1           SubViewer v1 subtitle
+ D.S... vplayer              VPlayer subtitle
+ DES... webvtt               WebVTT subtitle
+}}}
+
+zvbi is a decoder (only) so you can see it like
+{{{
+$ ffmpeg -decoders | grep zvb
+ffmpeg version 4.1.3-0ubuntu1 Copyright (c) 2000-2019 the FFmpeg developers
+  built with gcc 8 (Ubuntu 8.3.0-6ubuntu1)
+ S..... libzvbi_teletextdec  Libzvbi DVB teletext decoder (codec dvb_teletext)
+}}}
+
+The ones with capital E you can convert into (subrip, ass, webvtt), ex:
+{{{
+ffmpeg -i my_file.mkv -f webvtt outfile
+}}}
+or implied by file extension:
+{{{
+ffmpeg -i my_file.mkv outfile.vtt
+}}}
+or one subtitle type file to another:
+{{{
+ffmpeg -i my_file.srt outfile.vtt
+}}}
+
+If there are multiple subtitle tracks in your video file, then by default it will select only the first.  You can use the [Map] command to select which ones you want.

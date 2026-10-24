@@ -1,0 +1,46 @@
+= How to remove advertising =
+
+== Introduction ==
+
+This '''How to''' applies to '''H.264/MP4''' files only but will probably work with '''H.264/MOV''' files too.
+
+When recording a movie from a TV channel, some advertising may appear during a few seconds in a small box within the video stream.
+
+As shown below, it's possible to remove advertising without having to re-encode the full movie.
+
+== Prerequisite ==
+
+This page is intended for Windows 10 users but can be adapted by Unix users with only small changes.
+
+== First stage ==
+
+Use the '''drawbox''' video filter to check the position and size of the advertising. You may also use the '''-ss''' and '''-t''' options to confirm starting and ending time.
+{{{
+ffmpeg -ss 20:45 -t 13 -i "INPUT.mp4" -map 0 -c copy -c:v libx264 -b:v 2400K -vf drawbox=x=740:y=962:w=416:h=44:c=red:t=1 "OUTPUT.mp4"
+}}}
+
+== Second stage ==
+
+The second stage consist in 3 steps :
+
+* create segments of the input movie
+* re-encode the small segment containing the advertising, using the delogo video filter
+* concatenate the resulting segments
+
+Here is the batch file :
+{{{
+@echo off
+echo ======== Create segments
+ffmpeg -i "INPUT.mp4" -map 0 -c copy -f segment -segment_times 20:45,20:58 SEGMENT%%02d.mp4
+::
+echo ======== Remove advertising
+ffmpeg -i SEGMENT01.mp4 -map 0 -c copy -c:v libx264 -b:v 2400K -vf delogo=740:962:416:44 SEGMENT01+.mp4
+::
+echo ======== Concatenate segments
+echo file 'SEGMENT00.mp4'>SEGMENTS.txt
+echo file 'SEGMENT01+.mp4'>>SEGMENTS.txt
+echo file 'SEGMENT02.mp4'>>SEGMENTS.txt
+ffmpeg -auto_convert 1 -f concat -i SEGMENTS.txt -c copy -map 0 "OUTPUT.mp4"
+pause
+}}}
+

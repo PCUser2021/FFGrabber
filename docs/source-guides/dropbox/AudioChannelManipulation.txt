@@ -1,0 +1,484 @@
+{{{
+#!html
+<h1 style="font-size: 22px;">
+Manipulating audio channels
+</h1>
+}}}
+
+[[PageOutline(1, Contents)]]
+
+= stereo → mono stream =
+
+== Downmix both channels ==
+
+[[Image(stereo_mono.png, nolink)]]
+
+Mix a single stereo stream down to a mono stream. Both channels of the stereo stream will be downmixed into the stream:
+
+{{{
+ffmpeg -i stereo.flac -ac 1 mono.flac
+}}}
+
+{{{
+#!div style="border: 1px solid #e5c7c7; margin: 1em; background-color: #fdd;"
+'''Warning:''' Any out of phase stereo will cancel out.
+
+The following filtergraph can be used to bring out of phase stereo in phase prior to downmixing:
+{{{
+-af "asplit[a],aphasemeter=video=0,ametadata=select:key=lavfi.aphasemeter.phase:value=-0.005:function=less,pan=1c|c0=c0,aresample=async=1:first_pts=0,[a]amix"
+}}}
+}}}
+
+== Choose a specific channel ==
+
+[[Image(stereo_mono_exclude.png, nolink)]]
+
+This example uses the [https://ffmpeg.org/ffmpeg-filters.html#channelsplit channelsplit] audio filter to include only the right channel:
+
+{{{
+ffmpeg -i stereo.wav -filter_complex "[0:a]channelsplit=channel_layout=stereo:channels=FR[right]" -map "[right]" front_right.wav
+}}}
+
+* If you only want the left channel use `FL` instead of `FR`. See `ffmpeg -layouts` for a list of channel names. If you are working with a video file, you can use `-map 0:0 -c:v copy` to preserve the video stream.
+
+Example using the [https://ffmpeg.org/ffmpeg-filters.html#pan pan] audio filter:
+
+{{{
+ffmpeg -i stereo.wav -af "pan=mono|c0=c1" mono.m4a
+}}}
+
+* Alternatively, you could use `c0=FR` instead.
+* If want the left channel instead use `c0=c0` or `c0=FL`.
+
+
+= stereo → 2 × mono files =
+
+[[Image(stereo_2mono_outputs.png, nolink)]]
+
+Output each channel in stereo input to individual mono files with the [https://ffmpeg.org/ffmpeg-filters.html#channelsplit channelsplit] audio filter:
+
+{{{
+ffmpeg -i stereo.wav -filter_complex "[0:a]channelsplit=channel_layout=stereo[left][right]" -map "[left]" left.wav -map "[right]" right.wav
+}}}
+
+or with the `-map_channel` option:
+
+{{{
+ffmpeg -i stereo.wav -map_channel 0.0.0 left.wav -map_channel 0.0.1 right.wav
+}}}
+
+or with the [https://ffmpeg.org/ffmpeg-filters.html#pan pan] audio filter:
+
+{{{
+ffmpeg -i stereo.wav -filter_complex "[0:a]pan=1c|c0=c0[left];[0:a]pan=1c|c0=c1[right]" -map "[left]" left.wav -map "[right]" right.wav
+}}}
+
+= stereo → 2 × mono streams =
+
+[[Image(stereo_2mono_streams.png, nolink)]]
+
+Output each channel in stereo input to individual mono streams in one output file with the [https://ffmpeg.org/ffmpeg-filters.html#channelsplit channelsplit] audio filter:
+
+{{{
+ffmpeg -i in.mp3 -filter_complex "[0:a]channelsplit=channel_layout=stereo" output.mka
+}}}
+
+{{{
+#!div style="border: 1px solid #e5e5c7; margin: 1em; background-color: #ffd;"
+'''Note:''' Your player will likely play the first stream by default unless your player allows you to select the desired stream.
+}}}
+
+= mono → stereo =
+
+[[Image(mono_stereo.png, nolink)]]
+
+Create a stereo output from one mono input:
+
+{{{
+ffmpeg -i input.mp3 -ac 2 output.m4a
+}}}
+
+or with the [https://ffmpeg.org/ffmpeg-filters.html#amerge amerge] audio filter:
+
+{{{
+ffmpeg -i input.mp3 -filter_complex "[0:a][0:a]amerge=inputs=2[a]" -map "[a]" output.m4a
+}}}
+
+{{{
+#!div style="border: 1px solid #e5e5c7; margin: 1em; background-color: #ffd;"
+'''Note:''' These examples will not magically create a "true" stereo output from the mono input, but simply place the same audio into both the left and right channels of the output (both channels will be identical).
+}}}
+
+= 2 × mono → stereo =
+
+[[Image(2mono_stereo.png, nolink)]]
+
+Create a stereo output from two mono inputs with the [https://ffmpeg.org/ffmpeg-filters.html#join join] audio filter:
+
+{{{
+ffmpeg -i left.mp3 -i right.mp3 -filter_complex "[0:a][1:a]join=inputs=2:channel_layout=stereo[a]" -map "[a]" output.mp3
+}}}
+
+or the [https://ffmpeg.org/ffmpeg-filters.html#amerge amerge] audio filter:
+
+{{{
+ffmpeg -i left.mp3 -i right.mp3 -filter_complex "[0:a][1:a]amerge=inputs=2[a]" -map "[a]" output.mka
+}}}
+
+= 6 × mono → 5.1 =
+
+[[Image(6mono_5point1.png, nolink)]]
+
+Combine 6 mono inputs into one 5.1 (6 channel) output with the [https://ffmpeg.org/ffmpeg-filters.html#join join] audio filter:
+
+{{{
+ffmpeg -i front_left.wav -i front_right.wav -i front_center.wav -i lfe.wav -i back_left.wav -i back_right.wav \
+-filter_complex "[0:a][1:a][2:a][3:a][4:a][5:a]join=inputs=6:channel_layout=5.1[a]" -map "[a]" output.wav
+}}}
+
+The join audio filter also allows you to manually choose the layout:
+
+{{{
+ffmpeg -i front_left.wav -i front_right.wav -i front_center.wav -i lfe.wav -i back_left.wav -i back_right.wav \
+-filter_complex "[0:a][1:a][2:a][3:a][4:a][5:a]join=inputs=6:channel_layout=5.1:map=0.0-FL|1.0-FR|2.0-FC|3.0-LFE|4.0-BL|5.0-BR[a]" -map "[a]" output.wav
+}}}
+
+Another method using the [https://ffmpeg.org/ffmpeg-filters.html#amerge amerge] audio filter which is somewhat less flexible than the join filter shown above:
+
+{{{
+ffmpeg -i front_left.wav -i front_right.wav -i front_center.wav -i lfe.wav -i back_left.wav -i back_right.wav \
+-filter_complex "[0:a][1:a][2:a][3:a][4:a][5:a]amerge=inputs=6[a]" -map "[a]" output.wav
+}}}
+
+With amerge all inputs must have the same sample rate and format. If inputs do not have the same duration the output will stop with the shortest.
+
+= 5.1 → 6 × mono =
+
+[[Image(5point1_6mono.png, nolink)]]
+
+Split a 5.1 channel input into individual per-channel files using the [https://ffmpeg.org/ffmpeg-filters.html#channelsplit channelsplit] audio filter:
+
+{{{
+ffmpeg -i in.wav \
+-filter_complex "channelsplit=channel_layout=5.1[FL][FR][FC][LFE][BL][BR]" \
+-map "[FL]" front_left.wav \
+-map "[FR]" front_right.wav \
+-map "[FC]" front_center.wav \
+-map "[LFE]" lfe.wav \
+-map "[BL]" back_left.wav \
+-map "[BR]" back_right.wav
+}}}
+
+= 5.1 → stereo =
+
+[[Image(5point1_stereo.png, nolink)]]
+
+To downmix you can simply use `-ac 2`:
+
+{{{
+ffmpeg -i 6channels.wav -ac 2 stereo.wav
+}}}
+
+{{{
+#!div style="border: 1px solid #e5e5c7; margin: 1em; background-color: #ffd;"
+'''Notes:'''
+* By default when using `-ac 2` the LFE channel is omitted. See "[http://atsc.org/wp-content/uploads/2015/03/A52-201212-17.pdf Digital Audio Compression Standard (Document A/52:2012)]", sections 6.1.12 and 7.8 for more downmixing info.
+* `ffmpeg` integrates a default down-mix (and up-mix) system that should be preferred (the `-ac` option) over the pan filter unless you have very specific needs. 
+}}}
+
+If you want to map specific channels and drop the rest you can use the [https://ffmpeg.org/ffmpeg-filters.html#pan pan] audio filter. This will map the `FL` (Front Left) of the input to the  `FL` of the output, and the `FR` (Front Right) of the input to the `FR` of the output:
+
+{{{
+ffmpeg -i 6channels.wav -af "pan=stereo|c0=FL|c1=FR" stereo.wav
+}}}
+
+You can also map specific channels by number. This example will map the first and third channels of the input to the first and second channels of the output.
+
+{{{
+ffmpeg -i 6channels.wav -af "pan=stereo|c0=c0|c1=c2" output.wav
+}}}
+
+If the `=` in a channel specification is replaced by `<`, then the gains for that specification will be renormalized so that the total is 1, thus avoiding clipping noise. See the [https://ffmpeg.org/ffmpeg-filters.html#pan pan audio filter documentation] for additional information and examples.
+
+= 2 × stereo → stereo =
+
+[[Image(2stereo_stereo.png, nolink)]]
+
+Combine two stereo inputs into one stereo output with the [https://ffmpeg.org/ffmpeg-filters.html#amerge amerge] and [https://ffmpeg.org/ffmpeg-filters.html#pan pan] audio filters:
+
+{{{
+ffmpeg -i input1.wav -i input2.wav -filter_complex "[0:a][1:a]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[a]" -map "[a]" output.mp3
+}}}
+
+Or use `-ac 2` instead of the pan audio filter:
+
+{{{
+ffmpeg -i input1.wav -i input2.wav -filter_complex "[0:a][1:a]amerge=inputs=2[a]" -map "[a]" -ac 2 output.mp3
+}}}
+
+{{{
+#!div style="border: 1px solid #e5e5c7; margin: 1em; background-color: #ffd;"
+'''Note:''' The output produced with the pan audio filter may not be identical to the output produced with `-ac 2`, so you'll have to listen to your outputs or view [#Statistics audio statistics] to determine which output suits you.
+}}}
+
+[[Image(2stereo_stereob.png, nolink)]]
+
+A similar situation as above, but instead use the left and right channels from the first input to make the left channel out the output, and use the left and right channels of the second input to make the right channel of the output.
+
+Just change the channel specifications in the pan filter:
+{{{
+ffmpeg -i input1.wav -i input2.wav -filter_complex "[0:a][1:a]amerge=inputs=2,pan=stereo|c0<c0+c1|c1<c2+c3[a]" -map "[a]" output.mp3
+}}}
+
+The pan audio filter has to be used in this situation instead of `-ac 2` unlike the previous example.
+
+= Mix both stereo channels to stereo =
+
+[[Image(stereo_stereo_mix.png, nolink)]]
+
+The left and right channels of the output will each contain both the left and right channels of the input:
+
+{{{
+ffmpeg -i input.mp3 -af "pan=stereo|c0<c0+c1|c1<c0+c1" output.ogg
+}}}
+
+= Switch stereo channels =
+
+[[Image(switch_stereo_channels.png, nolink)]]
+
+Switch left channel to right and right channel to left with the [https://ffmpeg.org/ffmpeg-filters.html#channelmap channelmap] audio filter:
+
+{{{
+ffmpeg -i stereo.mp3 -filter_complex "channelmap=map=FL-FR|FR-FL:channel_layout=stereo" output.mp3
+}}}
+
+Or with the [https://ffmpeg.org/ffmpeg-filters.html#pan pan] audio filer:
+
+{{{
+ffmpeg -i stereo.ogg -af pan=stereo|c0=c1|c1=c0 output.wav
+}}}
+
+or with `-map_channel`:
+
+{{{
+ffmpeg -i stereo.ogg -map_channel 0.0.1 -map_channel 0.0.0 output.wav
+}}}
+
+= Mute a channel =
+
+[[Image(mute_stereo_channel.png, nolink)]]
+
+This example uses the [https://ffmpeg.org/ffmpeg-filters.html#pan pan] audio filter to mute the first channel (front left) but keep the second channel (front right) as is:
+
+{{{
+ffmpeg -i stereo.wav -af "pan=stereo|c1=c1" output.wav
+}}}
+
+Example using the `-map_channel` option:
+
+{{{
+ffmpeg -i stereo.wav -map_channel -1 -map_channel 0.0.1 output.wav
+}}}
+
+= Remap channels =
+
+The [https://ffmpeg.org/ffmpeg-filters.html#channelmap channelmap] audio filter can re-arrange the channel layout. For example, to switch the FL and FR channels in a 5.1 input:
+
+{{{
+ffmpeg -i input.wav -filter_complex "channelmap=map=FL-FR|FR-FL|FC-FC|LFE-LFE|BL-BL|BR-BR:channel_layout=5.1" output.wav
+}}}
+
+= Arbitrary channel reduction & mapping =
+
+The [https://ffmpeg.org/ffmpeg-filters.html#pan pan] audio filter can be used to reduce the number of channels in a stream with an arbitrary mapping of input to output channels. For example, given a multi-channel WAV input file captured from an audio interface, to extract channels 3 and 4 into a stereo output any of the following commands would work:
+
+{{{
+ffmpeg -i in.wav -af 'pan=2c|c0=c2|c1=c3' out.wav
+ffmpeg -i in.wav -filter 'pan=2c|c0=c2|c1=c3' out.wav
+ffmpeg -i in.wav -filter_complex '[0:a] pan=2c|c0=c2|c1=c3' out.wav
+}}}
+
+Here, `2c` specifies that the output should have two channels, and `c0=c2` and `c1=c3` define the mapping of input to output channels. The channel numbers start at zero, thus we define (zero-based) output channels 0 and 1 to come from input channels 2 and 3, respectively.
+
+The `-filter_complex` version is only necessary when more than one filter is employed.
+
+----
+
+= Virtual Binaural Acoustics =
+
+FFmpeg can produce virtual binaural acoustics files using the [https://ffmpeg.org/ffmpeg-filters.html#sofalizer sofalizer] audio filter. Most known channel layouts are supported for the input, and the output is always stereo.
+
+{{{
+ffmpeg -i input.wav -af sofalizer=/path/to/sofa/file output.flac
+}}}
+
+SOFA files can be found at [https://sofacoustics.org/data/database/ari/ sofacoustics.org].
+
+----
+
+= Multiple channel layouts =
+
+This example combines two layouts (5.1+2.0) into a single arbitrary layout using the [https://ffmpeg.org/ffmpeg-filters.html#pan pan] audio filter:
+
+{{{ 
+ffmpeg -i input -filter_complex "pan=5.1+downmix|FL=c0|FR=c1|FC=c2|LFE=c3|BL=c4|BR=c5|DL=c6|DR=c7[a]" -map "[a]" out.wav
+}}}
+
+The output in the example resulted in one audio stream with 8 channels.
+
+----
+
+= Merged and mapped audio channels = 
+
+This is born from screencasting, where you might want to record an interview over teleconference and still be able to isolate the audio streams to better deal with background noise later in post-processing.
+
+This example outputs a video with three audio options: the merged speaker+microphone streams, the speaker stream alone, and the microphone stream alone.
+
+x11grab provides stream 0, and is video only.
+
+stream 1 is the pulse "audio monitor", or what the speakers are playing.
+
+stream 2 is the pulseaudio default audio input device, meant to be a microphone, and in this case, stereo.
+
+"[a]" is the generated stream from merging stream 1 and stream 2, using amerge and then pan to retain stereo channels instead of 4.0 channels as seen above in "2 × stereo → stereo".
+
+These streams are then mapped in the order desired.
+
+
+
+{{{
+#for "-f pulse -i 0", 0 is the pulseaudio id 
+#of the audio that is going to the speakers 
+#as determined from "pacmd list-sources"
+ffmpeg -video_size 1920x1080 -framerate 60 \
+  -f x11grab -i :0.0 \
+  -f pulse -i 0 \
+  -f pulse -i default \
+  -filter_complex "[1:a][2:a] amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[a]" \
+  -map 0 \
+  -map "[a]" \
+  -map 1 \
+  -map 2 \
+  -c:v libx264 -crf 17 -preset ultrafast  \
+  output_filename.mkv
+
+}}}
+
+----
+
+= Statistics =
+
+The [https://ffmpeg.org/ffmpeg-filters.html#astats astats] audio filter can display information including length, DC offset, min/max levels, peak/RMS level dB:
+
+{{{
+$ ffmpeg -i input.wav -af astats -f null -
+…
+[Parsed_astats_0 @ 0x168a260] Channel: 1
+[Parsed_astats_0 @ 0x168a260] DC offset: -0.001829
+[Parsed_astats_0 @ 0x168a260] Min level: -0.605072
+[Parsed_astats_0 @ 0x168a260] Max level: 0.607056
+[Parsed_astats_0 @ 0x168a260] Peak level dB: -4.335430
+[Parsed_astats_0 @ 0x168a260] RMS level dB: -20.298984
+[Parsed_astats_0 @ 0x168a260] RMS peak dB: -12.303891
+[Parsed_astats_0 @ 0x168a260] RMS trough dB: -35.352893
+[Parsed_astats_0 @ 0x168a260] Crest factor: 6.283154
+[Parsed_astats_0 @ 0x168a260] Flat factor: 0.000000
+[Parsed_astats_0 @ 0x168a260] Peak count: 2
+[Parsed_astats_0 @ 0x168a260] Channel: 2
+[Parsed_astats_0 @ 0x168a260] DC offset: -0.001826
+[Parsed_astats_0 @ 0x168a260] Min level: -0.585999
+[Parsed_astats_0 @ 0x168a260] Max level: 0.608490
+[Parsed_astats_0 @ 0x168a260] Peak level dB: -4.314931
+[Parsed_astats_0 @ 0x168a260] RMS level dB: -20.519969
+[Parsed_astats_0 @ 0x168a260] RMS peak dB: -12.056472
+[Parsed_astats_0 @ 0x168a260] RMS trough dB: -36.784681
+[Parsed_astats_0 @ 0x168a260] Crest factor: 6.460288
+[Parsed_astats_0 @ 0x168a260] Flat factor: 0.000000
+[Parsed_astats_0 @ 0x168a260] Peak count: 2
+[Parsed_astats_0 @ 0x168a260] Overall
+[Parsed_astats_0 @ 0x168a260] DC offset: -0.001829
+[Parsed_astats_0 @ 0x168a260] Min level: -0.605072
+[Parsed_astats_0 @ 0x168a260] Max level: 0.608490
+[Parsed_astats_0 @ 0x168a260] Peak level dB: -4.314931
+[Parsed_astats_0 @ 0x168a260] RMS level dB: -20.408071
+[Parsed_astats_0 @ 0x168a260] RMS peak dB: -12.056472
+[Parsed_astats_0 @ 0x168a260] RMS trough dB: -36.784681
+[Parsed_astats_0 @ 0x168a260] Flat factor: 0.000000
+[Parsed_astats_0 @ 0x168a260] Peak count: 2.000000
+[Parsed_astats_0 @ 0x168a260] Number of samples: 1440706
+}}}
+
+----
+
+= List channel names and standard channel layouts =
+
+Output from `ffmpeg -layouts`:
+
+{{{
+Individual channels:
+NAME           DESCRIPTION
+FL             front left
+FR             front right
+FC             front center
+LFE            low frequency
+BL             back left
+BR             back right
+FLC            front left-of-center
+FRC            front right-of-center
+BC             back center
+SL             side left
+SR             side right
+TC             top center
+TFL            top front left
+TFC            top front center
+TFR            top front right
+TBL            top back left
+TBC            top back center
+TBR            top back right
+DL             downmix left
+DR             downmix right
+WL             wide left
+WR             wide right
+SDL            surround direct left
+SDR            surround direct right
+LFE2           low frequency 2
+TSL            top side left
+TSR            top side right
+BFC            bottom front center
+BFL            bottom front left
+BFR            bottom front right
+
+Standard channel layouts:
+NAME           DECOMPOSITION
+mono           FC
+stereo         FL+FR
+2.1            FL+FR+LFE
+3.0            FL+FR+FC
+3.0(back)      FL+FR+BC
+4.0            FL+FR+FC+BC
+quad           FL+FR+BL+BR
+quad(side)     FL+FR+SL+SR
+3.1            FL+FR+FC+LFE
+5.0            FL+FR+FC+BL+BR
+5.0(side)      FL+FR+FC+SL+SR
+4.1            FL+FR+FC+LFE+BC
+5.1            FL+FR+FC+LFE+BL+BR
+5.1(side)      FL+FR+FC+LFE+SL+SR
+6.0            FL+FR+FC+BC+SL+SR
+6.0(front)     FL+FR+FLC+FRC+SL+SR
+hexagonal      FL+FR+FC+BL+BR+BC
+6.1            FL+FR+FC+LFE+BC+SL+SR
+6.1(back)      FL+FR+FC+LFE+BL+BR+BC
+6.1(front)     FL+FR+LFE+FLC+FRC+SL+SR
+7.0            FL+FR+FC+BL+BR+SL+SR
+7.0(front)     FL+FR+FC+FLC+FRC+SL+SR
+7.1            FL+FR+FC+LFE+BL+BR+SL+SR
+7.1(wide)      FL+FR+FC+LFE+BL+BR+FLC+FRC
+7.1(wide-side) FL+FR+FC+LFE+FLC+FRC+SL+SR
+7.1(top)       FL+FR+FC+LFE+BL+BR+TFL+TFR
+octagonal      FL+FR+FC+BL+BR+BC+SL+SR
+cube           FL+FR+BL+BR+TFL+TFR+TBL+TBR
+hexadecagonal  FL+FR+FC+BL+BR+BC+SL+SR+TFL+TFC+TFR+TBL+TBC+TBR+WL+WR
+downmix        DL+DR
+22.2           FL+FR+FC+LFE+BL+BR+FLC+FRC+BC+SL+SR+TC+TFL+TFC+TFR+TBL+TBC+TBR+LFE2+TSL+TSR+BFC+BFL+BFR
+}}}

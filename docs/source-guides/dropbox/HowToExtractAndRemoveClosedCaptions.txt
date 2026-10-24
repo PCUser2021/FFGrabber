@@ -1,0 +1,22 @@
+= How to extract and remove closed captions =
+
+== Introduction ==
+
+In analog TV broadcasting, closed captions look like subtitles but they are actually embedded inside the video stream. There is no subtitle stream assigned to them.
+
+They are mainly intended for hearing-impaired people and are displayed as white text with black-box background.
+
+== Extract closed captions to a SRT file ==
+
+This may be helpful when a translation to another language is needed.
+{{{
+ffmpeg -f lavfi -i "movie=INPUT.mp4[out0+subcc]" -map s "OUTPUT.srt"
+}}}
+== Remove closed captions in SEI ==
+This is achieved using the '''filter_units''' video bitstream filter.
+{{{
+ffmpeg -i "INPUT.mp4" -c copy -map 0 -bsf:v filter_units=remove_types=6 "OUTPUT.mp4"
+}}}
+for AVC and remove_types=39 for HEVC. MPEG does not have SEI, so that will not work.
+
+Type SEI can have other information there, like HDR10+ metadata, so more accurate code is needed, see #5283.

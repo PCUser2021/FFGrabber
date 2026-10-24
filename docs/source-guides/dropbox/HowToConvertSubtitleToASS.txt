@@ -1,0 +1,21 @@
+Simply like this:
+{{{
+ffmpeg -i input.srt output.ass
+}}}
+
+To list all the subtitle codecs that FFmpeg supports, you can type:
+{{{
+ffmpeg -codecs | grep "^...S"
+}}}
+
+The output should look like something like this:
+{{{
+ ..S... = Subtitle codec
+ DES    ass             Advanced SubStation Alpha subtitle
+ DES    dvbsub          DVB subtitles
+ DES    dvdsub          DVD subtitles
+ D S    microdvd        MicroDVD subtitle
+ D S    pgssub          HDMV Presentation Graphic Stream subtitles
+ DES    srt             SubRip subtitle
+ DES    xsub            DivX subtitles (XSUB)
+}}}

@@ -1,0 +1,15 @@
+= Windows code page 1252 =
+
+This code page is used to encode Latin alphabet for many european languages including French, Spanish and German.
+
+When filenames, metadata and/or subtitles are encoded in one of those languages, a Windows batch file look like this :
+
+{{{
+chcp 1252
+ffmpeg -i "C'est l'été.mp4" -sub_charenc CP1252 -f srt -i "Français.srt" ^
+-metadata:g title="L'été arrive" -metadata:s:s language=fre ^
+-map 0 -map 1 -c copy -c:s mov_text "OUTPUT.mp4"
+pause
+}}}
+
+In the above example, both batch file and SRT file must be created in ANSI mode (i.e. not UTF-8).

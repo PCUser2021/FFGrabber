@@ -1,0 +1,57 @@
+= How to convert !YouTube SBV to SRT =
+
+Simply like this:
+{{{
+ffmpeg -i captions.sbv captions.srt
+}}}
+
+[https://support.google.com/youtube/answer/2734698?hl=en&ref_topic=7296214 YouTube] supports only the basic features of SBV (SuBView) and SRT (!SubRipText) closed captions. Notably users can download existing closed captions (including auto-generated subtitles) as SBV, convert them to SRT supported by, e.g., ''MPlayer'', edit the subtitles in a text editor such as `vim` or `notepad` (hint: !YouTube wants UTF-8), and upload the fixed version to !YouTube, overwriting the old subtitles for the given language.
+
+As far as !YouTube supports these two formats (among others) they are very similar. The SRT captions start with a counter (increasing numbers), followed by the ''from'''''` --> `'''''to'' timestamps, text (one or two lines), and an empty line:
+{{{
+1
+00:00:05,000 --> 00:00:13,700
+you know where's the girl who hasn't
+
+2
+00:00:10,100 --> 00:00:16,400
+gotten to college or even maybe finished
+
+}}}
+
+The SBV captions have no counter and use periods as decimal points in their ''from'''''`,`'''''to'' timestamps:
+{{{
+0:00:01.400,0:00:06.770
+you know where's the girl who hasn't
+
+0:00:04.610,0:00:08.840
+gotten to college or even maybe finished
+
+}}}
+
+SRT timestamps have the form `hh`'''`:`'''`mm`'''`:`'''`ss`'''`,`'''`nnn`, SBV timestamps use `h`'''`:`'''`mm`'''`:`'''`ss`'''`.`'''`nnn`. 
+
+!YouTube is smart enough to detect and report simple errors, but you should make sure that timestamps do not overlap, i.e., the earliest ''from'' in the next caption can be the same as the ''to'' end of the last caption. Obviously the duration should be not too short, and it cannot be "negative" with a ''from'' later than its corresponding ''to''. 
+
+The auto-generated SBV example shown above (downloaded from a !YouTube movie trailer) actually uses overlapping timestamps, and ''FFmpeg'' kept them as is in its SRT conversion. For the theory see the ''WebM Project'' [https://www.webmproject.org/docs/container/#general-webvtt-notes General WebVTT Notes], in practice input option [https://ffmpeg.org/ffmpeg.html#Advanced-Subtitle-options -fix_sub_duration] can get rid of this:
+
+{{{
+ffmpeg -fix_sub_duration -i captions.sbv captions.srt
+}}}
+
+Fixed SRT output sample:
+
+{{{
+1
+00:00:05,000 --> 00:00:10,100
+you know where's the girl who hasn't
+
+2
+00:00:10,100 --> 00:00:13,700
+gotten to college or even maybe finished
+
+}}}
+
+''SMplayer'' using ''MPlayer'' is unsuited as a syntax check, e.g., it doesn't insist on file extension '''`.srt`''', anything including '''`.txt`''' goes, it accepts missing counters, and simply ignores timestamps greater than the duration of the clip. As of early 2019 !YouTube could not handle the latter, the upload failed without reporting an error. 
+
+Hint for ''Windows'' users, if your ''Chrome'' uploads fail with an unclear JSON-error use ''IE11'', or try the !YouTube ''studio beta'' UI instead of ''classic studio''. 

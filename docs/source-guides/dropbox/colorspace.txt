@@ -1,0 +1,412 @@
+= Colorspace support in FFmpeg =
+
+== What is colorspace? Why should we care? ==
+Colorspace describes how an array of pixel values should be displayed on the screen. It provides information like how pixel values are stored within a file, and what the range and meaning of those values are.
+
+Basically, it tells the format of the array of pixels (e.g. RGB or YUV), and how the values of each color component should be translated, to be properly displayed by the photons of the screen. (i.e. picking a colorspace randomly seems unlikely to be a good choice...)
+
+The differences between RGB and YUV:
+- RGB distinguishes color pixel values into 3 components: Red, Green, Blue. (hence the name)
+- YUV uses a different representation schema that represents color pixel values in: Luma (Y, or brightness), Chroma (U and V, two color differences). This format exploits the fact that humans are able to better notice details in luminance (approximated by luma) than in chroma. [ Note: YUV represents color in 3 components. ]
+
+{{{#!div style="margin-left: 0; border: 1px solid #e5e5c7; background-color: #FFD"
+'''Note:'''\\
+͏    The term "YUV" is ambiguous and often used wrongly ![1], including the definition of pixel formats in FFmpeg.\\
+͏    A more accurate term for how colors stored in digital video would be [https://en.wikipedia.org/wiki/YCbCr YCbCr].\\
+͏    Y'UV on the other hand specifies a colorspace consisting of luma (Y') and chrominance (UV) components.\\
+͏    For more info read Wikipedia [https://en.wikipedia.org/wiki/YUV <YUV>].\\
+[ ![1]\\
+͏    There's no practical difference between YUV and YCbCr: sort of more like "RGB" and "BGR".\\
+͏    "UV" doesn't explicitly state the exact type of color difference neither. (so it might be "!CbCr") ]
+
+͏    In following, the term YUV is used as in FFmpeg pixel formats: referring to YCbCr in digital video.
+}}}
+
+The conversion between YUV pixel buffer representation and its visual representation depends on the type of the YUV represented in the pixel buffers, which are essentially device-dependent. The accuracy of grey vs color separation depends on how well the transformation matrix matches the underlying RGB space.
+
+Examples are:
+- [https://en.wikipedia.org/wiki/Rec._601 BT.601] ("Standard-Definition" or SD)
+- [https://en.wikipedia.org/wiki/Rec._709 BT.709] ("High-Definition" or HD)
+- [https://en.wikipedia.org/wiki/Rec._2020 BT.2020] ("Ultra-High-Definition" or UHD)
+
+These standards describe not just things like how to convert a YUV signal to RGB, but also how a RGB signal should be represented in terms of photon emission, in a device-independent way.
+
+== How does FFmpeg identify colorspaces? ==
+
+In FFmpeg, colorspaces are represented in the form of [http://git.videolan.org/?p=ffmpeg.git;a=blob;f=libavutil/pixfmt.h;hb=HEAD pixel format].
+
+In practical terms, the properties you care about are:
+
+1. The signal format in the pixel buffer:
+ a. the signal type: RGB, YUV, or other type, and
+ b. the signal bit-depth.
+2. For YUV signals, the color range: full/pc/jpeg or limited/restricted/tv/mpeg. [ See also: # [#color_primaries ͏"color_primaries"] ]\\
+ For 8bpc (bit-per-component): full means 0 .. 255, limited 16 .. 235.
+3. The transformation matrix between YUV and RGB.
+4. The linearization function from RGB to a linear RGB signal.
+5. The conversion matrix between the linearized RGB and the device-independent XYZ colorspace.
+
+FFmpeg stores these properties in the [https://ffmpeg.org/doxygen/trunk/structAVFrame.html AVFrame] struct:
+
+- The format (type and bit-depth)->[https://ffmpeg.org/doxygen/trunk/structAVFrame.html#aed14fa772ce46881020fd1545c86432c format]
+- The signal range->[https://ffmpeg.org/doxygen/trunk/structAVFrame.html#a853afbad220bbc58549b4860732a3aa5 color_range]
+- The YUV/RGB transformation matrix->[https://ffmpeg.org/doxygen/trunk/structAVFrame.html#a9262c231f1f64869439b4fe587fe1710 colorspace]
+- The linearization function (a.k.a. transformation characteristics)->[https://ffmpeg.org/doxygen/trunk/structAVFrame.html#ab09abb126e3922bc1d010cf044087939 color_trc]
+- The RGB/XYZ matrix->[https://ffmpeg.org/doxygen/trunk/structAVFrame.html#a59a3f830494f2ed1133103a1bc9481e7 color_primaries]
+
+== How to use FFmpeg to convert the colorspace ==
+
+Warning: https://trac.ffmpeg.org/wiki/Scaling#Warning
+
+Pixel format conversion is often performed by [https://ffmpeg.org/libswscale.html libswscale], which you will most likely access through the [https://ffmpeg.org/ffmpeg-scaler.html FFmpeg Scaler] or the scale [https://ffmpeg.org/ffmpeg-filters.html#scale-1 video filter].
+
+Other video filters include:
+- `colormatrix` ([https://ffmpeg.org/ffmpeg-filters.html#colormatrix native])
+- `colorspace` ([https://ffmpeg.org/ffmpeg-filters.html#colorspace native])
+- `zscale` ([https://ffmpeg.org/ffmpeg-filters.html#zscale z.lib library])
+
+=== Comparing and contrasting `colorspace`, `colormatrix`, libswscale, and `zscale` ===
+
+- `colorspace` and `colormatrix` can only convert YUV to YUV
+- libswscale can convert between YUV and RGB
+- `colormatrix` only supports 8bpc pixel formats
+- `colorspace` supports 8bpc, 10bpc, and 12bpc
+- `colormatrix` does not apply gamma and primaries correction (i.e. which exact color "red", "green", and "blue" each is)
+- `colorspace` applies gamma and primaries correction by default. (Use `fast=1` to disable this for faster conversion or to make output compatible with output produced by `colormatrix`.)
+- `colormatrix` is C only, whereas `colorspace` uses x86 SIMD so it's faster
+- `colormatrix` produces horrible quality for 10bpc and 12bpc
+- `colorspace` produces something decent for 10bpc
+- For 8bpc, `colorspace` seems to produce slightly better quality than `colormatrix`
+- `zscale` produces better results at all bit depths
+
+=== `colorspace` and friends ===
+The easiest way to use these filters is to ensure that the input AVFrames have all relevant struct members set to the appropriate values. On ffmpeg command-line this is what options such as `colorspace` and `color_trc` do; you can also put them on the output side to modify what space the output is in.
+
+If everything goes well, libswscale figures out how to do the conversion and you can avoid calling the filter manually. However, AVFrames does not cover every option needed, so advanced use will go back to `colorspace` or `zscale`.
+
+See also [https://ffmpeg.org/doxygen/trunk/group__lsws.html#ga541bdffa8149f5f9203664f955faa040 sws_setColorspaceDetails]() and [https://stackoverflow.com/a/67885887 F.X.'s colorspace answer].
+
+=== sRGB ===
+
+There is no colorspace default called sRGB in FFmpeg, because it's identical to BT.709 except for a different transfer function. Just use one of the following:
+
+* sRGB input, fast: `-vf "colorspace=all=bt709:fast=1"`, aka `-colorspace bt709` (on the input side!)
+* sRGB input, accurate: `-vf "colorspace=all=bt709:itrc=srgb:fast=0"`, aka `-colorspace bt709 -color_trc srgb` (on the input side!)
+
+See also [https://stackoverflow.com/a/69251961 F.X.'s HDR answer] and [https://stackoverflow.com/a/55411219 Gyan's sRGB output answer]. If `srgb` does not work, try the more academic name `iec61966-2-1`.
+
+=== "color_primaries" ===
+
+͏    Quick reference for somewhat cryptic "color_primaries" names:\\
+͏    1: "bt709" (BT.709)\\
+͏    5: "bt470bg" / "gamma28" (BT.470 BG)\\
+͏    6: "smpte170m" (SMPTE 170 M)\\
+͏    (alike for "colorspace" "color_trc")\\
+͏    .\\
+͏    See also:\\
+(!`ffmpeg -h full` derived)\\
+[[
+{{{
+-color_range <int>  color range (from 0 to INT_MAX) (default unknown)
+  0 unknown          Unspecified
+    unspecified
+  1 tv               MPEG (( 219 * 2^( n - 8 ) ))
+    mpeg
+    limited
+  2 pc               JPEG (( 2^n - 1 ))
+    jpeg
+    full
+
+-colorspace <int>      color space (from 0 to INT_MAX) (default unknown)
+   0 rgb                RGB
+   1 bt709              BT.709
+   2 unknown            Unspecified
+     unspecified
+   4 fcc                FCC
+   5 bt470bg            BT.470 BG
+   6 smpte170m          SMPTE 170 M
+   7 smpte240m          SMPTE 240 M
+   8 ycgco              YCGCO
+     ycocg
+   9 bt2020nc           BT.2020 NCL
+     bt2020_ncl
+  10 bt2020c            BT.2020 CL
+     bt2020_cl
+  11 smpte2085          SMPTE 2085
+  12 chroma-derived-nc  Chroma-derived NCL
+  13 chroma-derived-c   Chroma-derived CL
+  14 ictcp              ICtCp
+  15 ipt-c2             IPT-C2
+  16 ycgco-re           YCGCO-R (even add)
+  17 ycgco-ro           YCGCO-R (odd add)
+
+-color_primaries <int>  color primaries (from 1 to INT_MAX) (default unknown)
+   1 bt709               BT.709
+   2 unknown             Unspecified
+     unspecified
+   4 bt470m              BT.470 M
+   5 bt470bg             BT.470 BG
+   6 smpte170m           SMPTE 170 M
+   7 smpte240m           SMPTE 240 M
+   8 film                Film
+   9 bt2020              BT.2020
+  10 smpte428            SMPTE 428-1
+     smpte428_1
+  11 smpte431            SMPTE 431-2
+  12 smpte432            SMPTE 422-1
+  22 jedec-p22           JEDEC P22
+     ebu3213             EBU 3213-E
+
+-color_trc <int>  color transfer characteristics (from 1 to INT_MAX) (default unknown)
+   1 bt709         BT.709
+   2 unknown       Unspecified
+     unspecified
+   4 gamma22       BT.470 M
+   5 gamma28       BT.470 BG
+   6 smpte170m     SMPTE 170 M
+   7 smpte240m     SMPTE 240 M
+   8 linear        Linear
+   9 log100        Log
+     log
+  10 log316        Log square root
+     log_sqrt
+  11 iec61966-2-4  IEC 61966-2-4
+     iec61966_2_4
+  12 bt1361e       BT.1361
+     bt1361
+  13 iec61966-2-1  IEC 61966-2-1
+     iec61966_2_1
+  14 bt2020-10     BT.2020 10-bit
+     bt2020_10bit
+  15 bt2020-12     BT.2020 12-bit
+     bt2020_12bit
+  16 smpte2084     SMPTE 2084
+  17 smpte428      SMPTE 428-1
+     smpte428_1
+  18 arib-std-b67  ARIB STD-B67
+}}}
+]]\\
+͏    [ Still cryptic whatsoever... ]
+
+== Examples (with 20240506 git-master) == #Examples
+
+͏    Caveat: https://trac.ffmpeg.org/ticket/11238#comment:5
+
+͏    Note:\\
+͏    Use [ https://github.com/MasterInQuestion/Markup/blob/main/picdif.htm ] for image comparison.\\
+͏    (may not work well on small screen and/or browser asserted [https://www.google.com/search?hl=en&gl=ca&num=10&q=devicePixelRatio ͏"devicePixelRatio"] != 1)\\
+͏    .\\
+͏    Image comparison also by:\\
+͏    `ffmpeg -hide_banner -nostdin -i ${in0} -i ${in1} -lavfi "ssim; [0][1]psnr" -f null -`\\
+͏    [ https://trac.ffmpeg.org/ticket/10922#comment:description ]
+
+͏    Warning:\\
+͏    Due to TracWiki's limitation, the page is riddled with Unicode special characters (to workaround).\\
+͏    (either invisible or of tricky look; near links, indentation; maybe else)\\
+͏    .\\
+͏    Copy / Edit with caution.\\
+\\
+\\
+͏    Some changes occurred for the [https://ffmpeg.org/ffmpeg-filters.html#colorspace ͏"colorspace"] filter meanwhile.\\
+͏    Differ the following 4:\\
+͏    #[#colorspace_yuv444p10le-yuv444p colorspace_yuv444p10le-yuv444p]\\
+͏    #[#colorspace_fast=0_iall=bt601-6-625 colorspace_fast=0_iall=bt601-6-625]\\
+͏    #[#colorspace_fast=0_iall=bt601-6-525 colorspace_fast=0_iall=bt601-6-525]\\
+͏    #[#colorspace_yuv420p10le-yuv420p colorspace_yuv420p10le-yuv420p]
+
+͏    Common pattern:\\
+͏    "-vf" involved either:\\
+͏    |1| "colorspace=bt709:iall=bt601-6-625:fast=1"\\
+͏    |2| "colorspace=bt709:iall=bt601-6-625"\\
+͏    |3| "colorspace=bt709:iall=bt601-6-525"
+
+͏    Rather noticeable visual difference for |2| |3|. [ Near right-upper houses/shrubs in dark. ]\\
+͏    Clarification appreciated. [ Rationale and relevant commits? ]\\
+͏    .\\
+͏    Warning message of interest:\\
+͏    “[Parsed_colorspace_0] Input range not set, assuming tv/mepg”\\
+͏    Specifying "irange=2" white-out things. (assumed 1 when not set)\\
+͏    Note 6.1.1 didn't emit the warning: but generated [near-]identical ![1] files as 20240506 git-master.\\
+͏    .\\
+͏    Less noticeable for |1|: mostly noise differences. [ Near aforementioned area; and the sky banding. ]
+
+[ ![1][=#bitexact]\\
+͏    "fast=1" related ones differ petty noises:\\
+͏    Presumably for the added "csp:bt709 range:tv" assertions.
+
+͏    Caveat the execution may have platform dependent differences. (typically no matter)\\
+͏    "+bitexact" to various flags ([https://ffmpeg.org/ffmpeg-all.html#Advanced-Video-options ͏"-sws_flags"], [https://ffmpeg.org/ffmpeg-all.html#Codec-Options ͏"-flags"], [https://ffmpeg.org/ffmpeg-all.html#Format-Options ͏"-fflags"]) to insist platform independent (also non-stochastic) output. (may sacrifice speed)\\
+͏    [ !^ One would also typically like "[https://ffmpeg.org/ffmpeg-all.html#Advanced-options -map_metadata] -1 -map_chapters -1" in such case. ]
+
+͏    "-bitexact" should be shortcut for above:\\
+͏    https://github.com/search?type=code&q=repo:FFmpeg/FFmpeg+path:/^fftools%5C//+/(?-i)BITEXACT/\\
+͏    (seemingly missing "SWS_BITEXACT" yet) [ #11007 ] ]\\
+\\
+\\
+==== The input source (rgb24):[[span(id=origin(rgb24))]] ==== #src
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/origin(rgb24).webp\\
+(~ 879.32 KiB; WebP Lossless: 1440x836)\\
+\\
+\\
+==== "`colormatrix`" (yuv444p10le): ==== #colormatrix_yuv444p10le
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv444p10le -sws_flags spline+accurate_rnd+full_chroma_int -vf "colormatrix=bt470bg:bt709" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colormatrix_yuv444p10le.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colormatrix_yuv444p10le.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colormatrix_yuv444p10le.webp"
+
+Output bit-identical as [#colormatrix_yuv444p "colormatrix" (yuv444p)].\\
+\\
+==== "`colorspace`" (yuv444p10le): ==== #colorspace_yuv444p10le
+
+[ Note:\\
+͏    SSIM > 99.98% with The input source (rgb24).\\
+͏    Should be 100% if the conversion algorithms are improved, though. ]
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv444p10le -sws_flags spline+accurate_rnd+full_chroma_int -vf "colorspace=bt709:iall=bt601-6-625:fast=1" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_yuv444p10le.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_yuv444p10le.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_yuv444p10le.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv444p10le.webp\\
+\\
+\\
+==== Reference (yuv444p): ==== #yuv444p
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv444p -sws_flags spline+accurate_rnd+full_chroma_int -color_range 1 -colorspace 5 -color_primaries 5 -color_trc 6 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "yuv444p.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "yuv444p.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "yuv444p.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/yuv444p.webp\\
+\\
+==== "`colormatrix`" (yuv444p): ==== #colormatrix_yuv444p
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv444p -sws_flags spline+accurate_rnd+full_chroma_int -vf "colormatrix=bt470bg:bt709" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colormatrix_yuv444p.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colormatrix_yuv444p.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colormatrix_yuv444p.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colormatrix_yuv444p.webp\\
+\\
+==== "`colorspace`" (yuv444p): ==== #colorspace_yuv444p
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv444p -sws_flags spline+accurate_rnd+full_chroma_int -vf "colorspace=bt709:iall=bt601-6-625:fast=1" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_yuv444p.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_yuv444p.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_yuv444p.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv444p.webp\\
+\\
+==== "`colorspace`" (yuv444p10le -> yuv444p): ==== #colorspace_yuv444p10le-yuv444p
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "[#colorspace_yuv444p10le colorspace_yuv444p10le.avi]" -pix_fmt yuv444p -sws_flags spline+accurate_rnd+full_chroma_int -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_yuv444p10le-yuv444p.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_yuv444p10le-yuv444p.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_yuv444p10le-yuv444p.webp"
+
+͏    https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv444p10le-yuv444p.webp\\
+͏    https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv444p10le-yuv444p.20190416.webp\\
+\\
+\\
+==== "`colorspace`" with "`fast=0`" "`iall=bt601-6-625`":[[span(id=colorspace_fast=0_iall=bt601-6-625)]] ====
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv444p10le -sws_flags spline+accurate_rnd+full_chroma_int -vf "colorspace=bt709:iall=bt601-6-625" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_fast=0_iall=bt601-6-625.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_fast=0_iall=bt601-6-625.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_fast=0_iall=bt601-6-625.webp"
+
+͏    https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_fast=0_iall=bt601-6-625.webp\\
+͏    https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_fast=0_iall=bt601-6-625.20190416.webp\\
+\\
+==== "`colorspace`" with "`fast=0`" "`iall=bt601-6-525`":[[span(id=colorspace_fast=0_iall=bt601-6-525)]] ====
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv444p10le -sws_flags spline+accurate_rnd+full_chroma_int -vf "colorspace=bt709:iall=bt601-6-525" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_fast=0_iall=bt601-6-525.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_fast=0_iall=bt601-6-525.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_fast=0_iall=bt601-6-525.webp"
+
+͏    https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_fast=0_iall=bt601-6-525.webp\\
+͏    https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_fast=0_iall=bt601-6-525.20190416.webp\\
+\\
+==== "`colorspace`" with "`fast=1`" "`iall=bt601-6-525`":[[span(id=colorspace_fast=1_iall=bt601-6-525)]] ====
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv444p10le -sws_flags spline+accurate_rnd+full_chroma_int -vf "colorspace=bt709:iall=bt601-6-525:fast=1" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_fast=1_iall=bt601-6-525.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_fast=1_iall=bt601-6-525.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_fast=1_iall=bt601-6-525.webp"
+
+Output bit-identical as [#colorspace_yuv444p10le "colorspace" (yuv444p10le)].\\
+\\
+\\
+\\
+\\
+==== Reference (yuv420p10le): ==== #yuv420p10le
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv420p10le -sws_flags spline+accurate_rnd+full_chroma_int -color_range 1 -colorspace 5 -color_primaries 5 -color_trc 6 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "yuv420p10le.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "yuv420p10le.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "yuv420p10le.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/yuv420p10le.webp\\
+\\
+==== "`colorspace`" (yuv420p10le): ==== #colorspace_yuv420p10le
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv420p10le -sws_flags spline+accurate_rnd+full_chroma_int -vf "colorspace=bt709:iall=bt601-6-625:fast=1" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_yuv420p10le.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_yuv420p10le.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_yuv420p10le.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv420p10le.webp\\
+\\
+\\
+==== Reference (yuv420p): ==== #yuv420p
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv420p -sws_flags spline+accurate_rnd+full_chroma_int -color_range 1 -colorspace 5 -color_primaries 5 -color_trc 6 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "yuv420p.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "yuv420p.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "yuv420p.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/yuv420p.webp\\
+\\
+==== "`colorspace`" (yuv420p): ==== #colorspace_yuv420p
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "origin(rgb24).webp" -pix_fmt yuv420p -sws_flags spline+accurate_rnd+full_chroma_int -vf "colorspace=bt709:iall=bt601-6-625:fast=1" -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_yuv420p.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_yuv420p.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_yuv420p.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv420p.webp\\
+\\
+==== "`colorspace`" (yuv420p10le -> yuv420p): ==== #colorspace_yuv420p10le-yuv420p
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "[#colorspace_yuv420p10le colorspace_yuv420p10le.avi]" -pix_fmt yuv420p -sws_flags spline+accurate_rnd+full_chroma_int -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_yuv420p10le-yuv420p.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_yuv420p10le-yuv420p.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_yuv420p10le-yuv420p.webp"
+
+͏    https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv420p10le-yuv420p.webp\\
+͏    https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv420p10le-yuv420p.20190416.webp\\
+\\
+==== "`colorspace`" (yuv444p10le -> yuv420p): ==== #colorspace_yuv444p10le-yuv420p
+
+͏    ffmpeg -y -v trace -hide_banner -nostdin -nostats -i "[#colorspace_yuv444p10le colorspace_yuv444p10le.avi]" -pix_fmt yuv420p -sws_flags spline+accurate_rnd+full_chroma_int -color_range 1 -colorspace 1 -color_primaries 1 -color_trc 1 -c:v libx264 -preset placebo -qp 0 -x264-params "keyint=15:no-deblock=1" "colorspace_yuv444p10le-yuv420p.avi"\\
+͏    ffmpeg -y -v debug -hide_banner -nostdin -nostats -i "colorspace_yuv444p10le-yuv420p.avi" -pix_fmt rgb24 -sws_flags +accurate_rnd+full_chroma_int -lossless 1 -q 100 -compression_level 6 "colorspace_yuv444p10le-yuv420p.webp"
+
+https://github.com/MasterInQuestion/attach/raw/main/@ext/trac.ffmpeg.org/wiki/colorspace/colorspace_yuv444p10le-yuv420p.webp
+
+=== "full_chroma_in*" related[[span(id=full_chroma_in*)]] === #full_chroma
+
+[ haasn @ CE 2024-08-16 09:43:37 UTC:\\
+https://github.com/FFmpeg/FFmpeg/commit/3e064f52eb368a373ded6e3704fcf29f1db3ff12
+
+[ "SWS_FULL_CHR_H_INT"\\
+͏    Perform full chroma upsampling when upscaling to RGB.
+
+͏    For example, when converting 50x50 yuv420p to 100x100 rgba:\\
+͏    Setting this flag will scale the chroma plane from 25x25 to 100x100 (4:4:4):\\
+͏    And then convert the 100x100 yuv444p image to rgba in the final output step.\\
+͏    .\\
+͏    Without this flag, the chroma plane is instead scaled to 50x100 (4:2:2):\\
+͏    With a single chroma sample being re-used, for both of the horizontally adjacent RGBA output pixels. ]
+
+[ "SWS_FULL_CHR_H_INP"\\
+͏    Perform full chroma interpolation when downscaling RGB sources.
+
+͏    For example, when converting a 100x100 rgba source to 50x50 yuv444p:\\
+͏    Setting this flag will generate a 100x100 (4:4:4) chroma plane, which is then downscaled to the required 50x50.\\
+͏    .\\
+͏    Without this flag, the chroma plane is instead generated at 50x100 (dropping every other pixel):\\
+͏    Before then being downscaled to the required 50x50 resolution. ] ]
+
+͏----
+
+[ MasterQuestionable:\\
+͏    The description is much misleading... if not outright misinformation?\\
+͏    |1| Both may be RGB irrelevant: occurs during YUV unsubsampling.\\
+͏    |2| SWS_FULL_CHR_H_INT may involve down-scaling too.\\
+͏    |3| [\\
+͏    SWS_FULL_CHR_H_INP asserts full-chroma input; which then forces use of full-chroma interpolation: whether sensible or not.\\
+͏    Which is actually somewhat useless: as the default handling seems... sensible? ]
+
+͏    Hint about [[span(id=full_chroma_inp, [https://ffmpeg.org/ffmpeg-scaler.html#Scaler-Options ͏"full_chroma_inp"] )]]:\\
+͏    https://github.com/search?type=code&q=repo:FFmpeg/FFmpeg+%22SWS_FULL_CHR_H_INP%22\\
+͏    https://code.ffmpeg.org/FFmpeg/FFmpeg/src/commit/02a7c85753ad3d4a2cf414849ba4bf28cddb3ffa/libswscale/utils.c#L1331-L1351\\
+͏    https://github.com/FFmpeg/FFmpeg/blob/41ed7ab45fc693f7d7fc35664c0233f4c32d69bb/doc/swscale.txt#L50-L57
+
+͏    On "full_chroma_int":\\
+͏    https://github.com/MasterInQuestion/attach/commit/e18e5cd26b9d27bacefa685ba70d0d41bc7d7cbc#diff-75a0130f1814ba26c23e3a6fc6ce5046620163061d392086bc55e2c13c145bf9L264 ]
+

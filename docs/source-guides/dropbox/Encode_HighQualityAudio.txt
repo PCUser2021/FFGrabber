@@ -1,0 +1,255 @@
+= Guidelines for high quality lossy audio encoding =
+
+This guide is meant to help people new to encoding lossy audio to use the correct encoders and settings.
+
+
+== When should I transcode audio? == #When
+
+Avoid transcoding from a lossy format to the same or another lossy format when possible. Transcode to lossy from the lossless source (if you have it), or just copy the lossy source audio track instead of transcoding.
+
+Another option if you have a lossless source is to transcode it to another lossless codec, like FLAC [ https://superuser.com/questions/339023#339031 ] or TrueHD (last one needs "-strict -2").
+
+
+== Generation loss == #Generation-loss
+
+Transcoding from a lossy format like [[Encode/MP3|MP3]], AAC, Vorbis, Opus, WMA, etc. to the same or different lossy format might degrade the audio quality even if the bit rate stays the same (or higher). This quality degradation might not be audible to you but it might be audible to others.
+
+͏    This post demonstrates what will happen if you re-encode a file 100 times:\\
+͏    9 different codecs 100-pass recompression test\\
+͏    https://hydrogenaud.io/?topic=100067
+
+
+== Copying audio tracks == #Copying
+
+͏    If the target container format supports the audio codec of the source file then consider just muxing it into the output file without re-encoding. MKV supports any codec.\\
+͏    This can be achieved by specifying "copy" as the audio codec.
+
+͏    E.g.\\
+͏    Transcoding a WebM file (VP8 video, Vorbis audio) to MKV (H.264 video, with the very audio):\\
+͏    `ffmpeg -i "in.webm" -c:a copy -c:v libx264 "out.mkv"`\\
+͏    .\\
+͏    In some cases this might not be possible, because the target device/player doesn't support the codec or the target container format doesn't support the codec.\\
+͏    Another reason to transcode might be that the source audio track is too big (it has a higher bit rate than what you want to use in the output file).
+
+
+== Audio encoders FFmpeg can use == #Encoders
+
+͏    FFmpeg can encode to a wide variety of lossy audio formats.\\
+͏    Here are some popular lossy formats with encoders listed that FFmpeg can use:\\
+͏    **Opus**: "libopus"\\
+͏    **Vorbis**: "libvorbis", "vorbis"\\
+͏    **AAC LC**: "libfdk_aac", "aac"\\
+͏    **HE-AAC**: "libfdk_aac"\\
+͏    **MP3**: "libmp3lame", "libshine"\\
+͏    **Dolby Digital**: "ac3"\\
+͏    **Dolby Digital Plus**: "eac3"\\
+͏    **TrueHD 0xFBA**: "truehd"\\
+͏    **MP2**: "libtwolame", "mp2"\\
+͏    **Windows Media Audio 1**: "wmav1"\\
+͏    **Windows Media Audio 2**: "wmav2"
+
+͏    Based on quality produced from high to low:\\
+͏    "libopus" ≈ "libvorbis" >= "libfdk_aac" > "libmp3lame" >= "eac3"/"ac3" > "aac" > "libtwolame" > "vorbis" > "mp2" > "wmav2"/"wmav1"
+
+͏    The ">=" sign means greater or the same quality.\\
+͏    This list is just a general guide and there may be cases where a codec listed to the right will perform better than one listed to the left at certain bit rates.\\
+͏    The highest quality internal/native encoder available in FFmpeg without any external libraries is "aac" (its default encoder mode twoloop was improved in 2026, and Apple's NMR is being ported).
+
+͏    Note:\\
+͏    Vorbis cannot compete Opus at low bit rate.\\
+͏    At high bit rate Opus couldn't improve due to the 20 KHz cut-off. [ https://trac.ffmpeg.org/ticket/10330#comment:7 ]\\
+͏    However which may not be really meaningful... (mostly noise preferably be filtered-off)
+
+͏    It is **not recommended** to use the experimental "vorbis" for encoding; use "libvorbis" instead.\\
+͏    "wmav1", "wmav2" don't seem to reach transparency at any bit rate.
+
+[ MasterQuestionable:\\
+͏    The internal "aac" is reported to be problematic:\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=58\\
+͏    .\\
+͏    Also aligned my own experience:\\
+͏    https://trac.ffmpeg.org/ticket/11018#comment:14 ]
+
+
+== Container formats == #Container
+
+͏    Only certain audio codecs will be able to fit in your target output file:
+
+͏    **Container**: **Audio formats supported**\\
+͏    **MKV/MKA**: Opus, Vorbis, MP2, MP3, LC-AAC, HE-AAC, WMAv1, WMAv2, AC3, E-AC3, TrueHD\\
+͏    **MP4/M4A**: Opus, MP2, MP3, LC-AAC, HE-AAC, AC3, E-AC3, TrueHD\\
+͏    **FLV/F4V**: MP3, LC-AAC, HE-AAC\\
+͏    **3GP/3G2**: LC-AAC, HE-AAC\\
+͏    **MPG**: MP2, MP3\\
+͏    **PS/TS Stream**: MP2, MP3, LC-AAC, HE-AAC, AC3, TrueHD\\
+͏    **M2TS**: AC3, E-AC3, TrueHD\\
+͏    **VOB**: MP2, AC3\\
+͏    **RMVB**: Vorbis, HE-AAC\\
+͏    **WebM**: Vorbis, Opus\\
+͏    **OGG**: Vorbis, Opus
+
+͏    There are more container formats available than those listed above, like MXF.\\
+͏    Also, E-AC3 is only officially (according to Dolby) supported in MP4 (for example, E-AC3 needs editlist to remove padding of initial 256 silence samples).
+
+
+== Recommended minimum bit rates to use == #Recommended
+
+͏    The bit rates listed here assume Stereo (2 ch) and sample rate of 44.1 KHz or 48 KHz.\\
+͏    Mono, speech, and quiet audio tend to require fewer bits.
+
+- **"libopus"** - Usable range ≥ 32 Kbps. Recommended range ≥ 64 Kbps.\\
+  Transparency (music): Very close at default (96 Kbps), but takes more (160+) to be real transparent.\\
+  Transparency (speech): ~ 32 Kbps.\\
+  See also: https://wiki.hydrogenaud.io/?title=Opus
+- **"libfdk_aac"** (default profile AAC LC) - Recommended range ≥ 128 Kbps; see <[[Encode/AAC]]>.
+- **"libfdk_aac" -profile:a aac_he_v2** - Usable range ≤ 48 Kbps CBR.\\
+  Transparency: Does not reach transparency. Use AAC LC instead to achieve transparency.
+- **"libfdk_aac" -profile:a aac_he** - Usable range ≥ 48 Kbps and ≤ 80 Kbps CBR.\\
+  Transparency: Ditto.
+- **"libvorbis"** - Usable range ≥ 96 Kbps. Recommended range ≥ 192 Kbps.\\
+- **"libmp3lame"** - Usable range ≥ 128 Kbps. Recommended range "-aq 2" (≥ 192 Kbps).
+- **"ac3"** or **"eac3"** - Usable range ≥ 160 Kbps. Recommended range ≥ 160 Kbps. Bad quality at 192k at 5.1 eac3, good enough already at 256k eac3 at 5.1, no support for enchanced or normal coupling\\
+  E.g. `ffmpeg -i "${In}" -c:a ac3 -b:a 160k "${Out}"`
+- **"aac"** - Usable range ≥ 32 Kbps (depending on profile and audio). Recommended range ≥ 128 Kbps.\\
+  E.g. `ffmpeg -i "${In}" -c:a aac -b:a 128k "${Out}"`
+- **"libtwolame"** - Usable range ≥ 192 Kbps. Recommended range ≥ 256 Kbps.
+- **"mp2"** - Usable range ≥ 320 Kbps. Recommended range ≥ 320 Kbps.
+
+[ MasterQuestionable:\\
+͏    Per my experience, Vorbis appears to be sort of FLAC substitute at high bit rate:\\
+͏    That plain (without proper lossy pre-filtering) FLAC maybe too pointlessly big.\\
+͏    And Vorbis's output viewed in spectrogram... appeared quite similar; and maintained reasonable size.
+
+͏    Support-wise, Vorbis appears to be more widely supported than Opus:\\
+͏    I've seen what support Opus typically also support Vorbis. But scarcely vice-versa. ]\\
+\\
+
+͏    "**vorbis**" and "**wmav1**"/"**wmav2**" encoders are not worth using.\\
+͏    "**wmav1**"/"**wmav2**" encoder **does not reach transparency at any bit rate**.\\
+͏    "**libvorbis**" encoder does not use the bit rate specified in FFmpeg:\\
+͏    On some samples it does sound reasonable, but the bit rate is very high.\\
+͏    [ Vorbis is by-nature VBR: and probably to a problematic extent... (that ignoring the bit rate cap) ]
+
+͏    To estimate the bit rate for multi-channel audio:\\
+͏    ${Stereo Bitrate}/2 * ${Channel#}\\
+͏    .\\
+͏    E.g. 5.1 (6 ch) Vorbis audio: 128/2 * 6 = 384 Kbps
+
+----
+
+͏    When compatibility of hardware players doesn't matter: use "libopus" in MKV.\\
+͏    Else: use "libmp3lame" or "ac3" (or "libfdk_aac" if available) in MP4/MKV.
+
+Transparency means the encoded audio sounds indistinguishable from the audio in the source file.
+
+͏    Some codecs have a more efficient Variable Bit Rate (VBR) mode: which optimizes to a given, constant quality level; rather than having variable quality at a given, Constant Bit Rate (CBR).\\
+͏    The info above mainly targeted CBR.\\
+͏    VBR is more efficient than CBR, but may not be as hardware-compatible. (mainly applies to antique formats: irrelevant Opus alike)
+
+
+== Resources ==
+
+* https://opus-codec.org/comparison/
+* Google Listening Test !#1 - comparing Opus, Speex, and others\\
+  https://opus-codec.org/static/comparison/GoogleTest1.pdf
+* Google Listening Test !#2\\
+  https://opus-codec.org/static/comparison/GoogleTest2.pdf
+
+* [2011] 64 Kbps Stereo multi-format listening test\\
+  https://web.archive.org/web/20200202080247/https://people.xiph.org/~greg/opus/ha2011/\\
+  !^ Of Opus, aoTuV Vorbis, 2 HE-AAC encoders, and a 48 Kbps AAC-LC low anchor.
+* [201407] Results of the public multi-format listening test\\
+  https://listening-test.coresv.net/results.htm#list9\\
+  !^ Opus, AAC, Vorbis at 96 Kbps against typical MP3 128 Kbps.
+
+
+== History ==
+
+͏    For historic interests:\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=49\\
+͏    [ !^ All links except !YouTube dead. ]\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=47\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=45\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=42\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=30\\
+͏    https://trac.ffmpeg.org/ticket/2686#comment:155\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=16
+
+[ "AAC specific"\\
+͏    The assertion of native aac better than fdk is too bold.\\
+͏    https://hydrogenaud.io/?topic=111085\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=46
+
+͏    AAC encoders comparison\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=28
+
+͏    "libfaac" - Faint artifacts can still be heard on some samples.\\
+͏    https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=19 ]
+
+
+== Comments ==
+
+[ llogan @ CE 2013-04-08 18:05:26 UTC:\\
+https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=15\\
+͏    Source for above hierarchy?\\
+͏    Please explain why it is not recommended to use these encoders or link to other wiki pages that do explain. ]
+
+͏----
+
+[ Leon @ CE 2013-04-09 17:48:11 UTC:\\
+|*| https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=21\\
+|*| https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=23\\
+͏    I based it on which encoder's first would reach transparency based on bit rate.\\
+͏    "libopus", "libfdk_aac", "libvorbis", "libmp3lame", "ac3" most of the times: should all be transparent at 128 Kbps.\\
+͏    The encoders listed to the right don't achieve that.\\
+͏    Any ideas where I could get sources?
+
+͏    Would personal ABX logs be enough?\\
+͏    Encoded with:\\
+͏    `ffmpeg -i "original.wav" -c:a wmav2 -b:a 520k "test.wma"`\\
+[[\\
+foo_abx 1.3.4 report\\
+foobar2000 v1.1.15\\
+...\\
+]]\\
+͏    The max bit rate FFmpeg allowed me to use for "libvo_aacenc" was 320 Kbps:\\
+͏    `ffmpeg -i "original.wav" -c:a libvo_aacenc -b:a 320k "test.m4a"`\\
+͏    [ Trace diff source for original log. ]
+
+͏    The first song I tested wasn't even a problematic sample...\\
+͏    The reason for not recommending Vorbis, is because it doesn't respect the bit rate given. ]
+
+͏----
+
+[ Kamedo2 @ CE 2013-12-05 15:14:23 UTC:\\
+https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=31\\
+͏    Personal Listening Test of FFmpeg AAC encoders\\
+͏    https://hydrogenaud.io/?topic=102699
+
+͏    Personal Listening Test of AAC, WMA, and MP3 encoders\\
+͏    https://hydrogenaud.io/?topic=102875
+
+͏    Personal Listening Test of AAC and LAME encoders\\
+͏    https://hydrogenaud.io/?topic=102876 ]
+
+͏----
+
+[ Leon @ CE 2013-12-11 07:19:16 UTC:\\
+|*| https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=32\\
+|*| https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=33\\
+|*| https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio?action=diff&version=35\\
+͏    I think we should do a listening test between "libfaac" and "eac3"/"ac3":\\
+͏    Because from my experience "libfaac" can't really handle 128 or 160 Kbps as well as "ac3".
+
+͏    "libopus" >= "libvorbis" > "aac" >= "libfdk_aac" > "libmp3lame" > "eac3"/"ac3" >= "libfaac" > "libtwolame" > "mp2" > "vorbis" > "wmav2"/"wmav1" > "libvo_aacenc"\\
+͏    Both "libfaac" and "ac3" have annoying sounds at 128 Kbps.\\
+͏    It probably depends on what one prefers. But "ac3" is definitely better than "libtwolame" at 128 Kbps:\\
+͏    "libtwolame" completely breaks down at that rate.
+
+͏    "Aac" has been ranked higher quality than "ac3". \\
+͏    Also unless I had a broken "libvo_aacenc" encoder, I doubt "libvo_aacenc" beats "mp2" @ 256 Kbps: it just doesn't make sense.\\
+͏    There really needs to be a public listening test. ]
+
+
+
+

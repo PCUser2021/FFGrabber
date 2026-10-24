@@ -1,0 +1,201 @@
+
+[[PageOutline(1-100,Contents)]]
+
+= Overview =
+
+FFmpeg provides more than one mechanism to create a video mosaic.  In addition to using the ''overlay'' filter shown in  [[Create a mosaic out of several input videos]], you can use the [http://ffmpeg.org/ffmpeg-all.html#xstack xstack] filter.  [http://ffmpeg.org/ffmpeg-all.html#xstack xstack] takes the individual inputs along with a custom layout that you create, and positions the videos according to the layout.  Here's an example:
+
+[[Image(col_2x2.png, title=Figure 1, width=320, height=240)]]
+
+
+As shown in the documentation [http://ffmpeg.org/ffmpeg-all.html#xstack xstack] displays video streams in [https://en.wikipedia.org/wiki/Row-_and_column-major_order Column Major Order], but you can change the layout to achieve '''Row Major Order'''.  Examples of both are shown below.
+
+[http://ffmpeg.org/ffmpeg-all.html#xstack xstack] uses a complex filter similar to overlay.  The major difference is that there is no need to use a nullsrc filter and the overlay filter.  [http://ffmpeg.org/ffmpeg-all.html#xstack xstack] figures out how to position the videos according to your layout specification.  We'll explain the layout specification shortly.  Here is the command line used to create the above video mosaic (shown with Unix / Linux line continuation using the '\' character):
+
+{{{
+ffmpeg \
+   -i videos/01.mkv \
+   -i videos/02.mkv \
+   -i videos/03.mkv \
+   -i videos/04.mkv \
+  -filter_complex " \
+      [0:v] setpts=PTS-STARTPTS, scale=qvga [a0]; \
+      [1:v] setpts=PTS-STARTPTS, scale=qvga [a1]; \
+      [2:v] setpts=PTS-STARTPTS, scale=qvga [a2]; \
+      [3:v] setpts=PTS-STARTPTS, scale=qvga [a3]; \
+      [a0][a1][a2][a3]xstack=inputs=4:layout=0_0|0_h0|w0_0|w0_h0[out] \
+      " \
+    -map "[out]" \
+    -c:v libx264 -t '30' -f matroska output_col_2x2.mkv
+}}}
+
+This example shows four videos in a two by two matrix. As described in the [http://ffmpeg.org/ffmpeg-all.html#xstack xstack layout documentation] the xstack line contains:
+
+
+* a list of input labels  ('''[a0] [a1] [a2] [a3]''') as shown above. The label name is not important and could be descriptive of the input (e.g. '''[streetview]'''), however each label must match the input stream label above.
+
+* the xstack command ('''xstack=''')
+
+* an input quantity specification ('''inputs=4:''') The number must match the total number of input streams, or the '''ffmpeg''' command will throw an error
+
+* a layout specification ('''layout=0_0|0_h0|w0_0|w0_h0'''), a series of layout descriptors separated by the pipe symbol ' '''|''' '.  Each descriptor refers to width and  height separated by the underscore ' '''_''' '. In these descriptors, width is always on the left of the underscore and height is always on the right.  These correspond to (x,y) coordinates as described below.
+
+* a map label ('''[out]''') which is used by the -map option
+
+Here is the meaning of each layout descriptor and a graphic shown in Figure 2, keeping in mind that this description is for '''Column Major Order'''.
+
+[[Image(layout_col_2x2.png, title=Figure 2)]]
+
+
+'''0_0''' describes the point of origin for the first input stream ('''[a0]'''). Since there is no 'w' or 'h' with this descriptor, the point describes where to place the first input stream - i.e. the top left of the mosaic matrix at coordinates (0,0) relative to the display window.
+
+'''0_h0''' describes the point of origin for the second stream ('''[a1]''').  This is read as '' "Use the same X value as stream '''[a0]''' and use the Y value that is the height of '''[a0]'''. This places the point at (0, height_of_[a0])." ''
+
+'''w0_0''' describes the point of origin for the third stream ('''[a2]''').  This is read as '' "Use the X value as the width of the first stream ('''[a0]''') and the y value as  0, or (width_of_[a0], 0)." ''
+
+'''w0_h0''' describes the point of origin for the fourth stream ('''[a3]''').  '' "Use the X and Y values as the width and height of the first stream ('''[a0]'''), with the result of (width_of_[0],height_of_[a0])." ''
+
+When there are more than two images in a sequence (either vertical or horizontal), it becomes necessary to add widths or heights together.  So for example, for a single vertical sequence of three videos in '''Column Major Order''':
+
+[[Image(col_1x3.png, title=Figure 3, width=180, height=320)]]
+
+the layout would be '''layout=0_0|0_h0|0_h0+h1'''.  The X coordinate for all videos is the same - '''0''', whereas the Y coordinate changes.  For the first stream it is '''0''', then '''h0''', then '''h0+h1''' - the addition of height h0 and h1.  For a horizontal sequence it would be similar with identical Y coordinates and X coordinates of '''0''', '''w0''', and '''w0+w1'''.
+
+'''Row Major Order''' is similar, with values juxtaposed to appropriate points of origin.  Figure 4 shows a 3x3 matrix (nine video streams), and Figure 5 shows a 6x6 matrix (36 video streams).  Note how in these examples the output is now piped directly to '''ffplay'''.  (Be aware that higher video counts can result in higher than normal CPU load.)
+
+[[Image(row_3x3.png, title=Figure 4, width=320, height=240)]]
+
+The complete command for this example ('''Row Major Order''') is
+{{{
+ffmpeg \
+   -i videos/01.mkv \
+   -i videos/02.mkv \
+   -i videos/03.mkv \
+   -i videos/04.mkv \
+   -i videos/05.mkv \
+   -i videos/06.mkv \
+   -i videos/07.mkv \
+   -i videos/08.mkv \
+   -i videos/09.mkv \
+  -filter_complex " \
+      [0:v] setpts=PTS-STARTPTS, scale=qvga [a0]; \
+      [1:v] setpts=PTS-STARTPTS, scale=qvga [a1]; \
+      [2:v] setpts=PTS-STARTPTS, scale=qvga [a2]; \
+      [3:v] setpts=PTS-STARTPTS, scale=qvga [a3]; \
+      [4:v] setpts=PTS-STARTPTS, scale=qvga [a4]; \
+      [5:v] setpts=PTS-STARTPTS, scale=qvga [a5]; \
+      [6:v] setpts=PTS-STARTPTS, scale=qvga [a6]; \
+      [7:v] setpts=PTS-STARTPTS, scale=qvga [a7]; \
+      [8:v] setpts=PTS-STARTPTS, scale=qvga [a8]; \
+      [a0][a1][a2][a3][a4][a5][a6][a7][a8]xstack=inputs=9:layout=0_0|w0_0|w0+w1_0|0_h0|w0_h0|w0+w1_h0|0_h0+h1|w0_h0+h1|w0+w1_h0+h1[out] \
+      " \
+    -map "[out]" \
+    -c:v libx264 -t '30' -f matroska -  | ffplay -autoexit  -left 30 -top 30  - 
+}}}
+
+
+[[Image(row_6x6.png, title=Figure 5, width=640, height=480)]]
+
+For higher density mosaics, you should probably scale down all inputs.  This example scaled each video to qqvga (160x120).   
+
+The complete command for this example ('''Row Major Order''') is:
+
+{{{
+ffmpeg \
+   -i videos/01.mkv \
+   -i videos/02.mkv \
+   -i videos/03.mkv \
+   -i videos/04.mkv \
+   -i videos/05.mkv \
+   -i videos/06.mkv \
+   -i videos/07.mkv \
+   -i videos/08.mkv \
+   -i videos/09.mkv \
+   -i videos/10.mkv \
+   -i videos/11.mkv \
+   -i videos/12.mkv \
+   -i videos/13.mkv \
+   -i videos/14.mkv \
+   -i videos/15.mkv \
+   -i videos/16.mkv \
+   -i videos/17.mkv \
+   -i videos/18.mkv \
+   -i videos/19.mkv \
+   -i videos/20.mkv \
+   -i videos/21.mkv \
+   -i videos/22.mkv \
+   -i videos/23.mkv \
+   -i videos/24.mkv \
+   -i videos/25.mkv \
+   -i videos/26.mkv \
+   -i videos/27.mkv \
+   -i videos/28.mkv \
+   -i videos/29.mkv \
+   -i videos/30.mkv \
+   -i videos/31.mkv \
+   -i videos/32.mkv \
+   -i videos/33.mkv \
+   -i videos/34.mkv \
+   -i videos/35.mkv \
+   -i videos/36.mkv \
+  -filter_complex " \
+      [0:v] setpts=PTS-STARTPTS, scale=qqvga [a0]; \
+      [1:v] setpts=PTS-STARTPTS, scale=qqvga [a1]; \
+      [2:v] setpts=PTS-STARTPTS, scale=qqvga [a2]; \
+      [3:v] setpts=PTS-STARTPTS, scale=qqvga [a3]; \
+      [4:v] setpts=PTS-STARTPTS, scale=qqvga [a4]; \
+      [5:v] setpts=PTS-STARTPTS, scale=qqvga [a5]; \
+      [6:v] setpts=PTS-STARTPTS, scale=qqvga [a6]; \
+      [7:v] setpts=PTS-STARTPTS, scale=qqvga [a7]; \
+      [8:v] setpts=PTS-STARTPTS, scale=qqvga [a8]; \
+      [9:v] setpts=PTS-STARTPTS, scale=qqvga [a9]; \
+      [10:v] setpts=PTS-STARTPTS, scale=qqvga [a10]; \
+      [11:v] setpts=PTS-STARTPTS, scale=qqvga [a11]; \
+      [12:v] setpts=PTS-STARTPTS, scale=qqvga [a12]; \
+      [13:v] setpts=PTS-STARTPTS, scale=qqvga [a13]; \
+      [14:v] setpts=PTS-STARTPTS, scale=qqvga [a14]; \
+      [15:v] setpts=PTS-STARTPTS, scale=qqvga [a15]; \
+      [16:v] setpts=PTS-STARTPTS, scale=qqvga [a16]; \
+      [17:v] setpts=PTS-STARTPTS, scale=qqvga [a17]; \
+      [18:v] setpts=PTS-STARTPTS, scale=qqvga [a18]; \
+      [19:v] setpts=PTS-STARTPTS, scale=qqvga [a19]; \
+      [20:v] setpts=PTS-STARTPTS, scale=qqvga [a20]; \
+      [21:v] setpts=PTS-STARTPTS, scale=qqvga [a21]; \
+      [22:v] setpts=PTS-STARTPTS, scale=qqvga [a22]; \
+      [23:v] setpts=PTS-STARTPTS, scale=qqvga [a23]; \
+      [24:v] setpts=PTS-STARTPTS, scale=qqvga [a24]; \
+      [25:v] setpts=PTS-STARTPTS, scale=qqvga [a25]; \
+      [26:v] setpts=PTS-STARTPTS, scale=qqvga [a26]; \
+      [27:v] setpts=PTS-STARTPTS, scale=qqvga [a27]; \
+      [28:v] setpts=PTS-STARTPTS, scale=qqvga [a28]; \
+      [29:v] setpts=PTS-STARTPTS, scale=qqvga [a29]; \
+      [30:v] setpts=PTS-STARTPTS, scale=qqvga [a30]; \
+      [31:v] setpts=PTS-STARTPTS, scale=qqvga [a31]; \
+      [32:v] setpts=PTS-STARTPTS, scale=qqvga [a32]; \
+      [33:v] setpts=PTS-STARTPTS, scale=qqvga [a33]; \
+      [34:v] setpts=PTS-STARTPTS, scale=qqvga [a34]; \
+      [35:v] setpts=PTS-STARTPTS, scale=qqvga [a35]; \
+      [a0][a1][a2][a3][a4][a5][a6][a7][a8][a9][a10][a11][a12][a13][a14][a15][a16][a17][a18][a19][a20][a21][a22][a23][a24][a25][a26][a27][a28][a29][a30][a31][a32][a33][a34][a35]xstack=inputs=36:layout=0_0|w0_0|w0+w1_0|w0+w1+w2_0|w0+w1+w2+w3_0|w0+w1+w2+w3+w4_0|0_h0|w0_h0|w0+w1_h0|w0+w1+w2_h0|w0+w1+w2+w3_h0|w0+w1+w2+w3+w4_h0|0_h0+h1|w0_h0+h1|w0+w1_h0+h1|w0+w1+w2_h0+h1|w0+w1+w2+w3_h0+h1|w0+w1+w2+w3+w4_h0+h1|0_h0+h1+h2|w0_h0+h1+h2|w0+w1_h0+h1+h2|w0+w1+w2_h0+h1+h2|w0+w1+w2+w3_h0+h1+h2|w0+w1+w2+w3+w4_h0+h1+h2|0_h0+h1+h2+h3|w0_h0+h1+h2+h3|w0+w1_h0+h1+h2+h3|w0+w1+w2_h0+h1+h2+h3|w0+w1+w2+w3_h0+h1+h2+h3|w0+w1+w2+w3+w4_h0+h1+h2+h3|0_h0+h1+h2+h3+h4|w0_h0+h1+h2+h3+h4|w0+w1_h0+h1+h2+h3+h4|w0+w1+w2_h0+h1+h2+h3+h4|w0+w1+w2+w3_h0+h1+h2+h3+h4|w0+w1+w2+w3+w4_h0+h1+h2+h3+h4[out] \
+      " \
+    -map "[out]" \
+    -c:v libx264 -t '30' -f matroska -  | ffplay -autoexit -left 10 -top 10  - 
+}}}
+
+Finally, you should note that if inputs are of different sizes, gaps or overlaps may occur. In such cases, you will have to scale the inputs individually.
+
+= Code =
+
+The code that created these scripts and files is available (BSD license) at https://www.jimby.name/techbits/recent/xstack/ .
+
+= Kudos =
+
+Kudos to the [http://git.videolan.org/?p=ffmpeg.git;a=blob_plain;f=MAINTAINERS;hb=HEAD great people behind FFmpeg project].   [http://www.ffmpeg.org/donations.html Donate to FFmpeg project here]
+
+= Matrix Madness! =
+
+[[Image(row_12x12.png, width=1024, height=640)]]
+
+
+
+
+

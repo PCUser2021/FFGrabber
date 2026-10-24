@@ -1,0 +1,31 @@
+Here are some examples what [https://ffmpeg.org/ffmpeg-filters.html#stereo3d stereo3d filter] can do:
+
+||   side by side half width left first   ||
+|| [[Image(sbs2l.png)]] ||
+
+||   above bellow left first   ||
+||   `-vf stereo3d=sbs2l:abl`   ||
+|| [[Image(abl.png)]] ||
+
+
+Converted to different anaglyph formats:
+
+
+||  Red blue gray/monochrome  ||  Red green gray/monochrome  ||
+||   `-vf stereod3d=sbs2l:arbg`   ||   `-vf stereo3d=sbs2l:argg`   ||
+|| [[Image(arbg.png)]] || [[Image(argg.png)]] ||
+
+
+||   Red cyan gray/monochrome   ||   Red cyan color   ||   Red cyan half color   ||   Red cyan dubois   ||
+||   `-vf stereo3d=sbs2l:arcg`   ||   `-vf stereo3d=sbs2l:arcc`   ||   `-vf stereo3d=sbs2l:arch`   ||   `-vf stereo3d=sbs2l:arcd`   ||
+|| [[Image(arcg.png)]] || [[Image(arcc.png)]] || [[Image(arch.png)]] || [[Image(arcd.png)]] ||
+
+
+||   Green magenta gray/monochrome   ||   Green magenta color   ||   Green magenta half color   ||   Green magenta dubois   ||
+||   `-vf stereo3d=sbs2l:agmg`   ||   `-vf stereo3d=sbs2l:agmc`   ||   `-vf stereo3d=sbs2l:agmh`   ||   `-vf stereo3d=sbs2l:agmd`   ||
+|| [[Image(agmg.png)]] || [[Image(agmc.png)]] || [[Image(agmh.png)]] || [[Image(agmd.png)]] ||
+
+
+||   Yellow blue gray/monochrome   ||   Yellow blue color   ||   Yellow blue half color   ||   Yellow blue dubois   ||
+||   `-vf stereo3d=sbs2l:aybg`   ||   `-vf stereo3d=sbs2l:aybc`   ||   `-vf stereo3d=sbs2l:aybh`   ||   `-vf stereo3d=sbs2l:aybd`   ||
+|| [[Image(aybg.png)]] || [[Image(aybc.png)]] || [[Image(aybh.png)]] || [[Image(aybd.png)]] ||

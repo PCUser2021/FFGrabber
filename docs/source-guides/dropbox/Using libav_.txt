@@ -1,0 +1,76 @@
+First some disambiguiation: there is a fork of FFmpeg called [https://www.libav.org/ Libav].  There is also a library system that underlies FFmpeg itself, called `libav`.  This page is about the library `libav`, which is a part of FFmpeg.
+
+FFmpeg itself is composed of several libraries that can be used individually, and outside of FFmpeg, for instance in integrating parts of FFmpeg into your own program.  These are:
+
+* `libavutil` contains various routines used to simplify programming, including random number generators, data structures, mathematics routines, core multimedia utilities, and much more.
+* `libavcodec` provides a decoding and encoding API, and all the supported codecs.
+* `libavformat` provides a demuxing and muxing API, and all the supported muxers and de-muxers.
+* `libavdevice` provides an interface for grabbing from input devices (e.g. webcames or line-in audio) and rendering to output devices, and all the supported input and output devices
+* `libswscale` provides a scaling and (raw pixel) format conversions API, with high speed/assembly optimized versions of several scaling routines.
+* `libavfilter` provides an audio and video filtering API, and all the supported filters.
+* `libpostproc` provides video postprocessing routines
+* `libswresample` provides an audio resampling, rematrixing and sample format conversion API, and many high-quality optimized routines.
+
+These can be useful for instance if you don't have access to a command line to run ` ffmpeg` as an executable, or if you want to use just a small "part" of FFmpeg inside your own program, or if you want access to raw video frames in your program, etc.  Also note that if you just need access to raw video frames, you could also write an audio or video [FilteringGuide filter] and compile it along with FFmpeg and distribute that.  Another way to access raw video frames is to have ffmpeg output to "stdout", like {{{ffmpeg -i ... -}}}. Also note that if you just need to convert/transcode videos within your own application, you could make a system call out to the FFmpeg executable to do the heavy lifting for you.  You can parse the output for stdout for status information, or use the `-progress` option to make the output even more parseable.
+
+= Getting Started =
+
+Here is the [https://www.ffmpeg.org/documentation.html official documentation] for using these libraries (the "Libraries Documentation" section).
+
+Also check [https://github.com/FFmpeg/FFmpeg/tree/master/doc/examples doc/examples]; the doxygen documentation is fairly complete and should work as reference (example: the [http://ffmpeg.org/doxygen/trunk/files.html example codes as doxygen]).
+
+In general, you must:
+
+* have the appropriate library compiled/available on your machine (for instance, if using packages, something like `libswscale-dev` must be installed, or `configure`, build, and install FFmpeg yourself using the `--enable-shared` configure option)
+* include the appropriate header file in your C code
+* link against that library's linker file, like `gcc input.c -lswscale` or the like during the linker phase
+
+= Community-contributed Tutorials =
+
+There are a few tutorials on the web, however, some of them are outdated. The doc/examples files provided by FFmpeg usually use the latest ABI (i.e., they are the best reference on which `libav` calls to make) and are therefore more trustworthy.
+
+* [http://dranger.com/ffmpeg/ An FFmpeg and SDL Tutorial by Stephen Dranger]: explains how to write a video player based on FFmpeg
+* [https://github.com/leandromoreira/ffmpeg-libav-tutorial#ffmpeg-command-line-tool-101 Learn FFmpeg libav the Hard Way by Leandro Moreira]: a work in progress tutorial on using `libav`.
+* [https://wiki.multimedia.cx/index.php?title=Category:FFmpeg_Tutorials MultimediaWiki list of FFmpeg tutorials]
+
+= Hints =
+
+== libavformat ==
+
+Check its [http://ffmpeg.org/doxygen/trunk/group__libavf.html Doxygen documentation].  See most of the tutorials, as well.
+
+== libavcodec ==
+
+Check its [http://ffmpeg.org/doxygen/trunk/group__libavc.html Doxygen documentation].  See most of the tutorials, as well.
+
+Determining the right values to pass to AVCodecContext:
+
+One user [https://lists.ffmpeg.org/pipermail/ffmpeg-user/2012-June/007410.html shared] this advice for determining all the correct values:
+
+ [An] approach to figuring this out is:
+
+ 1. come up with the ffmpeg app command line which does what you want
+
+ 2. use the `gdb` debugger to execute the `ffmpeg_g` app, put a breakpoint on `avcodec_encode_audio2()` (or whichever method you need), and see what values the ffmpeg app uses for AVPacket and for the (audio or otherwise) related fields in `AVCodecContext`.
+
+== libswresample ==
+
+[https://github.com/FFmpeg/FFmpeg/blob/master/doc/swresample.txt This file] is also given as documentation.
+
+== libswscale ==
+
+[https://github.com/FFmpeg/FFmpeg/blob/master/doc/swscale.txt This file] is also given as documentation.
+
+== libavdevice ==
+
+Check its [http://ffmpeg.org/doxygen/trunk/group__lavd.html doxygen documentation].
+
+Here is [http://ffmpeg.zeranoe.com/forum/viewtopic.php?f=15&t=274 an example] on Opening dshow with `avformat_open_input`.
+
+== libavfilter ==
+
+See [http://wiki.multimedia.cx/index.php?title=Libavfilter the MultimediaWiki entry on libavfilter] and also the examples, and already existing filters. We have more doxy, some examples and a libavfilter-design document in the documentation.
+
+= Contact =
+
+If you have problems, one place to get help is to ask the [https://lists.ffmpeg.org/mailman/listinfo/libav-user/ libav-user] mailing list, its description: "This list is about using libavcodec, libavformat, libavutil, libavdevice and libavfilter."  IRC might work also.

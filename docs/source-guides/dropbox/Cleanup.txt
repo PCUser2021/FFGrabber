@@ -1,0 +1,10 @@
+This is a list of components that can be considered candidates for removal and reasons why they should be removed or kept.
+
+= x264opts/x264-params =
+
+We have two methods to for overriding x264 options and to allow usage of x264 options that are not ported as private AVOptions. One of these should be pruned.
+
+= prores_aw/prores_ks =
+
+We have two !ProRes encoders but we only need one. A comparison is needed.
+

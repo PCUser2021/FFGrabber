@@ -1,0 +1,103 @@
+= Using ffmpeg in a VFX pipeline
+
+Every VFX pipeline needs a way of converting still frames into motion sequences that can be played back on a large screen or projector (and/or directly on artists' workstations) for the purposes of doing a review or just seeing the resulting work in motion. It is perfectly possible to play back high resolution frames directly, but such a setup requires an incredible amount of throughput bandwidth (a 2K sequence will need 300MB/s for seamless playback) and an even larger amount of storage space (the average size for a 2K frame is about 12MB for a 10bit DPX, and a 16bit EXR is about 14MB in size). Encoding these frames into a single compressed video file provides the option to quickly preview the work, makes it portable and is much more suited for quick daily reviews of the work. Full resolution frames should always be used for final reviews and color correct final grades, but that would be performed on speciality hardware/software such as a Mistika suite or a Nucoda Filmmaster attached to a high performance 
+SAN.
+
+The basic requirements for generating movie clips in a VFX pipeline can be summed up into the following points:
+* Resulting clip should be playable on all three major OS's used in VFX: Mac OS X, Windows and most of all, Linux
+* The codec and review player should allow for frame-by-frame scrubbing of the clip
+* There should be some level of compression. This is obviously based on each studios capability in terms of storage space available.
+* Portable devices such as iPads are becoming increasingly more popular for doing film reviews. The clip encoding part of the VFX pipeline should be ideally capable of producing videos playable on these devices
+* The color must be as close as possible to the original source frames
+* The clip should play back on a reasonable hardware setup (you should not need a SAN to do daily reviews)
+* There should be a possibility of creating a mono and a stereo (3D) version of the clip
+
+Out of all the codecs that are supported by ffmpeg, only some of them are usable in a VFX pipeline and possibly none of them meet all of the criteria outlined above, at the time of writing. Some areas will require compromise, but in general it is perfectly possible to successfully use ffmpeg in a such an environment.
+
+== Input
+The default image file format for a high-end VFX workflow is Lucasfilm's OpenEXR (.exr). In addition to the standard .exr file, a stereo (3D) extension to the EXR standard called SXR exists, which is basically a container for both the left and the right eyes within one file. (Saves the data managers having to worry about 2 sequences of files per each stereo stream). 
+
+Describing this conversion process is outside the scope of this guide, but there are many ways to skin this cat. The easiest one is to use Nuke to create a reader node for the SXRs, attach a writer node to it and have it write out a sequence of converted frames. The one thing to keep in mind is that many VFX workflows work with a color LUT to manipulate the look of the resulting images. FFmpeg does not have a way of applying a text-based LUT to its inputs so the LUT must be applied during the conversion process. Once we have a sequence of DPX/TIFF/JPEG/whatever images, we can proceed with encoding them into a movie clip. 
+
+One thing to note is that the high dynamic range of EXR (and 16bits per channel) will be "flattened" once the frames are converted to DPX or some other format, but this is OK because the best most video codecs can do is a 10bit depth per channel anyway. 
+
+== Output
+FFmpeg will take an image sequence on the input and will then output a movie clip file (usually in a .mov or .avi container). The VFX/film industry would mostly use the .mov container, especially for client deliveries, because it is the most commonly used format in the industry. Making these clips is pretty straightforward, but we'll look at the options that are of interest to this specific industry the most. 
+
+=== Mono vs. Stereo
+The current trend in filmmaking is geared towards producing 3D (stereo) movies. In terms of a file container, a stereo movie is simply a single movie file (like .mov) that contains 2 video tracks - one for each eye. When choosing an output format one must make sure that it supports multiple video tracks (quicktime does, not sure about .avi). Creating a stereo movie requires two extra steps. The first one is that the correct input source must be specified for each eye. This basically means replicating the input path and any parameters for the 2nd eye. The second and most important step is to map both of the input streams into a single video stream. This is done using the "map" filter that comes with ffmpeg and by passing it the following parameters:
+{{{
+-map 0:0 -map 1:0 -metadata stereo_mode=left_right
+}}}
+
+This tells ffmpeg to take input stream #0 and input stream #1 and map both of them into output stream #0. It is possible to control which eye gets assigned to which track by changing the order of the -map arguments. Once a movie like this is opened in Quicktime, it will show as having 2 video tracks. It is then entirely up to the player that is used for playback to determine how to display this movie in 3D. RV for instance does it by default - all that needs to be done is to turn on stereo mode, but other players may require more tweaking. The metadata tag is potentially optional, I have not tested what happens if it is omitted.
+
+=== Prores
+Apple's Prores codec is a very good and efficient codec. It's main problem is that one of the industry's main review linux review tools (RV) does not support playback of Prores on any linux platform. In fact, it only supports playback with the 32bit version of RV on Mac OS X. Having said that, the main use of RV is its capability to do frame-by-frame scrubbing, but if this is not a feature that is necessary for the workflow you're trying to achieve, mplayer and other players will happily play back Prores on linux.
+
+Prores is a 422 codec, with an existing 4444 variation. FFmpeg comes with 3 different prores encodes: "prores", "prores_ks" (formerly named "prores_kostya") and "prores_aw" (formerly named "prores_anatolyi"). In our testing we've used the "prores" and the "prores_ks" encoders and found "prores_ks" to be the best encoder to use. It is the only one that supports the 4444 colorspace and although it may be slightly slower. The color quality of the videos produced by these two codecs was visually indistinguishable Because of the 4444 support we've decided to go with Kostya's version of prores. 
+
+There are 4 profiles that exist within Prores: Proxy, LT, SQ and HQ (and then optionally 4444). In ffmpeg these profiles are assigned numbers (0 is Proxy and 3 is HQ). See Apple's official Prores whitepaper for details on the codec and information associated with the profiles. For quick reference, the basic difference is the bitrates: (TODO). The other option that is used with prores is the -pix_fmt option. This is normally set to yuv422p10le or something like that, but if you want to use the 4444 prores you would set it to yuva444p10le. (A list of possible pixel formats can be invoked by running ffmpeg -pix_fmts. Note that not all of these formats are actually supported with prores). 
+
+An example command line for generating a 2K mono clip with Prores is:
+{{{
+# 2k mono @ 48 fps (422) 
+ffmpeg -y -probesize 5000000 -f image2 -r 48 -force_fps -i ${DPX_HERO} -c:v prores_ks -profile:v 3 -qscale:v ${QSCALE} -vendor apl0 -pix_fmt yuv422p10le -s 2048x1152 -r 48 output.mov
+}}}
+
+The options used here are standard and are explained in other documents, but let's elaborate a little bit more on the qscale paramater. This parameter determines the quality of the resulting prores movie - both the resulting size and bitrate. 0 means best and it goes up to 32 which is worst. From empirical testing we've found that a qscale of 9 - 13 gives a good result without exploding the space needed too much. 11 would be a good bet, 9 if a slightly better quality is required. When space is not a problem, go with qscale 5 or less, but approaching zero the resulting clip will be extremely large and the bitrate will be so high that it will stop being playable on normal equipment. The "vendor" argument when set to "apl0" tricks quicktime and Final Cut Pro into thinking that the movie was generated on using a quicktime prores encoder.
+
+An example for generating a 3D (Stereo) 2K movie is:
+{{{
+# 2k stereo @ 48 fps (422)
+ffmpeg -y -probesize 5000000 -f image2 -r 48 -force_fps -i ${DPX_HERO} -probesize 5000000 -f image2 -r 48 -force_fps -i ${DPX_2ND} -c:v prores_ks -profile:v 3 -qscale:v ${QSCALE} -vendor apl0 -pix_fmt yuv422p10le -s 2048x1152 -r 48 -map 0:0 -map 1:0 -metadata stereo_mode=left_right output.mov
+}}}
+
+=== Photo JPEG
+Photo JPEG is a reliable codec that produces movie clips readable on any architecture / OS. There may be problems with playback in high (2K and over) resolutions and there are obviously file space considerations with this codec. Using lossless JPEG does not create very well compressed movies. Based on empiric testing, resolutions up to 1K are perfectly ok with using Photo JPEG, but 2K and above do struggle quite a bit. When generating a Photo JPEG movie clip there is really only one setting which is relevant - qscale and it should be set to 1. The command line for generating a Photo JPEG movie is as follows:
+{{{
+# 2k mono @ 48 fps (422)
+ffmpeg -y -probesize 5000000 -f image2 -r 48 -force_fps -i ${DPX_HERO} -c:v mjpeg -qscale:v 1 -pix_fmt yuvj422p -s 2048x1152 -r 48 output.mov
+}}} 
+
+=== H.264
+It's extremely efficient at compression - the resulting movie clips are easily 1/10th the size of the same clip made with prores, but it lacks in one critical area. Because of its heavy use of temporal compression, H264 encoded clips are very difficult to scrub frame-by-frame, especially going backwards. It needs to decode frames based on other nearby frames and this is not an easy task. It is very likely that H264 will not be able to be used in reviews that require frame-by-frame scrubbing, but it is an excellent and space-efficient codec for any playback only related workflows. And of course for mobile devices. 
+
+H.264 support in ffmpeg is done through VLC's libx264 which is most likely the best H.264 encoder out there. If compiling ffmpeg/libx264 manually, please see one of the [[CompilationGuide|FFmpeg Compilation Guides]]. Reasonably detailed instructions on the plethora of H.264 options can be found in the existing [[x264EncodingGuide|FFmpeg and x264 Encoding Guide]]. We will detail some of the missing information in this guide.
+
+Like prores, H264 understands the concept of "profiles". These are basically just encoding presets grouped together in a convenient keyword. Existing profiles are: baseline, main, high, high10, high422, high444. Apple's Quicktime only supports *baseline* and *main* profiles and it only supports the 420 colorspace. There are three types of quality settings for H264: bitrate, -qp and -crf. Bitrate is only useful for 2 pass encoding which is not really the best encoding method for this kind of workflow. -qp is the second one and -crf is the third. -qp and -crf are basically the same, with -crf resulting in a smaller file. [http://mewiki.project357.com/wiki/X264_Settings#qp This guide] contains a good writeup and description for these options. Based on testing we found that -crf is definitely the way to go and recommend using -crf as the main quality control parameter for H264 encoded movies. A crf value of 0 produces lossless and very large movies which are unplayable at high (2K+) resolutions. The playback problem continues with increasing CRF values, but becomes manageable at around crf 15 and higher. We found that a crf value of 19 produces very good movies with a very small file size and they should generally play back on reasonable hardware (Apple laptops made in the last 2-3 years).
+
+==== Frame-by-Frame scrubbing
+As stated before, the main problem with H264 is the frame-by-frame scrubbing, but aside from that we found that it produces the most color correct output and clips of very high quality. For purely playback applications it is definitely the codec to go with, as it plays on pretty much everything. One way around this is to make every frame in the H264 clip an I-frame. This will eliminate the presence of P-frames and B-frames but will therefore pretty much eliminate the incredible space savings that H264 offers. This is achieved by setting the -bf parameter to 0 (-bf stands for bframe) and the -g (keyint) parameter to 1. Using these settings will require a lower CRF setting, usually around 7 - 11 would be good. If a clip is encoded like this with only I-frames, then scrubbing frame-by-frame is no longer a problem and the playback is actually much better and easier, as there is no need to compute the P-frames out of the I-frames. 
+
+An example command line for using H264 (with only I-frames) as an encoder would be:
+{{{
+# 2k stereo @ 48 fps (420)
+ffmpeg -y -probesize 5000000 -f image2 -r 48 -force_fps -i ${DPX_HERO} -probesize 5000000 -f image2 -r $48 -force_fps -i ${DPX_2ND} -c:v libx264 -profile:v main -g 1 -tune stillimage -crf 9 -bf 0 -vendor apl0 -pix_fmt yuv420p -s 2048x1152 -r 48 -map 0:0 -map 1:0 -metadata stereo_mode=left_right output.mov
+}}}
+
+== Size comparison
+This chapter provides an overview of the size and bitrates of the resulting clips when generated using different codecs and different settings. The original frames from which this was generated have the following parameters: 10bit DPX files, 459 frames, left & right eye, 4.1GB size for the entire sequence 9.1M size per frame.
+
+||= Codec =||= Colorspace =||= Resolution =||= Bitrate kbps =||= FPS =||= Size =||= Settings =||
+|| apch || yuv422p10le || 2048x1152 || 298810	|| 48	|| 342M	|| Prores HQ qscale 5 ||
+|| apch || yuv422p10le || 2048x1152 || 123706 || 48 || 142M|| Prores HQ qscale 15 ||
+|| apcn || yuv422p10le || 2048x1152 || 226430 || 48 || 260M || Prores SQ qscale 5 ||
+|| apcn || yuv422p10le || 2048x1152 || 98805 || 48 || 114M || Prores SQ qscale 15 ||
+|| apcs || yuv422p10le || 2048x1152 || 177594 || 48 || 204M || Prores LT qscale 5 ||
+|| apcs || yuv422p10le || 2048x1152 || 79015 || 48 || 91M || Prores LT qscale 5 ||
+|| jpeg || yuvj422p || 2048x1152 || 134660 || 48 || 155M || Photo JPEG qscale 1 ||
+|| avc1 || yuvj422p || 2048x1152 || 207538 || 48 || 238M || H264, keyint = 1, CRF 7 ||
+|| avc1 || yuvj422p || 2048x1152 || 130145 || 48 || 149M || H264, keyint = 1, CRF 11 ||
+|| avc1 || yuvj422p || 2048x1152 || 21865 || 48 || 26M || H264, keyint = 48, CRF 17 ||
+|| avc1 || yuvj422p || 2048x1152 || 146389 || 48 || 168M || H264, keyint = 48, CRF 7 ||
+|| avc1 || yuvj422p || 2048x1152 || 286524 || 48 || 328M || H264, keyint = 48, CRF 1 ||
+
+== Using the linux render farm
+Most VFX shops would have a linux based render farm lying around somewhere, crunching up maya and nuke scripts and then next to it would most likely be a pile of old xserves running whatever apple OS X version would run on them and these would be used for generating clips. The ideas presented in this document are geared towards enabling the full use of a linux render farm in a movie making worflow. All of the above can be done has been done on linux  so the people in charge of the system running no longer have to stress about the fact that it is no longer possible to buy xserves. One thing that remains is how do make this parallel? It's nice to be able to send jobs to the farm scheduler and have it run them on any node without worrying about it, but it would be even better if we could encode the video sequence in parallel on many machines, each doing only a subset of the total frames, and then concatenating them into one final clip. The good news is that we can absolutely do that!
+
+FFmpeg can be told to encode only a subset of frames, or we could have the first job that generates our DPX source put them into different directories - whichever one is easier. After that, we can just run ffmpeg on a subset of the frames with the same parameters (but we must make sure we always use the same number of frames, because our movies must be of the same length) and them glue them together into one final clip. This is in theory possible with the default ffmpeg *concat* filter as [http://ffmpeg.org/faq.html#How-can-I-concatenate-video-files_003f described in this document] but I have found this to not work. Instead, a way around this is to use mencoder for the final concatenation of the clips. For the codec we would just use the "copy" keyword and pass it multiple inputs (in order) and then have it write out one output. The command for this is along the lines of:
+{{{
+mencoder -oac copy -ovc copy frames0001-0100.mov frames0101-0200.mov -o /tmp/concat.mov
+}}}
+

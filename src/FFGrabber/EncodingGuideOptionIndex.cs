@@ -7,9 +7,9 @@ public sealed record EncodingGuideOption(
     string SourceFiles);
 
 /// <summary>
-/// Search index of command-line settings explicitly discussed or shown in the 14
-/// encoding-guide text files provided by the user. Values are added as FFmpeg
-/// arguments at their correct stage; current-build support is separately discoverable.
+/// Search index of command-line settings explicitly discussed or shown in the supplied
+/// FFmpeg source-guide texts. Values are added as FFmpeg arguments at their correct stage;
+/// current-build support is separately discoverable.
 /// </summary>
 public static class EncodingGuideOptionIndex
 {

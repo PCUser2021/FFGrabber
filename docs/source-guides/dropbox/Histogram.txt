@@ -1,0 +1,29 @@
+= Histogram =
+
+Given source video:
+
+[[Image(histogram_source.jpg)]]
+
+== YUV Histogram ==
+
+[[Image(histogram_yuv.jpg)]]
+
+{{{
+ffplay video -vf histogram
+}}}
+
+== RGB Histogram ==
+
+[[Image(histogram_rgb.jpg)]]
+
+{{{
+ffplay video -vf format=gbrp,histogram
+}}}
+
+== Histogram overlaid on top of video ==
+
+[[Image(histogram_overlay.jpg)]]
+
+{{{
+ffplay video -vf "split=2[a][b],[b]histogram,format=yuva444p[hh],[a][hh]overlay"
+}}}

@@ -1,0 +1,80 @@
+= Audio Types =
+
+FFmpeg can read various raw audio types (sample formats) and demux or mux them into different containers (formats). For example, you can read and write raw PCM audio into a WAV container.  Or convert between raw types.
+
+== Sample Formats ==
+
+Raw audio in FFmpeg can take several different "forms", i.e. sample formats. For instance:
+
+* `s` means "signed" (for the integer representations), `u` would mean "unsigned"
+* 16 means 16 Bits per sample
+* `le` means "little endian" coding for the samples
+
+You can see a list of supported sample formats by inspecting the `ffmpeg -formats` output:
+
+{{{
+$ ffmpeg -formats | grep PCM
+ DE alaw            PCM A-law
+ DE f32be           PCM 32-bit floating-point big-endian
+ DE f32le           PCM 32-bit floating-point little-endian
+ DE f64be           PCM 64-bit floating-point big-endian
+ DE f64le           PCM 64-bit floating-point little-endian
+ DE mulaw           PCM mu-law
+ DE s16be           PCM signed 16-bit big-endian
+ DE s16le           PCM signed 16-bit little-endian
+ DE s24be           PCM signed 24-bit big-endian
+ DE s24le           PCM signed 24-bit little-endian
+ DE s32be           PCM signed 32-bit big-endian
+ DE s32le           PCM signed 32-bit little-endian
+ DE s8              PCM signed 8-bit
+ DE u16be           PCM unsigned 16-bit big-endian
+ DE u16le           PCM unsigned 16-bit little-endian
+ DE u24be           PCM unsigned 24-bit big-endian
+ DE u24le           PCM unsigned 24-bit little-endian
+ DE u32be           PCM unsigned 32-bit big-endian
+ DE u32le           PCM unsigned 32-bit little-endian
+ DE u8              PCM unsigned 8-bit
+}}}
+
+These represent all the built-in raw audio sample formats.
+
+== Reading and Writing Raw Audio ==
+
+FFmpeg can take input of raw audio types by specifying the type on the command line.  For instance, to convert a "raw" audio type to a ".wav" file:
+
+{{{
+ffmpeg -f s32le input_filename.raw output.wav
+}}}
+
+You can specify number of channels, etc. as well, ex:
+
+{{{
+ffmpeg -f u16le -ar 44100 -ac 1 -i input.raw output.wav
+}}}
+
+The default for muxing into WAV files is `pcm_s16le`. You can change it by specifying the audio codec and using the WAV file extension:
+
+{{{
+ffmpeg -i input -c:a pcm_s32le output.wav
+}}}
+
+which will create a WAV file containing audio with that codec (not a raw file). There are also other containers that can contain raw audio packets, like `pcm_bluray`.
+
+If you want to create a raw file, don't use the WAV format, but the raw one (as seen in the table above), e.g. `s16le`, and the appropriate audio codec:
+
+{{{
+ffmpeg -i input -f s16le -c:a pcm_s16le output.raw
+}}}
+
+You can determine the format of a file, ex
+
+{{{
+$ ffmpeg -i Downloads/BabyElephantWalk60.wav 
+ffmpeg version ...
+...
+Input #0, wav, from 'Downloads/BabyElephantWalk60.wav':
+  Duration: 00:01:00.00, bitrate: 352 kb/s
+    Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 22050 Hz, mono, s16, 352 kb/s
+}}}
+
+The pcm_s16le tells you what format your audio is in.  And that happens to be a common format.

@@ -1,0 +1,159 @@
+= FFmpeg and VP9 Encoding Guide =
+
+[[PageOutline(2, Contents)]]
+
+`libvpx-vp9` is the VP9 video encoder for [http://www.webmproject.org/about/ WebM], an open, royalty-free media file format. `libvpx-vp9` can save about 20–50% bitrate compared to `libx264` (the default [[H.264]] encoder), while retaining the same visual quality.
+
+To install FFmpeg with support for libvpx-vp9, look at the [https://ffmpeg.org/trac/ffmpeg/wiki/CompilationGuide Compilation Guides] and compile FFmpeg with the {{{--enable-libvpx}}} option. Note that for 10-bit encoding, you need to set the `--enable-vp9-highbitdepth` configuration option.
+
+Note that the default audio encoder for WebM is `libopus`, but if it is not available `libvorbis`  will be used instead.
+
+VP9 offers [https://developers.google.com/media/vp9/bitrate-modes/ different rate control modes], which determine the quality and file size:
+
+* 1-pass average bitrate
+* 2-pass average bitrate
+* Constant quality (Constant quantizer)
+* 2-pass constant quality
+* Constant bitrate
+
+== Variable Bitrate (VBR) ==#variableb
+
+=== Average Bitrate (ABR) ===#averageb
+
+libvpx-vp9 offers a simple variable bitrate (VBR) mode by default. This is also sometimes called "Average Bitrate" or "Target Bitrate". In this mode, it will simply try to reach the specified bit rate on average, e.g. 2 MBit/s.
+
+It is not usually recommended to use this mode, as the output may not be compression-efficient, or lead to quality variations. Instead, use [#twopass Two-Pass] or [#constantq Constant Quality] encoding.
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -b:v 2M output.webm
+}}}
+
+Choose a higher bit rate if you want better quality. Note that you shouldn't leave out the {{{-b:v}}} option as the default settings will produce mediocre quality output.
+
+=== Two-Pass ===#twopass
+
+Two-pass is the recommended encoding method for libvpx-vp9 as some quality-enhancing encoder features are only available in 2-pass mode.
+
+There are two different 2-pass encoding methods available in libvpx-vp9: a conventional mode for targeting an average bitrate, and a two-pass constant quality mode that uses the more contemporary CRF-style approach for the final pass to achieve a certain perceptual quality level while still gaining the aforementioned compression benefits by also doing a first pass.
+
+For two-pass, you need to run `ffmpeg` twice, with almost the same settings, except for:
+
+* In pass 1 and 2, use the `-pass 1` and `-pass 2` options, respectively.
+* In pass 1, output to a null file descriptor, not an actual file. (This will generate a logfile that ffmpeg needs for the second pass.)
+* In pass 1, you can leave audio out by specifying `-an`.
+
+For two-pass targeting an average bitrate, the target bitrate is specified with the `-b:v` switch: 
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -b:v 2M -pass 1 -an -f null /dev/null && \
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -b:v 2M -pass 2 -c:a libopus output.webm
+}}}
+
+Constant quality 2-pass is invoked by setting `-b:v` to zero and specifiying a quality level using the `-crf` switch:
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -b:v 0 -crf 30 -pass 1 -an -f null /dev/null && \
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -b:v 0 -crf 30 -pass 2 -c:a libopus output.webm
+}}}
+
+{{{
+#!div style="border: 1px solid #e5e5c7; margin: 1em; background-color: #ffd;"
+'''Note:''' Windows users should use `NUL` instead of `/dev/null` and `^` instead of `\`.
+}}}
+
+For libvpx-vp9, the traditional wisdom of speeding up the first pass by using a faster encoding speed setting does not apply; `-speed` values from 0 to 4 result in the same speed for the first pass and yield the exact same results in the final encode, whereas any speed setting above 4 results in the first pass utilising only a single core, slowing things down significantly. Therefore the `-speed` switch can be entirely omitted from the first pass, since the default value of 1 will result in fast speed.
+
+If you want to constrain the bitrate, for example when streaming your video, use the options given in the [#constrainedq Constrained Quality] section.
+
+=== Constant Quality ===#constantq
+
+In addition to the "default" two-pass modes, there's a constant quality (CQ) mode (similar to CRF in the x264 encoder) that targets a certain perceptual quality level while only using a single pass. While using this single-pass mode will result in less efficient compression due to libvpx's preference for 2-pass encoding, this mode may still be useful if the extra time required for the first pass and the additional CPU cycles used for better compression in 2-pass mode aren't worth it for your use case.
+
+To trigger this mode, you must use a combination of `-crf` and `-b:v` 0. Note that `-b:v` '''MUST''' be 0. Setting it to anything higher or omitting it entirely will instead invoke the [#constrainedq Constrained Quality mode]. 
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -crf 30 -b:v 0 output.webm
+}}}
+
+The CRF value can be from 0–63. Lower values mean better quality. Recommended values range from 15–35, with 31 being recommended for 1080p HD video. See [https://developers.google.com/media/vp9/settings/vod/ this guide] for more info.
+
+=== Constrained Quality ===#constrainedq
+
+libvpx-vp9 also has a constrained quality (CQ) mode that will ensure that a constant (perceptual) quality is reached while keeping the bitrate below a specified upper bound or within a certain bound. While the caveats of single-pass encoding mentioned above stil apply, this method can still be useful for bulk encoding videos in a generally consistent fashion.
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -crf 30 -b:v 2000k output.webm
+}}}
+
+The quality is determined by the `-crf`, and the bitrate limit by the `-b:v` where the bitrate '''MUST''' be non-zero. Note: for videos that are "easy" to encode this mode behaves exactly like the [#constantq Constant Quality] mode and actual bitrate may be lower than specified bitrate while for videos that are "hard" to encode the quality will be bounded by the maximum bitrate and will behave like the [#variableb Variable Bitrate] mode.
+
+You can also specify a minimum and maximum bitrate instead of a quality target:
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -minrate 500k -b:v 2000k -maxrate 2500k output.webm
+}}}
+
+== Constant Bitrate ==
+
+Like most other encoders, libvpx offers a constant bitrate (CBR) encoding mode as well, which tries to encode the video in such a way that an average bitrate is reached. This doesn't mean that every frame is encoded with the same amount of bits (since it would harm quality), but the bitrate will be very constrained. You should use constant bitrate encoding if you need your video files to have a certain size, or if you're streaming the videos over a channel that only allows a certain bit rate. Generally though, using constrained quality is the recommended option in this case.
+
+The syntax for setting a constant bit rate is:
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -minrate 1M -maxrate 1M -b:v 1M output.webm
+}}}
+
+Here, you can choose different values for the bitrate other than `1M`, e.g. `500K`, but you must set all options (i.e., `minrate`, `maxrate` and `b:v`) to the same value.
+
+== Lossless VP9 ==
+
+libvpx-vp9 has a lossless encoding mode that can be activated using `-lossless 1`:
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -lossless 1 output.webm
+}}}
+
+== Controlling Speed and Quality ==#speed
+
+libvpx-vp9 has two main control knobs for speed and quality:
+
+=== Deadline / Quality ===
+
+`-deadline` can be set to `realtime`, `good`, or `best`. For legacy reasons, the option is also accessible with `-quality` in ffmpeg.
+
+- `good` is the default and recommended for most applications.
+- `best` is recommended if you have lots of time and want the best compression efficiency.
+- `realtime` is recommended for live / fast encoding.
+
+=== CPU Utilization / Speed ===
+
+`-cpu-used` sets how efficient the compression will be. For legacy reasons, the option is also accessible with `-speed` in ffmpeg. 
+
+When the deadline/quality parameter is `good` or `best`, values for `-cpu-used` can be set between 0 and 5. The default is 0. Using 1 or 2 will increase encoding speed at the expense of having some impact on quality and rate control accuracy. 4 or 5 will turn off rate distortion optimization, having even more of an impact on quality.
+
+When the deadline/quality is set to `realtime`, the available values for `-cpu-used` are 0 to 8.
+
+=== Row based multithreading ===#rowmt
+
+With version 1.7.0, libvpx added support for row based multithreading which greatly enhances the number of threads the encoder can utilise. This improves encoding speed significantly on systems that are otherwise underutilised when encoding VP9. Since the amount of additional threads depends on the number of tiles, which itself depends on the video resolution, encoding higher resolution videos will see a larger performance improvement.
+
+FFmpeg added support for row based multithreading in version 3.4, released on January 25th, 2018. As of libvpx version 1.7.0 this multithreading enhancement is not enabled by default and needs be manually activated with the `-row-mt 1` switch.
+
+== Compatibility ==#compatibility 
+
+As of 2018, [https://en.wikipedia.org/wiki/HTML5_video#Browser_support most browsers] support VP9. Many recent [https://web.archive.org/web/20230614133122/http://wiki.webmproject.org/hardware/socs phones and other embedded systems] also support VP9. If for some reason VP9 is not supported on your target device, you may fall back to [[Encode/VP8|VP8]] encoding, which offers higher compatibility but lower compression efficiency / quality.
+
+If your input source is using 4:2:2 or 4:4:4 chroma subsampling, some players might not be able to handle the output that libvpx produces. Use 4:2:0 chroma subsampling in such a case:
+
+{{{
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -pix_fmt yuv420p output.webm
+}}}
+
+== Also see ==
+
+* [https://www.webmproject.org/docs/encoder-parameters/ WebM project libvpx Encoder Parameter Guide]
+* [https://developers.google.com/media/vp9/ Google VP9 Guide]
+* [https://web.archive.org/web/20230725174849/http://wiki.webmproject.org/ffmpeg/vp9-encoding-guide VP9 Encoding Guide]
+* [https://medium.com/netflix-techblog/a-large-scale-comparison-of-x264-x265-and-libvpx-a-sneak-peek-2e81e88f8b0f Netflix Tech Blog — A Large-Scale Comparison of x264, x265, and libvpx] ([https://www.spiedigitallibrary.org/conference-proceedings-of-spie/9971/997116/A-large-scale-video-codec-comparison-of-x264-x265-and/10.1117/12.2238495.short?SSO=1 link to paper])
+
+

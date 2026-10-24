@@ -1,0 +1,87 @@
+[[PageOutline(1-100,Contents)]]
+
+= Overview =
+
+One of the great features of ffmpeg filtering library is the ability to create overlays, allowing users to put one video over another. We can also use this feature to implement the mosaic video output, usually used in security surveillance systems. An example of what we are going to achieve in this tutorial is displayed in the following screenshot:
+
+[[Image(mosaic1.png)]]
+
+We can see one video, displaying 4 different inputs at the same time. This can be done using the following ffmpeg command line (which we'll explain in detail):
+{{{
+ffmpeg
+	-i 1.avi -i 2.avi -i 3.avi -i 4.avi
+	-filter_complex "
+		nullsrc=size=640x480 [base];
+		[0:v] setpts=PTS-STARTPTS, scale=320x240 [upperleft];
+		[1:v] setpts=PTS-STARTPTS, scale=320x240 [upperright];
+		[2:v] setpts=PTS-STARTPTS, scale=320x240 [lowerleft];
+		[3:v] setpts=PTS-STARTPTS, scale=320x240 [lowerright];
+		[base][upperleft] overlay=shortest=1 [tmp1];
+		[tmp1][upperright] overlay=shortest=1:x=320 [tmp2];
+		[tmp2][lowerleft] overlay=shortest=1:y=240 [tmp3];
+		[tmp3][lowerright] overlay=shortest=1:x=320:y=240
+	"
+	-c:v libx264 output.mkv
+}}}
+The command line above, if written in the shell directly, should look like this of course:
+{{{
+ffmpeg -i 1.avi -i 2.avi -i 3.avi -i 4.avi -filter_complex "nullsrc=size=640x480 [base]; [0:v] setpts=PTS-STARTPTS, scale=320x240 [upperleft]; [1:v] setpts=PTS-STARTPTS, scale=320x240 [upperright]; [2:v] setpts=PTS-STARTPTS, scale=320x240 [lowerleft]; [3:v] setpts=PTS-STARTPTS, scale=320x240 [lowerright]; [base][upperleft] overlay=shortest=1 [tmp1]; [tmp1][upperright] overlay=shortest=1:x=320 [tmp2]; [tmp2][lowerleft] overlay=shortest=1:y=240 [tmp3]; [tmp3][lowerright] overlay=shortest=1:x=320:y=240" -c:v libx264 output.mkv
+}}}
+
+You can see the final video at the following link: http://www.youtube.com/watch?v=ix2HxIfo4WY
+
+= Detailed explanation =
+
+Let's explain how exactly does this work, so you can create your own variants of overlay filter usage. First of all get yourself familiar with [http://www.ffmpeg.org/ffmpeg-all.html#overlay-1 the overlay filter] and all of its options. Also, pay a very close attention to the provided examples section.
+
+What we need to do, in this tutorial, is to overlay 4 input videos on top of the blank background video. The end result should look like this:
+
+[[Image(mosaic2.png)]]
+
+The filter graph, for this particular case, looks something like this:
+
+[[Image(mosaic3.png)]]
+
+Now, let's get back to the command line we've used and lets explain it line by line:
+{{{
+ffmpeg
+	-i 1.avi -i 2.avi -i 3.avi -i 4.avi
+	-filter_complex "
+		nullsrc=size=640x480 [base];
+		[0:v] setpts=PTS-STARTPTS, scale=320x240 [upperleft];
+		[1:v] setpts=PTS-STARTPTS, scale=320x240 [upperright];
+		[2:v] setpts=PTS-STARTPTS, scale=320x240 [lowerleft];
+		[3:v] setpts=PTS-STARTPTS, scale=320x240 [lowerright];
+		[base][upperleft] overlay=shortest=1 [tmp1];
+		[tmp1][upperright] overlay=shortest=1:x=320 [tmp2];
+		[tmp2][lowerleft] overlay=shortest=1:y=240 [tmp3];
+		[tmp3][lowerright] overlay=shortest=1:x=320:y=240
+	"
+	-c:v libx264 output.mkv
+}}}
+
+First, we created a background for our output video, using [http://www.ffmpeg.org/ffmpeg-all.html#color_002c-haldclutsrc_002c-nullsrc_002c-rgbtestsrc_002c-smptebars_002c-smptehdbars_002c-testsrc nullsrc filter], which has the dimension of 640x480 pixels (4 videos of 320x240 pixels) and we tagged it with the name "base". Then, we also tagged each ffmpeg input to be able to reference them later in the filter graph. The way we did it was like this:
+{{{
+[0:v] setpts=PTS-STARTPTS, scale=320x240 [upperleft]
+}}}
+The [http://www.ffmpeg.org/ffmpeg-all.html#Stream-selection stream specifier] "{{{[0:v]}}}" is telling ffmpeg to use the '''video stream''' from the '''first input'''. After we specified the input we want, we also made sure that PTS of that video starts from zero, using [http://www.ffmpeg.org/ffmpeg-all.html#setpts_002c-asetpts setpts filter] with "setpts=PTS-STARTPTS". We also did the same for all the other video inputs to make sure everything will be in sync. After that, we scaled our input video to the appropriate size and finally tagged it with a descriptive name like "upperleft".
+
+After tagging, we started to overlay videos, one by one. First, we took the "base" video (our empty background video) and then overlaid the "upperleft" video on top of it:
+{{{
+[base][upperleft] overlay=shortest=1 [tmp1];
+}}}
+We used "{{{shortest=1}}}" here to specify that we want the output video to stop when the shortest input video stops. Note that we didn't specify any coordinates (x, y) so the upperleft video would be located at (0, 0) i.e. in the upper-left area of the output video. After all that, we tagged that temporary step with the name "tmp1", because we will need to overlay the next input video on that temporary result:
+{{{
+[tmp1][upperright] overlay=shortest=1:x=320 [tmp2];
+}}}
+That line specifies that the "upperright" video should be overlaid on top of the "tmp1" video, which we produced in the previous step. Here we specified the output x position to 320 pixels, in order to move the video to the right. Also, we did not specify any y position so it defaults to y=0.
+
+Same thing was used in the subsequent lines, but there is one important thing to notice for the last line:
+{{{
+[tmp3][lowerright] overlay=shortest=1:x=320:y=240
+}}}
+Here, we didn't specify the tag name for our result, because we want our result to be actual output of the whole filter graph that we created so far. Also note there is no semi-column at the end of that line.
+
+= Final word =
+
+That's pretty much it. If it sounds easy, that's because [http://git.videolan.org/?p=ffmpeg.git;a=blob_plain;f=MAINTAINERS;hb=HEAD great people behind FFmpeg project] have worked hard to provide you with such an amazing tool :) One way to say "Thank You" to them is by considering a [http://www.ffmpeg.org/donations.html donation to FFmpeg project] ;)

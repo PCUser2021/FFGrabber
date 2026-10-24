@@ -7,12 +7,12 @@ using Avalonia.Media;
 namespace FFGrabber;
 
 /// <summary>
-/// Shows the complete contents of every capture/hardware guide tracked in the repository.
-/// The existing curated encoder-option index is also searchable as a virtual document.
+/// Shows the complete, preserved text of every source guide embedded from the repository.
+/// The source text is displayed unchanged; the curated encoder-option index is a separate virtual document.
 /// </summary>
 public sealed class GuideLibraryWindow : Window
 {
-    private sealed record GuideDocument(string Title, string Source, string Content);
+    private sealed record GuideDocument(string Title, string Source, string Content, string? Notice = null);
     private sealed record RelatedProfile(string Label, string ProfileName, bool IsCapture);
 
     private readonly TextBox _search = new()
@@ -85,7 +85,7 @@ public sealed class GuideLibraryWindow : Window
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "Search and read embedded capture, hardware and reconstructed encoder-profile references.",
+            Text = "Search and read all preserved source .txt files; the viewer keeps each selected file's text unchanged.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = ThemePreferences.Brush("#A4A9B6")
         });
@@ -198,14 +198,15 @@ public sealed class GuideLibraryWindow : Window
             using var reader = new StreamReader(stream);
             var content = reader.ReadToEnd();
             var title = Path.GetFileNameWithoutExtension(fileName).Replace('_', ' ');
+            string? notice = null;
             if (string.Equals(fileName, "ffserver.txt", StringComparison.OrdinalIgnoreCase))
             {
                 title = "Historical — ffserver (obsolete)";
-                content = "ARCHIVAL REFERENCE ONLY. ffserver was removed from modern FFmpeg releases. This file is preserved so the historical configuration can be searched and read; it is not a runnable modern FFmpeg workflow and has no one-click profile."
-                    + Environment.NewLine + Environment.NewLine + content;
+                notice = "ARCHIVAL REFERENCE ONLY — ffserver was removed from modern FFmpeg releases; this historical guide is not a current workflow.";
             }
 
-            documents.Add(new GuideDocument(title, fileName, content));
+            // Keep the file body verbatim. Any archival notice is separate presentation metadata.
+            documents.Add(new GuideDocument(title, fileName, content, notice));
         }
 
         var indexedOptions = EncodingGuideOptionIndex.All
@@ -214,7 +215,7 @@ public sealed class GuideLibraryWindow : Window
             .Select(option => option.Name + " [" + option.Group + "]" + Environment.NewLine
                 + option.Description + Environment.NewLine
                 + "Source references: " + option.SourceFiles);
-        var indexText = "This searchable index preserves the FFmpeg options and descriptions curated from historical encoding guides. The original full encoder source documents referenced by the index are not present in this repository. The companion encoder-profile text files are reconstructed summaries based on the supplied profile payloads, not verbatim replacements for those historical source documents."
+        var indexText = "This is a curated searchable index of FFmpeg options and descriptions. It is a supplementary navigation aid, not a replacement for the individual source documents, which are embedded and displayed separately in their preserved text form."
             + Environment.NewLine + Environment.NewLine
             + string.Join(Environment.NewLine + Environment.NewLine, indexedOptions);
         documents.Add(new GuideDocument(
@@ -262,7 +263,9 @@ public sealed class GuideLibraryWindow : Window
             return;
 
         _selectedTitle.Text = document.Title;
-        _selectedSource.Text = document.Source;
+        _selectedSource.Text = document.Notice is null
+            ? document.Source
+            : $"{document.Source} — {document.Notice}";
         _viewer.Text = document.Content;
         RefreshRelatedProfiles(document);
     }

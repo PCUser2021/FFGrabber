@@ -1,0 +1,123 @@
+= FFV1 encoding cheatsheet =
+
+FFV1 is a video codec developed within FFmpeg. It is lossless, meaning that it compresses video without introducing quantization degradations. Therefore, FFV1 is a good choice for [https://www.loc.gov/preservation/digital/formats/fdd/fdd000341.shtml archiving and preservation]. A [http://compression.ru/video/codec_comparison/lossless_codecs_2007_en.html lossless codec comparison] found FFV1 to be the "most balanced", offering "relatively good speed and high compression".
+
+There are two versions of the codec supported by `ffmpeg`, version 1 and 3. 
+
+== FFV1 version 1 ==
+The following list contains encoding parameters for FFV1 (version 1):
+
+||= Name   =||= FFmpeg argument =||= Valid values =||= Comments =||
+|| Coder    || `-coder`          || 0, 1, 2        || 0=Golomb Rice, 1=Range Coder, 2=Range Coder (with custom state transition table) ||
+|| Context  || `-context`        || 0, 1           || 0=small, 1=large ||
+|| GOP size || `-g`              || integer >= 1   || Reuse context model within a group of frames to improve compression.||
+
+FFV1 version 1 is in every way inferior to version 3; only use it for backward compatibility.
+
+For archival use, GOP-size should be "1". Doing so increases error resilience (frames are lost independently) at the cost of compression ratio. 
+
+=== Examples ===
+
+'''Copy audio "as-is" and use FFV1.1 as video codec. Audio stream kept as-is.'''
+
+Parameters are GOP-size=1, coder=1, context=1:
+
+{{{
+ffmpeg -i <input_video> \
+    -acodec  copy       \
+    -vcodec  ffv1       \
+    -level   1          \
+    -coder   1          \
+    -context 1          \
+    -g       1          \
+    <output_video>
+}}}
+
+
+== FFV1 version 3 ==
+The following list contains encoding parameters for FFV1 (version 3).
+
+||= Name                     =||= FFmpeg argument =||= Valid values =||= Comments =|| 
+|| Coder                      || `-coder`          || 0, 1, 2        || 0=Golomb-Rice, 1=Range Coder, 2=Range Coder (with custom state transition table) ||
+|| Context                    || `-context`        || 0, 1           || 0=small, 1=large ||
+|| GOP size                   || `-g`              || integer >= 1   || Reuse context model within a group of frames to improve compression. ||
+|| Version                    || `-level`          || 1, 3           || Select which FFV1 version to use. ||
+|| Threads                    || `-threads`        || integer >= 1   || The number of threads to use while processing. Adjust this to match how many of your available CPU cores you want to use. ||
+|| Slices                     || `-slices`         || 4, 6, 9, 12, 16, 24, 30 || Each frame is split into this number of slices. This affects multithreading performance, as well as filesize: Increasing the number of slices might speed up performance, but also increases the filesize. ||
+|| Error correction/detection || `-slicecrc`       || 0, 1           || 0=off, 1=on. Enabling this option adds CRC information to each slice. This makes it possible for a decoder to detect errors in the bitstream, rather than blindly decoding a broken slice. ||
+|| Multi-pass encoding        || `-pass`           || 1, 2           || 1=1st pass, 2=2nd pass. FFV1.3 is able to be encoded in multiple passes, to increase compression efficiency. It requires encoding the file twice, though: The 1st pass is to analyze the video source data and logging the results, and the 2nd pass uses this previously gathered information to achieve a higher compression ratio. More information about multi-pass encoding can be read up in the [http://en.wikipedia.org/wiki/Variable_bitrate#Multi-pass_encoding_and_single-pass_encoding Wikipedia article about "Variable bitrate" (VBR)]. ||
+|| Multi-pass logfile         || `-passlogfile`    || a filename prefix || This is the prefix of the logfile used for storing the information gathered during previous passes in multi-pass encoding mode. Additional info about passlogfile can be found in [http://ffmpeg.org/ffmpeg.html#Video-Options FFmpeg's documentation about video options]. ||
+
+For archival use:
+* GOP-size should be "1". Doing so increases error resilience (frames are lost independently) at the cost of compression ratio.
+* CRC should be enabled.
+* Multi-pass, if temporary disk space allows, may be used to recoup the compression ratio loss from GOP=1.
+
+=== Examples ===
+* '''Copy audio "as-is" and use FFV1.3 as video codec.'''
+    Parameters are 8 threads, coder=1, context=1, GOP-size=1, 24 slices and slice-CRC on:
+    {{{
+    ffmpeg -i <input_video>     \
+        -acodec   copy          \
+        -vcodec   ffv1 -level 3 \
+        -threads  8             \
+        -coder    1             \
+        -context  1             \
+        -g        1             \
+        -slices  24             \
+        -slicecrc 1             \
+        <output_video>
+    }}}
+
+* '''Encode using 2-pass mode, with audio kept as-is:'''
+    ** 1st pass:
+        {{{
+        ffmpeg -i <input_video>     \
+            -an                     \
+            -vcodec ffv1 -level 3   \
+            -pass 1                 \
+            -passlogfile my_passlog \
+            -f nut /dev/null
+        }}}
+
+    ** 2nd pass:
+        {{{
+        ffmpeg -i <input_video>     \
+            -acodec copy            \
+            -vcodec ffv1 -level 3   \
+            -pass 2                 \
+            -passlogfile my_passlog \
+            <output_video>
+        }}}
+
+
+== Read from existing file ==
+In order to check which parameters an FFV1 video was encoded with, you can use the following command:
+{{{
+ffprobe -i <input_video> -debug 1
+}}}
+
+=== FFV1 version 1 ===
+`[ffv1 @ 0x385bb80] ver:1 keyframe:1 coder:0 ec:0 slices:1 bps:8`
+
+
+=== FFV1 version 3 ===
+The output for FFV1.3 might look as follows:
+
+`[ffv1 @ 0x22444e0] global: ver:3.4, coder:0, colorspace: 0 bpr:10 chroma:1(1:0), alpha:0 slices:3x2 qtabs:2 ec:1 intra:0 CRC:0x613FED4D`
+
+That line translates to this:
+||= Name     =||= Label        =||= FFmpeg argument =||= Value                      =||= Comment =||
+|| ver        || Version        || `-level`          || major-version:3 \\ minor-version:4 || `-level`determines major-version. \\ Minor-version is encoder-internal and read only. ||
+|| coder      || Coder          || `-coder`          || 0                            || 0=Golomb Rice, 1=Range Coder, 2=Range Coder (with custom state transition table) ||
+|| colorspace || Color space    ||                   || 0                            || 0=YCbCr ("YUV"), 1=JPEG2000_RCT ("RGB")        ||
+|| bpr        || Bits per sample || `-pix_fmt`       || 10 bits                      || For example with "yuv422p10le"                 ||
+|| slices     || Slice count    || `-slices`         || 3x2 = 6                      || Shows the layout of slices as "width x height" ||
+|| ec         || Error correction || `-slicecrc`     || 1                            || 0=OFF, 1=ON                                    ||
+|| intra      || Intra-frame only || `-g`            || 0                            || 0=GOP greater than 1, 1=GOP is 1               ||
+
+== External links ==
+
+* [http://download.das-werkstatt.com/pb/mthk/ffv1_stats/latest/ ffv1_stats], a comparison of file sizes by FFV1 version, slice count, and GOP size.
+  * First set compares GOP=1 against GOP=300. Second set compares raw against GOP=1. (The actual column names encode a lot more information: for example, v3c11s30crc1p2 is probably short for `-level 3 -coder 1 -context 1 -slices 30 -slicecrc 1`, two passes.)
+  * The results suggest that intra-prediction works better when the slices is smaller (i.e. higher slice count, smaller input video).

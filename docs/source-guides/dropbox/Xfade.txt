@@ -1,0 +1,81 @@
+[[PageOutline]]
+
+The [https://ffmpeg.org/ffmpeg-filters.html#xfade xfade] and [https://ffmpeg.org/ffmpeg-filters.html#xfade_005fopencl xfade_opencl] filters can create transitions between two inputs with various wipes, slides, crossfades, and other effects.
+
+= Offset Parameter =
+
+The `offset` parameter determines when the crossfade starts.
+
+It should be set to a value that enables the full duration of the transition between the two videos. The offset parameter in the first video stream should not be greater than the duration of the first video minus the duration of the transition itself.
+
+For example, if your first video is 8 seconds long, and your transition is 1 second long, the offset must be less than or equal to (8-1) = 7.
+
+Also, the duration of the second video should be at least as long as the duration of the transition itself, meaning that in the above example, the second video's duration must be equal to or greater than 1.
+
+To calculate the offset for subsequent videos, you have to factor in the previous crossfade offsets and the duration of the current video. See this [https://stackoverflow.com/a/63570355/435093 example on Stack Overflow].
+
+= Examples =
+
+== MP4 output ==
+
+Fade between two images. Each image has a duration of 5 seconds. The fade duration is set to 1 second with the `duration` option, and it occurs at 4 seconds using the `offset` option.
+
+{{{
+ffmpeg -loop 1 -t 5 -i 1.png -loop 1 -t 5 -i 2.png -filter_complex "[0][1]xfade=transition=fade:duration=1:offset=4,format=yuv420p" output.mp4
+}}}
+
+== GIF output ==
+
+Using the [https://ffmpeg.org/ffmpeg-filters.html#split_002c-asplit split], [https://ffmpeg.org/ffmpeg-filters.html#palettegen-1 palettegen], and [https://ffmpeg.org/ffmpeg-filters.html#paletteuse paletteuse] filters:
+
+{{{
+ffmpeg -loop 1 -t 5 -i 1.png -loop 1 -t 5 -i 2.png -filter_complex "[0][1]xfade=transition=fade:duration=1:offset=4,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 output.gif
+}}}
+
+= Gallery =
+
+Below is gallery of the available effects. `fade` is the default transition. Names in '''bold''' are also available in xfade_opencl.
+
+||  [[Image(fade.gif)]]  ||  [[Image(fadeblack.gif)]]  ||  [[Image(fadewhite.gif)]]  ||  [[Image(distance.gif)]]  ||
+||  '''fade''' (default)  ||  fadeblack  ||  fadewhite  ||  distance  ||
+||  [[Image(wipeleft.gif)]]  ||  [[Image(wiperight.gif)]]  ||  [[Image(wipeup.gif)]]  ||  [[Image(wipedown.gif)]]  ||
+||  '''wipeleft'''  ||  '''wiperight'''  ||  '''wipeup'''  ||  '''wipedown'''  ||
+||  [[Image(slideleft.gif)]]  ||  [[Image(slideright.gif)]]  ||  [[Image(slideup.gif)]]  ||  [[Image(slidedown.gif)]]  ||
+||  '''slideleft'''  ||  '''slideright'''  ||  '''slideup'''  ||  '''slidedown'''  ||
+||  [[Image(smoothleft.gif)]]  ||  [[Image(smoothright.gif)]]  ||  [[Image(smoothup.gif)]]  ||  [[Image(smoothdown.gif)]]  ||
+||  smoothleft  ||  smoothright  ||  smoothup  ||  smoothdown  ||
+||  [[Image(circlecrop.gif)]]  ||  [[Image(rectcrop.gif)]]  ||  [[Image(circleclose.gif)]]  ||  [[Image(circleopen.gif)]]  ||
+||  circlecrop  ||  rectcrop  ||  circleclose  ||  circleopen  ||
+||  [[Image(horzclose.gif)]]  ||  [[Image(horzopen.gif)]]  ||  [[Image(vertclose.gif)]]  ||  [[Image(vertopen.gif)]]  ||
+||  horzclose  ||  horzopen  ||  vertclose  ||  vertopen  ||
+||  [[Image(diagbl.gif)]]  ||  [[Image(diagbr.gif)]]  ||  [[Image(diagtl.gif)]]  ||  [[Image(diagtr.gif)]]  ||
+||  diagbl  ||  diagbr  ||  diagtl  ||  diagtr  ||
+||  [[Image(hlslice.gif)]]  ||  [[Image(hrslice.gif)]]  ||  [[Image(vuslice.gif)]]  ||  [[Image(vdslice.gif)]]  ||
+||  hlslice  ||  hrslice  ||  vuslice  ||  vdslice  ||
+||  [[Image(dissolve.gif)]]  ||  [[Image(pixelize.gif)]]  ||  [[Image(radial.gif)]]  ||  [[Image(hblur.gif)]]  ||
+||  dissolve  ||  pixelize  ||  radial  ||  hblur  ||
+||  [[Image(wipetl.gif)]]  ||  [[Image(wipetr.gif)]]  ||  [[Image(wipebl.gif)]]  || [[Image(wipebr.gif)]]  ||
+||  wipetl  ||  wipetr  ||  wipebl  ||  wipebr  ||
+||  [[Image(fadegrays.gif)]]  ||  [[Image(squeezev.gif)]]  ||  [[Image(squeezeh.gif)]]  ||  [[Image(zoomin.gif)]]  ||
+||  fadegrays  ||  squeezev  ||  squeezeh  ||  zoomin  ||
+||  [[Image(hlwind.gif)]]  ||  [[Image(hrwind.gif)]]  ||  [[Image(vuwind.gif)]]  ||  [[Image(vdwind.gif)]]  ||
+||  hlwind  ||  hrwind  ||  vuwind  ||  vdwind  ||
+||  [[Image(coverleft.gif)]]  ||  [[Image(coverright.gif)]]  ||  [[Image(coverup.gif)]]  ||  [[Image(coverdown.gif)]]  ||
+||  coverleft  ||  coverright  ||  coverup  ||  coverdown  ||
+||  [[Image(revealleft.gif)]]  ||  [[Image(revealright.gif)]]  ||  [[Image(revealup.gif)]]  ||  [[Image(revealdown.gif)]]  ||
+||  revealleft  ||  revealright  ||  revealup  ||  revealdown  ||
+
+Command used to make each gallery image; as reference for future gallery additions:
+
+{{{
+ffmpeg -f lavfi -i "color=c=blue:s=180x136:r=15:d=2,format=rgb24,drawtext=text='fadeblack':x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxborderw=4:boxcolor=white:fontfile=/usr/share/fonts/TTF/VeraMono.ttf:fontsize=20" -f lavfi -i "color=c=aqua:s=180x136:r=15:d=2,format=rgb24,drawtext=text='fadeblack':x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxborderw=4:boxcolor=white:fontfile=/usr/share/fonts/TTF/VeraMono.ttf:fontsize=20" -filter_complex "[0][1]xfade=duration=1:offset=1:transition=fadeblack,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" fadeblack.gif
+}}}
+
+
+= Custom effects =
+
+You can make your own custom effects using `transition=custom` and the `expr` options. See the [https://ffmpeg.org/ffmpeg-filters.html#xfade xfade documentation] for more info.
+
+= xfade_opencl =
+
+[https://ffmpeg.org/ffmpeg-filters.html#xfade_005fopencl xfade_opencl] is the Open CL variant of the xfade filter. This filter supports a subset of the filters available in xfade (see '''bold''' names in gallery above) and also supports creation of custom effects. It requires `ffmpeg` to be configured with `--enable-opencl` and you must initialize a hardware device in your command. See [https://ffmpeg.org/ffmpeg-filters.html#OpenCL-Video-Filters OpenCL Video Filters] for general info.

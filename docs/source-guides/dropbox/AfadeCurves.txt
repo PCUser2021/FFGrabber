@@ -1,0 +1,23 @@
+= FFmpeg afade/acrossfade filter curves illustration =
+
+The table below shows visual illustrations of how the volume of an audio stream changes when they are faded-in, for a given curve type. For fade-outs, the horizontal mirror of the illustration represents that effect.
+
+||= afade argument  =||= Meaning       =||= Curve         =||
+|| tri||triangular, linear slope (default)||[[Image(tri.png)]]||
+|| qsin||quarter of sine wave||[[Image(qsin.png)]]||
+|| hsin||half of sine wave||[[Image(hsin.png)]]||
+|| esin||exponential sine wave||[[Image(esin.png)]]||
+|| log||logarithmic||[[Image(log.png)]]||
+|| ipar||inverted parabola||[[Image(ipar.png)]]||
+|| qua||quadratic||[[Image(qua.png)]]||
+|| cub||cubic||[[Image(cub.png)]]||
+|| squ||square root||[[Image(squ.png)]]||
+|| cbr||cubic root||[[Image(cbr.png)]]||
+|| par||parabola||[[Image(par.png)]]||
+|| exp||exponential||[[Image(exp.png)]]||
+|| iqsin||inverted quarter of sine wave||[[Image(iqsin.png)]]||
+|| ihsin||inverted half of sine wave||[[Image(ihsin.png)]]||
+|| dese||double-exponential seat||[[Image(dese.png)]]||
+|| desi||double-exponential sigmoid||[[Image(desi.png)]]||
+|| losi||logistic sigmoid||[[Image(losi.png)]]||
+|| nofade||no fade||[[Image(nofade.png)]]||

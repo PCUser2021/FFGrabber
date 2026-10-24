@@ -1,0 +1,37 @@
+= Vectorscope =
+
+Given source video:
+
+[[Image(vectorscope_source.jpg)]]
+
+== Mode: gray ==
+
+[[Image(vectorscope_gray.jpg)]]
+
+== Mode: color ==
+
+[[Image(vectorscope_color.jpg)]]
+
+== Mode: color2 ==
+
+[[Image(vectorscope_color2.jpg)]]
+
+== Mode: color3 ==
+
+[[Image(vectorscope_color3.jpg)]]
+
+== Mode: color4 ==
+
+[[Image(vectorscope_color4.jpg)]]
+
+== Mode: color5 ==
+
+[[Image(vectorscope_color5.jpg)]]
+
+== With overlay ==
+
+[[Image(vectorscope_overlay.jpg)]]
+
+{{{
+ffplay video -vf "format=yuva444p9,split=2[m][v],[v]vectorscope=b=0.7:m=color3:g=green[v],[m][v]overlay=x=W-w:y=H-h"
+}}}

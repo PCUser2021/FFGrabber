@@ -1,0 +1,96 @@
+= Waveform Monitor =
+
+Given source video:
+
+[[Image(wfm_source.png)]]
+
+== Lowpass filter ==
+
+[[Image(wfm_lowpass.png)]]
+
+{{{
+ffplay video -vf waveform=filter=lowpass:scale=ire:graticule=green:flags=numbers+dots
+}}}
+
+== Flat filter ==
+
+[[Image(wfm_flat.png)]]
+{{{
+ffplay video -vf waveform=filter=flat:scale=ire:graticule=green:flags=numbers+dots
+}}}
+
+== Aflat filter ==
+
+[[Image(wfm_aflat.png)]]
+{{{
+ffplay video -vf waveform=filter=aflat:scale=ire:graticule=green:flags=numbers+dots
+}}}
+
+
+== Xflat filter ==
+
+[[Image(wfm_xflat.png)]]
+{{{
+ffplay video -vf waveform=filter=xflat:scale=ire:graticule=orange:flags=numbers+dots
+}}}
+
+
+== Chroma filter ==
+
+[[Image(wfm_chroma.png)]]
+{{{
+ffplay video -vf waveform=filter=chroma:scale=ire:graticule=green:flags=numbers+dots
+}}}
+
+
+== Color filter ==
+
+[[Image(wfm_color.png)]]
+
+{{{
+ffplay video -vf waveform=filter=color:scale=ire:graticule=green:flags=numbers+dots
+}}}
+
+
+== Acolor filter ==
+
+[[Image(wfm_acolor.png)]]
+
+{{{
+ffplay video -vf waveform=filter=acolor:scale=ire:graticule=green:flags=numbers+dots
+}}}
+
+
+== YCbCr parade ==
+
+[[Image(wfm_ycbcr_parade.png)]]
+
+{{{
+ffplay video -vf waveform=filter=lowpass:scale=ire:graticule=green:flags=numbers+dots:components=7:display=parade
+}}}
+
+
+== RGB parade ==
+
+[[Image(wfm_rgb_parade.png)]]
+
+{{{
+ffplay video -vf format=gbrp,waveform=filter=lowpass:components=7:display=parade
+}}}
+
+
+== RGB overlay ==
+
+[[Image(wfm_rgb_overlay.png)]]
+
+{{{
+ffplay video -vf format=gbrp,waveform=filter=lowpass:components=7:display=overlay
+}}}
+
+== Waveform overlaid on top of video ==
+
+[[Image(wfm_overlay.jpg)]]
+
+{{{
+ffplay video -vf "split=2[a][b],[b]waveform=g=green:s=ire:fl=numbers+dots:i=.1:f=chroma:bgopacity=.5,format=yuva444p[bb],[a][bb]overlay"
+}}}

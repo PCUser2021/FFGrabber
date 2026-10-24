@@ -1,0 +1,226 @@
+= Fancy Filtering Examples =
+
+[[PageOutline(2-3, Contents)]]
+
+== Video ==
+
+=== cellauto ===
+[[Image(cellauto.png)]]
+{{{
+ffplay -f lavfi -i cellauto=rule=110
+}}}
+Other interesting cellauto rule values: 9, 18, 22, 26, 30, 41, 45, 50, 54, 60, 62, 73, 75, 77, 82, 86, 89, 90, 97, 99, 101, 102, 105, 107, 109, [http://en.wikipedia.org/wiki/Rule_110 110] (default), 124, 126, 129, 131, 133, 135, 137, 145, 146, 149, 150, 151, 153, 154, 161, 167, 169, 181, 182, 183, 193, 195, 210, 218, 225.
+=== life ===
+[[Image(life.png)]]
+{{{
+ffplay -f lavfi -i life=s=300x200:mold=10:r=60:ratio=0.1:death_color=#C83232:life_color=#00ff00,scale=1200:800:flags=16
+}}}
+[[Image(life2.png)]]
+{{{
+ffplay -f lavfi -i life=s=640x480:mold=10:r=100:ratio=0.1:death_color=blue:life_color=#00ff00,boxblur=2:2
+}}}
+
+=== mandelbrot ===
+[[Image(mandelbrot.png)]]
+{{{
+ffplay -f lavfi -i mandelbrot
+}}}
+
+=== gradients ===
+
+[[Image(mpv-shot0001.png)]]
+{{{
+ffplay -f lavfi -i gradients=n=3:type=linear,format=rgb0
+}}}
+
+[[Image(mpv-shot0002.png)]]
+{{{
+ffplay -f lavfi -i gradients=n=3:type=radial,format=rgb0
+}}}
+
+[[Image(circular.png)]]
+{{{
+ffplay -f lavfi -i gradients=n=7:type=circular,format=rgb0
+}}}
+
+[[Image(spiral.png)]]
+{{{
+ffplay -f lavfi -i gradients=n=7:type=spiral,format=rgb0
+}}}
+
+
+
+=== mirror effect ===
+[[Image(ffplay-mirror.jpg)]]
+{{{
+ffplay -i INPUT -vf "crop=iw/2:ih:0:0,split[left][tmp];[tmp]hflip[right];[left][right] hstack"
+}}}
+
+=== video channel separation effect with lut filter===
+RGB version
+[[Image(rgb_sep.jpg)]]
+{{{
+ffplay -f lavfi -i testsrc -vf "split=4[a][b][c][d];[b]lutrgb=g=0:b=0[x];[c]lutrgb=r=0:b=0[y];[d]lutrgb=r=0:g=0[z];[a][x][y][z]hstack=4"
+}}}
+YUV version
+[[Image(yuv_sep.jpg)]]
+{{{
+ffplay -f lavfi -i testsrc -vf "split=4[a][b][c][d];[b]lutyuv=u=128:v=128[x];[c]lutyuv=y=0:v=128[y];[d]lutyuv=y=0:u=128[z];[a][x][y][z]hstack=4"
+}}}
+
+=== histogram & waveform ===
+[[Image(histograms.png)]]
+{{{
+ffplay -f lavfi -i mandelbrot -vf "format=gbrp,split=4[a][b][c][d],[d]histogram=display_mode=0:level_height=244[dd],[a]waveform=m=1:d=0:r=0:c=7[aa],[b]waveform=m=0:d=0:r=0:c=7[bb],[c][aa]vstack[V],[bb][dd]vstack[V2],[V][V2]hstack"
+}}}
+
+=== vectorscope & waveforms ===
+[[Image(waveforms_vectorscope.png)]]
+{{{
+ffplay -f lavfi -i mandelbrot -vf "format=yuv444p,split=4[a][b][c][d],[a]waveform[aa],[b][aa]vstack[V],[c]waveform=m=0[cc],[d]vectorscope=color4[dd],[cc][dd]vstack[V2],[V][V2]hstack"
+}}}
+
+=== waveform ===
+[[Image(waveform.jpg)]]
+
+Split the waveform filter to show broadcast range of the waveform (y values between 16 and 235) in green and out of broadcast range in red.
+{{{
+ffplay -i https://archive.org/download/BigBuckBunny/big_buck_bunny_480p_surround-fix.avi  -vf "split[a][b];[a]format=gray,waveform,split[c][d];[b]pad=iw:ih+256[padded];[c]geq=g=1:b=1[red];[d]geq=r=1:b=1,crop=in_w:220:0:16[mid];[red][mid]overlay=0:16[wave];[padded][wave]overlay=0:H-h"
+}}}
+
+=== waveform with envelope ===
+[[Image(waveforme.png)]]
+
+Split the waveform filter to show broadcast range of the waveform (y values between 16 and 235) in green and out of broadcast range in red and also use envelope.
+{{{
+ffplay ~/matrixbench_mpeg2.mpg -vf "split[a][b];[a]waveform=e=3,split=3[c][d][e];[e]crop=in_w:20:0:235,lutyuv=v=180[low];[c]crop=in_w:16:0:0,lutyuv=y=val:v=180[high];[d]crop=in_w:220:0:16,lutyuv=v=110[mid] ; [b][high][mid][low]vstack=4"
+}}}
+
+[https://samples.ffmpeg.org/benchmark/testsuite1/matrixbench_mpeg2.mpg matrixbench_mpeg2.mpg can be found here]
+
+=== more waveforms and vectorscope ===
+
+[[Image(wfmg.jpg)]]
+[[Image(wfmgc.jpg)]]
+
+
+=== datascope ===
+
+[[Image(datascope.jpg)]]
+
+== Audio ==
+
+=== aevalsrc ===
+
+Making some random "musical" keys:
+
+{{{
+% cat expr
+# floor(t): 0 0 0 0 0 ... 1 1 1 1 1 ... 2 2 2 2 2
+#  => set a random key when floor(t) changes
+if(eq(floor(t),ld(2)),
+    st(0,random(4)*3000+1000));
+
+# the next value to compare floor(t) with
+st(2,floor(t)+1);
+
+# mod(t,1) makes t always in the range [0;1) for each key
+st(1,mod(t,1));
+
+# 0.6*... + 0.4*... for "echo" effect
+# exp() to mitigate the sound according to the time
+(0.6*sin(1*ld(0)*ld(1))+
+ 0.4*sin(2*ld(0)*ld(1)))*exp(-4*ld(1))
+}}}
+
+And to test it:
+
+{{{
+ffplay -f lavfi -i "aevalsrc=$(grep -v '^#' expr|tr -d '\n'|sed 's/\([,;]\)/\\\1/g')"
+}}}
+
+=== showwaves and showspectrum ===
+
+Given the audio file april.flac:
+
+{{{
+ffplay -f lavfi 'amovie=april.flac,asplit=3[out1][a][b]; [a]showwaves=s=640x240[waves]; [b]showspectrum=s=640x240[spectrum]; [waves][spectrum] vstack[out0]'
+}}}
+[[Image(ffplay-waves-spectrum.png)]]
+
+=== showspectrum ===
+
+Given the multichannel audio file [https://media.xiph.org/tearsofsteel/tearsofsteel-surround.flac tearsofsteel-surround.flac] ([https://mango.blender.org/download/ source]):
+
+{{{
+ffplay -f lavfi 'amovie=tearsofsteel-surround.flac,asplit=2[out1][a]; [a]showspectrum=color=channel:scale=cbrt:orientation=vertical:overlap=1:s=2048x1024[out0]'
+}}}
+[[Image(mcspectrum.jpeg)]]
+
+Now with different colors and scaling:
+
+{{{
+ffplay -f lavfi 'amovie=tearsofsteel-surround.flac,asplit=2[out1][a]; [a]showspectrum=color=fire:scale=log:orientation=vertical:overlap=1:s=1024x1024[out0]'
+}}}
+[[Image(firespectrum.jpeg)]]
+
+=== avectorscope ===
+
+Given the audio file input.flac:
+
+{{{
+ffplay -f lavfi 'amovie=input.flac,asplit=2[out1][a],[a]avectorscope=m=polar:s=800x400[out0]'
+}}}
+[[Image(polar_avectorscope.png)]]
+
+=== showcqt ===
+
+Given the audio file input.flac:
+
+{{{
+ffplay -f lavfi 'amovie=input.flac,asplit=2[out1][a],[a]showcqt[out0]'
+}}}
+[[Image(showcqt.png)]]
+
+
+Given a media file with audio and video, play the video side by side with the audio's showcqt visualization:
+
+{{{
+ffplay -f lavfi "movie=big_buck_bunny_480p_surround-fix.avi:streams=dv+da[v][a],[a]asplit=2[out1][a],[a]showcqt=s=400x900[vfun],[v]scale=-2:900[v];[v][vfun]hstack[out0]"
+}}}
+[[Image(showcqt-sidebyside.jpg,1080)]]
+
+Notes: Since we're using `hstack`, we must scale the input video so that its height is the same as the showcqt output height (900).  The `asplit` filter is used to duplicate the audio stream.  One stream is for listening during playback (`out1`), and the other stream (`a`) is consumed by the showcqt filter and turned into video (`vfun`). This is the [https://archive.org/download/BigBuckBunny/big_buck_bunny_480p_surround-fix.avi example video] used above.  
+
+Here's another way to do the same thing with ffmpeg:
+
+{{{
+ffmpeg -i big_buck_bunny_480p_surround-fix.avi -filter_complex '[0:a]showcqt=s=400x900[vfun],[0:v]scale=-2:900[v];[v][vfun]hstack[vo]' -map '[vo]' -map 0:a  out.mp4
+}}}
+
+
+=== showspectrumpic ===
+
+Given the audio file input.flac:
+
+{{{
+ffmpeg -i input.flac -lavfi showspectrumpic=s=hd720 out.jpg
+}}}
+[[Image(showspectrumpic.jpg)]]
+
+=== showcwt ===
+
+Given the audio file input.flac:
+
+{{{
+ffplay -f lavfi -i "amovie=input.flac[a],[a]asplit=2[out1][a],[a]showcwt=logb=-120dB:direction=ud:s=1600x900:r=25:pps=32:mode=channel:scale=mel[out0]"
+}}}
+[[Image(showcwt01.jpeg)]]
+
+Another example:
+
+{{{
+ffplay -f lavfi -i "amovie=input2.flac[a],[a]asplit=2[out1][a],[a]showcwt=logb=-120dB:direction=ud:s=1600x900:r=25:pps=128:mode=channel:scale=mel[out0]"
+}}}
+[[Image(showcwt02.jpeg)]]
+

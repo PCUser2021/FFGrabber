@@ -197,10 +197,15 @@ public sealed class GuideLibraryWindow : Window
 
             using var reader = new StreamReader(stream);
             var content = reader.ReadToEnd();
-            documents.Add(new GuideDocument(
-                Path.GetFileNameWithoutExtension(fileName).Replace('_', ' '),
-                fileName,
-                content));
+            var title = Path.GetFileNameWithoutExtension(fileName).Replace('_', ' ');
+            if (string.Equals(fileName, "ffserver.txt", StringComparison.OrdinalIgnoreCase))
+            {
+                title = "Historical — ffserver (obsolete)";
+                content = "ARCHIVAL REFERENCE ONLY. ffserver was removed from modern FFmpeg releases. This file is preserved so the historical configuration can be searched and read; it is not a runnable modern FFmpeg workflow and has no one-click profile."
+                    + Environment.NewLine + Environment.NewLine + content;
+            }
+
+            documents.Add(new GuideDocument(title, fileName, content));
         }
 
         var indexedOptions = EncodingGuideOptionIndex.All

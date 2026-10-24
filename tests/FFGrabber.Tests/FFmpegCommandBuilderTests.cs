@@ -106,6 +106,37 @@ public sealed class FFmpegCommandBuilderTests
     }
 
     [TestMethod]
+    public void RecoveredStreamingGuides_MapToEditableWorkflowProfiles()
+    {
+        var resources = typeof(EncodingGuideProfiles).Assembly.GetManifestResourceNames();
+        foreach (var source in new[] { "EncodingForStreamingSites.txt", "StreamingGuide.txt", "ffserver.txt" })
+        {
+            Assert.IsTrue(resources.Contains(
+                "FFGrabber.source-guides.dropbox." + source,
+                StringComparer.OrdinalIgnoreCase), $"The recovered source {source} must be embedded.");
+        }
+
+        var fileProfile = EncodingGuideProfiles.Find("Streaming — File to RTMP (full guides)")
+            ?? throw new AssertFailedException("File-to-RTMP profile missing.");
+        Assert.AreEqual("-re", fileProfile.InputOptions);
+        Assert.AreEqual("flv", fileProfile.OutputFormat);
+        Assert.AreEqual("60", fileProfile.GopSize);
+        Assert.IsTrue(fileProfile.SourceFile.Contains("StreamingGuide.txt", StringComparison.OrdinalIgnoreCase));
+
+        var liveProfile = EncodingGuideProfiles.Find("Streaming — Live input to RTMP (full guides)")
+            ?? throw new AssertFailedException("Live-input-to-RTMP profile missing.");
+        Assert.AreEqual("dshow", liveProfile.InputFormat);
+        Assert.IsFalse(liveProfile.InputOptions.Contains("-re", StringComparison.OrdinalIgnoreCase),
+            "A live device input must not be paced as a prerecorded file.");
+
+        var teeProfile = EncodingGuideProfiles.Find("Streaming — RTMP plus local recording (tee)")
+            ?? throw new AssertFailedException("Tee-muxer profile missing.");
+        Assert.AreEqual("tee", teeProfile.OutputFormat);
+        Assert.IsTrue(teeProfile.OutputOptions.Contains("+global_header", StringComparison.OrdinalIgnoreCase));
+        Assert.AreEqual(52, EncodingGuideProfiles.All.Count);
+    }
+
+    [TestMethod]
     public void EmbeddedGuideLibrary_ContainsAllCurrentGuideAndProfileDocuments()
     {
         var resources = typeof(EncodingGuideProfiles).Assembly.GetManifestResourceNames()
@@ -115,11 +146,12 @@ public sealed class FFmpegCommandBuilderTests
         string[] preservedReferences =
         [
             "Capture_ALSA.txt", "Capture_Desktop.txt", "Capture_Lightning.txt",
-            "Capture_Webcam.txt", "DirectShow.txt", "HWAccelIntro.txt"
+            "Capture_Webcam.txt", "DirectShow.txt", "HWAccelIntro.txt",
+            "EncodingForStreamingSites.txt", "StreamingGuide.txt", "ffserver.txt"
         ];
 
-        Assert.IsTrue(resources.Length >= 20,
-            "The six preserved capture/hardware references and fourteen recovered profile payloads must all be embedded.");
+        Assert.IsTrue(resources.Length >= 23,
+            "Six capture/hardware references, two full streaming guides, the archival ffserver guide, and fourteen reconstructed profile payloads must all be embedded.");
         foreach (var source in preservedReferences)
             Assert.IsTrue(resources.Contains(
                 "FFGrabber.source-guides.dropbox." + source,

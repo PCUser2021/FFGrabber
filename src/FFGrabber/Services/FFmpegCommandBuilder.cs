@@ -109,7 +109,7 @@ public static class FFmpegCommandBuilder
                 }
 
                 args.AddRange(["-c:a", s.AudioCodec]);
-                AppendAudioBitrate(args, s.AudioCodec, s.AudioBitrate);
+                AppendAudioBitrate(args, s.AudioCodec, s.AudioBitrate, s.AudioEncoderOptions);
                 break;
         }
 

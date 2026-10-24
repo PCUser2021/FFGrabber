@@ -254,6 +254,7 @@ jobs:
         env:
           APP_VERSION: ${{ steps.app-version.outputs.value }}
           ARCH: ${{ matrix.arch }}
+          RID: ${{ matrix.rid }}
         run: |
           set -euo pipefail
           for extension in deb rpm AppImage tar.gz; do
@@ -270,7 +271,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.2
         with:
           name: FFGrabber-Linux-${{ matrix.arch }}
-          path: artifacts/linux/FFGrabber-*-linux-${{ matrix.arch }.*
+          path: artifacts/linux/FFGrabber-*-linux-${{ matrix.arch }}.*
           if-no-files-found: error
           retention-days: 14
 

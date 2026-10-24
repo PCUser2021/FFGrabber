@@ -25,7 +25,9 @@
   <!-- FFGrabber imports user-owned FFmpeg tools at runtime; never allow them into a publish payload. -->
   <Target Name="EnforceNoBundledFFmpegPayload" AfterTargets="Publish">
     <ItemGroup>
-      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffmpeg.exe;$(PublishDir)ffprobe.exe;$(PublishDir)ffplay.exe" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffmpeg.exe" Condition="Exists('$(PublishDir)ffmpeg.exe')" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffprobe.exe" Condition="Exists('$(PublishDir)ffprobe.exe')" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffplay.exe" Condition="Exists('$(PublishDir)ffplay.exe')" />
       <_ForbiddenFFmpegPayload Include="$(PublishDir)**/ffmpeg.exe;$(PublishDir)**/ffprobe.exe;$(PublishDir)**/ffplay.exe" />
     </ItemGroup>
     <Error Condition="'@(_ForbiddenFFmpegPayload)' != ''" Text="FFGrabber packaging violation: FFmpeg executables must not be included in the published payload. Import a user-owned FFmpeg toolset at runtime." />

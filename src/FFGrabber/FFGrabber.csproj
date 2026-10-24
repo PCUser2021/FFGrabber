@@ -15,10 +15,22 @@
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
-    <EmbeddedResource Include="../../docs/source-guides/dropbox/*.txt" />
+    <EmbeddedResource Include="../../docs/source-guides/dropbox/*.txt" LogicalName="FFGrabber.source-guides.dropbox.%(Filename)%(Extension)" />
     <PackageReference Include="Avalonia" Version="12.1.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
     <PackageReference Include="FluentAvaloniaUI" Version="3.1.0" />
   </ItemGroup>
+
+  <!-- FFGrabber imports user-owned FFmpeg tools at runtime; never allow them into a publish payload. -->
+  <Target Name="EnforceNoBundledFFmpegPayload" AfterTargets="Publish">
+    <ItemGroup>
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffmpeg.exe" Condition="Exists('$(PublishDir)ffmpeg.exe')" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffprobe.exe" Condition="Exists('$(PublishDir)ffprobe.exe')" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffplay.exe" Condition="Exists('$(PublishDir)ffplay.exe')" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)**/ffmpeg.exe;$(PublishDir)**/ffprobe.exe;$(PublishDir)**/ffplay.exe" />
+    </ItemGroup>
+    <Error Condition="'@(_ForbiddenFFmpegPayload)' != ''" Text="FFGrabber packaging violation: FFmpeg executables must not be included in the published payload. Import a user-owned FFmpeg toolset at runtime." />
+    <Error Condition="Exists('$(PublishDir)tools/ffmpeg') Or Exists('$(PublishDir)tools\ffmpeg')" Text="FFGrabber packaging violation: tools/ffmpeg must not be included in the published payload." />
+  </Target>
 </Project>

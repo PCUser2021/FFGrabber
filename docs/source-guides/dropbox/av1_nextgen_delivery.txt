@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: AV1 NextGen Delivery]
+Recommended Flags: -c:v libaom-av1 -crf 30 -b:v 0 -strict experimental
+Application Stage: transcode
+Description: Next-generation royalty-free container encoding using sequential two-pass algorithms.

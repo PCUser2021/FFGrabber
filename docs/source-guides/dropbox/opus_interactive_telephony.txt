@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: Opus Interactive Telephony]
+Recommended Flags: -vn -c:a libopus -b:a 128k -vbr on
+Application Stage: audio-extract
+Description: Low-latency high-density audio mapping optimized for conversational and high-fidelity streams.

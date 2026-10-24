@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: AAC Audio Standards]
+Recommended Flags: -vn -c:a aac -b:a 192k
+Application Stage: audio-extract
+Description: Standard core-audio advanced codec mapping for cross-platform delivery targets.

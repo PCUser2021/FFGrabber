@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: H.264 Master Reference]
+Recommended Flags: -c:v libx264 -preset slow -crf 22 -pix_fmt yuv420p
+Application Stage: transcode
+Description: Broadcast-standard high profile compatibility layer for H.264 AVC streams.

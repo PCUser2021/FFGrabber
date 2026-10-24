@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: VP9 WebM Publishing]
+Recommended Flags: -c:v libvpx-vp9 -crf 31 -b:v 0
+Application Stage: transcode
+Description: WebM structural profile targeting dynamic HTML5 adaptive streaming backends.

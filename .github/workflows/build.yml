@@ -1,6 +1,8 @@
 name: Build FFGrabber installers
 
 on:
+  pull_request:
+    branches: [main]
   push:
     tags: ['v*']
   workflow_dispatch:
@@ -9,7 +11,26 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    name: Unit tests (mock FFmpeg and argument planning)
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: '10.0.402'
+
+      - name: Run automated tests
+        shell: pwsh
+        run: |
+          dotnet test tests/FFGrabber.Tests/FFGrabber.Tests.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Automated tests failed.' }
+
   build:
+    needs: test
     name: Build and verify ${{ matrix.arch }} installer
     runs-on: windows-latest
     strategy:

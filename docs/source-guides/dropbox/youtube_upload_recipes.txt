@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: YouTube Upload Recipes]
+Recommended Flags: -c:v libx264 -preset slow -crf 18 -bf 2 -g 30 -c:a aac -b:a 384k
+Application Stage: transcode
+Description: Optimized multi-frame layout mapping matching YouTube ingest quantization profiles.

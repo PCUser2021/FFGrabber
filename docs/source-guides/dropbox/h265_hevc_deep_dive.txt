@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: H.265 HEVC Deep Dive]
+Recommended Flags: -c:v libx265 -crf 28 -preset medium -pix_fmt yuv420p10le
+Application Stage: transcode
+Description: 10-bit high-efficiency video coding optimized for high-dynamic-range and 4K archives.

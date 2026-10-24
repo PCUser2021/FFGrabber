@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: Streaming Live Delivery]
+Recommended Flags: -c:v libx264 -preset veryfast -tune zerolatency -b:v 4000k -maxrate 4000k -bufsize 8000k
+Application Stage: transcode
+Description: Real-time constant-bitrate network delivery profiles targeting RTMP/HLS muxers.

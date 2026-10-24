@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: Theora Ogg Fallback]
+Recommended Flags: -c:v libtheora -qscale:v 6 -c:a libvorbis -qscale:a 5
+Application Stage: transcode
+Description: Pure open-source legacy broadcast mapping over Ogg encapsulation frameworks.

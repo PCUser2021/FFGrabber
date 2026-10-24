@@ -2,14 +2,14 @@
 
 **FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.5.1).** Native Avalonia GUI, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
+> **Status: active preview (0.5.2).** Native Avalonia GUI with persistent System/Light/Dark themes, opaque surfaces to avoid backdrop-transparency artifacts, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
 
 ## Downloads
 
 **Official download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
 
-- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.1.exe`
-- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.1.exe`
+- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.2.exe`
+- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.2.exe`
 - **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
 
 ## First run: import FFmpeg
@@ -28,7 +28,9 @@ Use a build that matches your CPU architecture. Until a valid import exists, enc
 - Standard controls for transcode, stream-copy/remux, audio extraction and video-only output.
 - Video/audio encoder, input demuxer and output muxer lists discovered from the imported `ffmpeg.exe`.
 - Advanced raw option fields (global, input, mapping, video/audio encoder, filters, muxer, output) passed as argument vectors, never through a shell.
-- Capability browser for help, encoders, decoders, formats, filters, protocols, devices, hardware accelerators, pixel/sample formats and channel layouts of the imported build.
+- Capability browser for `-h full`, per-encoder/decoder/demuxer/muxer/filter/bitstream-filter/protocol help, encoders, decoders, formats, filters, protocols, devices, hardware accelerators, pixel/sample formats, channel layouts, and runtime device source/sink discovery from the imported build.
+- Persistent **Options → Application theme** selector for System, Light, and Dark. The UI uses opaque surfaces and theme-aware colors rather than desktop-dependent translucent panels; the preference is saved under `%LOCALAPPDATA%\\FFGrabber\\ui-theme.txt`.
+- Direct links to the official FFmpeg command-line and full component references, ffprobe/ffplay documentation, and the FFmpeg Trac wiki.
 - Local files, URLs, pipes, protocol targets and device expressions as input/output.
 - Command preview, sequential queue, live log, cancellation.
 - ffprobe JSON metadata inspection and ffplay preview.
@@ -46,7 +48,7 @@ Prerequisites: .NET 10 SDK and PowerShell 7. Inno Setup 7.1.0+ only for local in
 ```powershell
 ./scripts/Build.ps1 -Architecture x64
 ./scripts/Build.ps1 -Architecture arm64
-./scripts/Build.ps1 -Architecture x64 -Version 0.5.1 -Installer
+./scripts/Build.ps1 -Architecture x64 -Version 0.5.2 -Installer
 ```
 
 ## GitHub Actions

@@ -401,7 +401,7 @@ public static class EncodingGuideProfiles
             Mode = "Remux / stream copy", VideoCodec = "copy", AudioCodec = "copy",
             Preset = "encoder default", RateControl = "Encoder-specific options",
             AudioBitrate = "", OutputFormat = "auto", FastStart = true
-        }
+        },
         // Reconstructed payloads supplied during recovery. These profiles map each
         // summary's recommended flags into the normal GUI controls so the settings can
         // be reviewed, adjusted and previewed before a job is queued.

@@ -34,6 +34,11 @@ public static class FFmpegCommandBuilder
             args.AddRange(["-f", s.InputFormat.Trim()]);
         args.AddRange(["-i", s.InputPath]);
 
+        // Any additional inputs are real argument tokens, not shell text. This lets
+        // image-sequence, stereo/multicam, overlay, and separate audio workflows use
+        // multiple -i sources while preserving the option ordering supplied by the user.
+        args.AddRange(FFmpegArgumentParser.Parse(s.AdditionalInputs));
+
         var customMapping = FFmpegArgumentParser.Parse(s.StreamMappingOptions);
         if (customMapping.Count > 0)
             args.AddRange(customMapping);
@@ -49,7 +54,7 @@ public static class FFmpegCommandBuilder
             case "Extract audio":
                 args.Add("-vn");
                 args.AddRange(["-c:a", s.AudioCodec]);
-                AppendAudioBitrate(args, s.AudioCodec, s.AudioBitrate);
+                AppendAudioBitrate(args, s.AudioCodec, s.AudioBitrate, s.AudioEncoderOptions);
                 break;
 
             case "Video only":
@@ -60,14 +65,23 @@ public static class FFmpegCommandBuilder
                 args.AddRange(["-c:v", s.VideoCodec]);
                 if (s.VideoCodec != "copy")
                 {
-                    args.AddRange(["-preset", s.Preset]);
-                    if (s.RateControl == "Target bitrate")
+                    if (!string.IsNullOrWhiteSpace(s.Preset)
+                        && !string.Equals(s.Preset, "encoder default", StringComparison.OrdinalIgnoreCase)
+                        && !HasOption(s.VideoEncoderOptions, "-preset"))
+                    {
+                        args.AddRange(["-preset", s.Preset]);
+                    }
+
+                    var hasExplicitVideoRateControl = HasAnyOption(s.VideoEncoderOptions,
+                        "-b:v", "-crf", "-qp", "-qscale:v", "-q:v", "-lossless");
+
+                    if (s.RateControl == "Target bitrate" && !HasOption(s.VideoEncoderOptions, "-b:v"))
                     {
                         if (!Regex.IsMatch(s.VideoBitrate.Trim(), @"^\d+(?:\.\d+)?(?:[kKmMgG])?$"))
                             throw new ArgumentException("Enter a valid bitrate such as 8M or 4500k.");
                         args.AddRange(["-b:v", s.VideoBitrate.Trim()]);
                     }
-                    else
+                    else if (s.RateControl == "CRF quality" && !hasExplicitVideoRateControl)
                     {
                         args.AddRange(["-crf", s.Crf.ToString(CultureInfo.InvariantCulture)]);
                     }
@@ -133,12 +147,38 @@ public static class FFmpegCommandBuilder
         return Path.GetFullPath(value);
     }
 
-    private static void AppendAudioBitrate(List<string> args, string codec, string bitrate)
+    private static void AppendAudioBitrate(List<string> args, string codec, string bitrate, string encoderOptions)
     {
         if (codec is "copy" or "flac" or "pcm_s16le" or "alac" or "wavpack" or "ape" or "truehd" or "mlp")
             return;
+
+        // Preserve guide-selected VBR/Qscale modes and explicit bitrates. Never append
+        // a second automatic bitrate that silently overrides a chosen quality setting.
+        if (HasAnyOption(encoderOptions, "-b:a", "-qscale:a", "-q:a", "-vbr"))
+            return;
+
         if (!string.IsNullOrWhiteSpace(bitrate))
             args.AddRange(["-b:a", bitrate.Trim()]);
+    }
+
+    private static bool HasOption(string? optionText, string name) =>
+        HasAnyOption(optionText, name);
+
+    private static bool HasAnyOption(string? optionText, params string[] names)
+    {
+        IReadOnlyList<string> tokens;
+        try
+        {
+            tokens = FFmpegArgumentParser.Parse(optionText);
+        }
+        catch (ArgumentException)
+        {
+            // Build will report malformed raw text through its ordinary parser call;
+            // do not mask that original validation path here.
+            return false;
+        }
+
+        return tokens.Any(token => names.Contains(token, StringComparer.OrdinalIgnoreCase));
     }
 
     public static string ToDisplayCommand(string executable, IEnumerable<string> args) =>

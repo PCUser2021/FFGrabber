@@ -1,8 +1,8 @@
 # FFGrabber
 
-**FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
+**FFGrabber** is a cross-platform graphical frontend for FFmpeg, targeting Windows and Linux. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.5.7).** Native Avalonia GUI with persistent System/Light/Dark themes, opaque surfaces to avoid backdrop-transparency artifacts, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
+> **Status: active preview (0.5.7).** Native Avalonia GUI with persistent System/Light/Dark themes, opaque surfaces to avoid backdrop-transparency artifacts, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and Windows x64/ARM64 installers, with Linux package builds in development.
 
 ## Downloads
 
@@ -12,6 +12,10 @@
 - **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.7.exe`
 - **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
 - **Release notes:** [FFGrabber v0.5.7](docs/RELEASE-NOTES-0.5.7.md)
+
+## Linux packages
+
+See [Linux installation and compatibility notes](docs/LINUX.md). Linux CI builds target x86-64 and ARM64 and package the application as `.deb`, `.rpm`, and `.tar.gz`; an x86-64 `.AppImage` is also built. Linux packaging is still experimental until runtime testing on real Linux desktops is complete.
 
 ## First run: import FFmpeg
 

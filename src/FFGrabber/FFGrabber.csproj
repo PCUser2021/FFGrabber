@@ -6,10 +6,12 @@
     <RootNamespace>FFGrabber</RootNamespace>
     <Version>0.5.7</Version>
     <Authors>FFGrabber contributors</Authors>
-    <Description>A Windows graphical frontend for a user-imported FFmpeg (no FFmpeg is bundled).</Description>
+    <Description>Cross-platform graphical frontend for a user-imported FFmpeg (no FFmpeg is bundled).</Description>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\FFGrabber.ico</ApplicationIcon>
   </PropertyGroup>
@@ -29,6 +31,9 @@
       <_ForbiddenFFmpegPayload Include="$(PublishDir)ffprobe.exe" Condition="Exists('$(PublishDir)ffprobe.exe')" />
       <_ForbiddenFFmpegPayload Include="$(PublishDir)ffplay.exe" Condition="Exists('$(PublishDir)ffplay.exe')" />
       <_ForbiddenFFmpegPayload Include="$(PublishDir)**/ffmpeg.exe;$(PublishDir)**/ffprobe.exe;$(PublishDir)**/ffplay.exe" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffmpeg" Condition="Exists('$(PublishDir)ffmpeg')" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffprobe" Condition="Exists('$(PublishDir)ffprobe')" />
+      <_ForbiddenFFmpegPayload Include="$(PublishDir)ffplay" Condition="Exists('$(PublishDir)ffplay')" />
     </ItemGroup>
     <Error Condition="'@(_ForbiddenFFmpegPayload)' != ''" Text="FFGrabber packaging violation: FFmpeg executables must not be included in the published payload. Import a user-owned FFmpeg toolset at runtime." />
     <Error Condition="Exists('$(PublishDir)tools/ffmpeg') Or Exists('$(PublishDir)tools\ffmpeg')" Text="FFGrabber packaging violation: tools/ffmpeg must not be included in the published payload." />

@@ -11,6 +11,7 @@
 - **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.3.exe`
 - **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.3.exe`
 - **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
+- **Release notes:** [FFGrabber v0.5.3](docs/RELEASE-NOTES-0.5.3.md)
 
 ## First run: import FFmpeg
 

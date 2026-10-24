@@ -61,7 +61,7 @@ Prerequisites: .NET 10 SDK and PowerShell 7. Inno Setup 7.1.0+ only for local in
 
 ## GitHub Actions
 
-`.github/workflows/build.yml` builds and tests on pull requests and pushes to `main`, and on `v*` tags; it checks the PE machine type, **fails if any FFmpeg executable or `tools/ffmpeg` folder is present in the payload**, compiles installers with signature- and SHA-256-verified Inno Setup, and writes installer checksums. A `v*` tag also publishes a permanent GitHub Release for the configured version; an existing release is never overwritten. `.github/workflows/auto-backup.yml` creates a verified Git bundle, source ZIP, and SHA-256 manifest on every push to `main`, every pull request to `main`, and once daily, with manual dispatch supported.
+`.github/workflows/build.yml` builds and tests on pull requests and pushes to `main`, and on `v*` tags; it checks the PE machine type, **fails if any FFmpeg executable or `tools/ffmpeg` folder is present in the payload**, compiles installers with signature- and SHA-256-verified Inno Setup, and writes installer checksums. A `v*` tag also publishes a permanent GitHub Release for the configured version; an existing release is never overwritten. `.github/workflows/auto-backup.yml` creates a verified Git bundle, source ZIP, and SHA-256 manifest on every branch push, every pull request to `main`, and once daily, with manual dispatch supported.
 
 ## Automatic backups
 

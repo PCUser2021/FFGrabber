@@ -13,7 +13,7 @@ public sealed record EncodingGuideOption(
 /// </summary>
 public static class EncodingGuideOptionIndex
 {
-    public static IReadOnlyList<EncodingGuideOption> All { get; } = Array.AsReadOnly(
+    public static IReadOnlyList<EncodingGuideOption> All { get; } = Array.AsReadOnly<EncodingGuideOption>(
     [
         new("-c:v", "Video codec", "Select the video encoder, e.g. libx264, libx265, libsvtav1, libvpx-vp9, ffv1, prores_ks, or copy.", "Encode_H.264.txt; Encode_H.265.txt; Encode_AV1.txt; Encode_VP8.txt; Encode_VP9.txt; Encode_FFV1.txt; Encode_VFX.txt; Encode_MPEG-4.txt; Encode_YouTube.txt"),
         new("-codec:v", "Video codec", "Long-form alias of -c:v used in the Theora/Vorbis guide.", "TheoraVorbisEncodingGuide.txt; Encode_FFV1.txt"),

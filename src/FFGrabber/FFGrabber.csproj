@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>FFGrabber</AssemblyName>
     <RootNamespace>FFGrabber</RootNamespace>
-    <Version>0.5.2</Version>
+    <Version>0.5.3</Version>
     <Authors>FFGrabber contributors</Authors>
     <Description>A Windows graphical frontend for a user-imported FFmpeg (no FFmpeg is bundled).</Description>
     <Nullable>enable</Nullable>

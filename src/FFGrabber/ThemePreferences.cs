@@ -43,7 +43,7 @@ public static class ThemePreferences
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // If the preference cannot be read, use the system theme without blocking startup.
+            // If the preference cannot be read, use the Light theme without blocking startup.
         }
 
         return "Light";
@@ -122,6 +122,8 @@ public static class ThemePreferences
                 "#C2F970" => "#0067C0",
                 "#FF111319" => "#F3F5F8",
                 "#084BC0" => "#0067C0",
+                "#0067C0" => "#0067C0",
+                "#E8F2FC" => "#E8F2FC",
                 "#60E3FF" => "#0067C0",
                 "#0A3D96" => "#005A9E",
                 "#175DCE" => "#0067C0",
@@ -144,6 +146,8 @@ public static class ThemePreferences
                 "#C2F970" => "#60CDFF",
                 "#FF111319" => "#202020",
                 "#084BC0" => "#005A9E",
+                "#0067C0" => "#60CDFF",
+                "#E8F2FC" => "#283B46",
                 "#60E3FF" => "#60CDFF",
                 "#0A3D96" => "#004578",
                 "#175DCE" => "#005A9E",

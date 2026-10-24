@@ -157,6 +157,13 @@ public static class FFmpegCommandBuilder
                 $"The selected encoder '{settings.VideoCodec}' is not in FFGrabber's verified generic -pass allow-list. " +
                 "For x265 or hardware encoders use the encoder's private pass/stats options in the searchable settings editor.");
 
+        if (!string.Equals(settings.VideoCodec, "ffv1", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(settings.RateControl, "Target bitrate", StringComparison.OrdinalIgnoreCase)
+            && !HasOption(settings.VideoEncoderOptions, "-b:v"))
+        {
+            throw new ArgumentException("Two-pass encoding requires a target video bitrate for this encoder. Select Target bitrate or supply -b:v in the video encoder options.");
+        }
+
         if (HasAnyOption(settings.VideoEncoderOptions, "-pass", "-passlogfile")
             || HasAnyOption(settings.OutputOptions, "-pass", "-passlogfile"))
         {
@@ -188,6 +195,10 @@ public static class FFmpegCommandBuilder
                     ?? Environment.CurrentDirectory;
                 passLogPrefix = Path.GetFullPath(passLogPrefix, outputDirectory);
             }
+
+            var customPassDirectory = Path.GetDirectoryName(passLogPrefix);
+            if (!string.IsNullOrWhiteSpace(customPassDirectory))
+                Directory.CreateDirectory(customPassDirectory);
         }
 
         var quotedPrefix = "\"" + passLogPrefix.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";

@@ -141,6 +141,9 @@
       <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
     </Style>
+    <Style Selector="Button.primary TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+    </Style>
 
     <Style Selector="TextBox">
       <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>

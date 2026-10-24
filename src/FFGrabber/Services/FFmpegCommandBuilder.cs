@@ -8,6 +8,12 @@ namespace FFGrabber.Services;
 /// Builds a structured FFmpeg argument vector. Arguments are passed through
 /// ProcessStartInfo.ArgumentList; no command is executed through cmd.exe or a shell.
 /// </summary>
+public sealed record TwoPassEncodingPlan(
+    List<string> FirstPassArguments,
+    List<string> SecondPassArguments,
+    string PassLogPrefix,
+    bool IsAutoManagedPassLog);
+
 public static class FFmpegCommandBuilder
 {
     private static readonly string[] FastStartExtensions = [".mp4", ".mov", ".m4a"];
@@ -132,6 +138,89 @@ public static class FFmpegCommandBuilder
         args.Add(s.OutputPath);
         return args;
     }
+
+    /// <summary>
+    /// Build a standard two-pass plan for encoders that support FFmpeg's generic -pass
+    /// interface. Pass 1 writes video analysis to the null muxer with audio disabled;
+    /// pass 2 writes the requested output. Encoder-specific pass mechanisms (for example
+    /// x265's private pass/stats parameters) must use the searchable manual option editor.
+    /// </summary>
+    public static TwoPassEncodingPlan BuildTwoPass(EncodingSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        if (!settings.TwoPass)
+            throw new ArgumentException("Enable the Two-pass video encoding control first.", nameof(settings));
+        if (!string.Equals(settings.Mode, "Convert / encode", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Automated two-pass encoding is currently available for Convert / encode jobs only.");
+        if (settings.VideoCodec is not ("libx264" or "mpeg4" or "libvpx" or "libvpx-vp9" or "libaom-av1" or "ffv1"))
+            throw new ArgumentException(
+                $"The selected encoder '{settings.VideoCodec}' is not in FFGrabber's verified generic -pass allow-list. " +
+                "For x265 or hardware encoders use the encoder's private pass/stats options in the searchable settings editor.");
+
+        if (HasAnyOption(settings.VideoEncoderOptions, "-pass", "-passlogfile")
+            || HasAnyOption(settings.OutputOptions, "-pass", "-passlogfile"))
+        {
+            throw new ArgumentException(
+                "Remove -pass and -passlogfile from the raw option fields when using the Two-pass checkbox; FFGrabber adds both values separately for each pass.");
+        }
+
+        var autoManaged = string.IsNullOrWhiteSpace(settings.PassLogFile);
+        string passLogPrefix;
+        if (autoManaged)
+        {
+            var passDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FFGrabber", "PassLogs");
+            Directory.CreateDirectory(passDirectory);
+            var outputStem = Path.GetFileNameWithoutExtension(settings.OutputPath);
+            foreach (var invalid in Path.GetInvalidFileNameChars())
+                outputStem = outputStem.Replace(invalid, '_');
+            if (string.IsNullOrWhiteSpace(outputStem))
+                outputStem = "output";
+            passLogPrefix = Path.Combine(passDirectory, $"{outputStem}-{Guid.NewGuid():N}");
+        }
+        else
+        {
+            passLogPrefix = settings.PassLogFile.Trim();
+            if (!Path.IsPathRooted(passLogPrefix))
+            {
+                var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(settings.OutputPath))
+                    ?? Environment.CurrentDirectory;
+                passLogPrefix = Path.GetFullPath(passLogPrefix, outputDirectory);
+            }
+        }
+
+        var quotedPrefix = "\"" + passLogPrefix.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
+        var firstPassOutputOptions = CombineOptionLines(settings.OutputOptions, $"-passlogfile {quotedPrefix} -pass 1 -an");
+        var secondPassOutputOptions = CombineOptionLines(settings.OutputOptions, $"-passlogfile {quotedPrefix} -pass 2");
+
+        var firstPassSettings = settings with
+        {
+            OutputPath = "NUL",
+            OutputFormat = "null",
+            Overwrite = true,
+            FastStart = false,
+            PreserveMetadata = false,
+            OutputOptions = firstPassOutputOptions,
+            TwoPass = false,
+            PassLogFile = string.Empty
+        };
+        var secondPassSettings = settings with
+        {
+            OutputOptions = secondPassOutputOptions,
+            TwoPass = false,
+            PassLogFile = string.Empty
+        };
+
+        return new TwoPassEncodingPlan(
+            Build(firstPassSettings),
+            Build(secondPassSettings),
+            passLogPrefix,
+            autoManaged);
+    }
+
+    private static string CombineOptionLines(params string?[] values) =>
+        string.Join(Environment.NewLine, values.Select(value => value?.Trim()).Where(value => !string.IsNullOrWhiteSpace(value)));
 
     private static bool IsLocalPath(string value)
     {

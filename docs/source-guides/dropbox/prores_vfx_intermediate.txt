@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: ProRes VFX Intermediate]
+Recommended Flags: -c:v prores_ks -profile:v 3 -vendor ap10 -pix_fmt yuv422p10le
+Application Stage: transcode
+Description: High-bitrate production intermediate for linear post-production asset pipelines.

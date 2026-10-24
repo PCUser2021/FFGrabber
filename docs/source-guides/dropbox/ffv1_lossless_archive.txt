@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: FFV1 Lossless Archive]
+Recommended Flags: -c:v ffv1 -level 3 -coder 1 -context 1
+Application Stage: transcode
+Description: Intra-frame mathematical lossless preservation matrix for archival master materials.

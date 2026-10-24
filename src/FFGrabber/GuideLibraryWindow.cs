@@ -79,7 +79,7 @@ public sealed class GuideLibraryWindow : Window
         });
         heading.Children.Add(new TextBlock
         {
-            Text = "Search and read complete capture and hardware-acceleration references embedded with FFGrabber.",
+            Text = "Search and read embedded capture, hardware and reconstructed encoder-profile references.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = ThemePreferences.Brush("#A4A9B6")
         });
@@ -141,29 +141,27 @@ public sealed class GuideLibraryWindow : Window
     {
         var assembly = Assembly.GetExecutingAssembly();
         var resources = assembly.GetManifestResourceNames();
-        var sourceFiles = new[]
-        {
-            "Capture_ALSA.txt",
-            "Capture_Desktop.txt",
-            "Capture_Lightning.txt",
-            "Capture_Webcam.txt",
-            "DirectShow.txt",
-            "HWAccelIntro.txt"
-        };
+        // Read every embedded text guide, including the reconstructed encoder profiles.
+        // Derive the filename from the marker so dots in names like "Encode_H.264.txt" survive.
+        const string resourceMarker = ".source-guides.dropbox.";
         var documents = new List<GuideDocument>();
-        foreach (var fileName in sourceFiles)
+        foreach (var resource in resources
+            .Where(name => name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
         {
-            var resource = resources.FirstOrDefault(name =>
-                name.EndsWith("." + fileName, StringComparison.OrdinalIgnoreCase));
-            if (resource is null)
+            var markerIndex = resource.LastIndexOf(resourceMarker, StringComparison.OrdinalIgnoreCase);
+            if (markerIndex < 0)
                 continue;
+
+            var fileName = resource[(markerIndex + resourceMarker.Length)..];
             using var stream = assembly.GetManifestResourceStream(resource);
             if (stream is null)
                 continue;
+
             using var reader = new StreamReader(stream);
             var content = reader.ReadToEnd();
             documents.Add(new GuideDocument(
-                fileName.Replace(".txt", "", StringComparison.OrdinalIgnoreCase).Replace('_', ' '),
+                Path.GetFileNameWithoutExtension(fileName).Replace('_', ' '),
                 fileName,
                 content));
         }
@@ -174,7 +172,7 @@ public sealed class GuideLibraryWindow : Window
             .Select(option => option.Name + " [" + option.Group + "]" + Environment.NewLine
                 + option.Description + Environment.NewLine
                 + "Source references: " + option.SourceFiles);
-        var indexText = "This searchable index preserves the FFmpeg options and descriptions already curated from historical encoding guides. The original 14 encoding-guide .txt files referenced by these records are not present in the current repository tree; this index is metadata, not a substitute for those missing source documents."
+        var indexText = "This searchable index preserves the FFmpeg options and descriptions curated from historical encoding guides. The original full encoder source documents referenced by the index are not present in this repository. The companion encoder-profile text files are reconstructed summaries based on the supplied profile payloads, not verbatim replacements for those historical source documents."
             + Environment.NewLine + Environment.NewLine
             + string.Join(Environment.NewLine + Environment.NewLine, indexedOptions);
         documents.Add(new GuideDocument(

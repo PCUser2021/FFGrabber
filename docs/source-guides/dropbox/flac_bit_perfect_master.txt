@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: FLAC Bit-Perfect Master]
+Recommended Flags: -vn -c:a flac -compression_level 5
+Application Stage: audio-extract
+Description: Lossless acoustic mathematical compression framework for archiving sonic assets.

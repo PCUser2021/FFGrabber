@@ -1,0 +1,4 @@
+[FFGrabber Encoding Profile: MPEG-4 Legacy Compatibility]
+Recommended Flags: -c:v mpeg4 -vtag xvid -qscale:v 4
+Application Stage: transcode
+Description: Legacy Xvid-compatible fallback configuration targeting unmanaged hardware decoders.

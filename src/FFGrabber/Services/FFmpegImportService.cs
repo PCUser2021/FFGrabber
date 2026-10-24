@@ -11,6 +11,8 @@ public sealed record FFmpegImportResult(
 
 public static class FFmpegImportService
 {
+    private static readonly IFFmpegProcessExecutor DefaultProcessExecutor = new FFmpegProcessExecutor();
+
     public static async Task<FFmpegImportResult> ImportAndValidateAsync(
         string selectedDirectory,
         CancellationToken cancellationToken = default)
@@ -18,11 +20,11 @@ public static class FFmpegImportService
         var directory = FFmpegLocator.ResolveToolDirectory(selectedDirectory);
 
         // Verify every executable can actually start and reports a version before changing settings.
-        var ffmpeg = await ValidateToolAsync(Path.Combine(directory, "ffmpeg.exe"), "ffmpeg", cancellationToken)
+        var ffmpeg = await ValidateToolAsync(Path.Combine(directory, "ffmpeg.exe"), "ffmpeg", DefaultProcessExecutor, cancellationToken)
             .ConfigureAwait(false);
-        var ffprobe = await ValidateToolAsync(Path.Combine(directory, "ffprobe.exe"), "ffprobe", cancellationToken)
+        var ffprobe = await ValidateToolAsync(Path.Combine(directory, "ffprobe.exe"), "ffprobe", DefaultProcessExecutor, cancellationToken)
             .ConfigureAwait(false);
-        var ffplay = await ValidateToolAsync(Path.Combine(directory, "ffplay.exe"), "ffplay", cancellationToken)
+        var ffplay = await ValidateToolAsync(Path.Combine(directory, "ffplay.exe"), "ffplay", DefaultProcessExecutor, cancellationToken)
             .ConfigureAwait(false);
 
         // Persist only after all three tool checks pass, so a failed import cannot break the existing setup.
@@ -30,18 +32,25 @@ public static class FFmpegImportService
         return new FFmpegImportResult(directory, ffmpeg, ffprobe, ffplay);
     }
 
-    private static async Task<string> ValidateToolAsync(
+    internal static async Task<string> ValidateToolAsync(
         string executable,
         string toolName,
-        CancellationToken cancellationToken)
+        IFFmpegProcessExecutor processExecutor,
+        CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executable);
+        ArgumentException.ThrowIfNullOrWhiteSpace(toolName);
+        ArgumentNullException.ThrowIfNull(processExecutor);
+
         if (!File.Exists(executable))
             throw new FileNotFoundException($"Required {toolName}.exe was not found.", executable);
 
-        var result = await FFmpegProcessRunner.RunAsync(
+        // Keep the import probe behind a seam so tests can exercise success/failure
+        // responses without shipping, importing or running native FFmpeg binaries.
+        var result = await processExecutor.RunAsync(
             executable,
             ["-hide_banner", "-version"],
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            cancellationToken).ConfigureAwait(false);
 
         var output = string.Join(Environment.NewLine, result.StandardOutput, result.StandardError).Trim();
         var firstLine = output.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;

@@ -16,7 +16,7 @@ namespace FFGrabber;
 /// </summary>
 public sealed class FFmpegOptionComposerWindow : Window
 {
-    private sealed record OptionEntry(string Name, string HelpLine, bool IsRunnable = true);
+    private sealed record OptionEntry(string Name, string HelpLine, bool IsRunnable = true, string? RecommendedScope = null);
 
     private static readonly Regex OptionNamePattern = new(
         @"^\s{0,8}(?<name>-{1,2}[A-Za-z0-9][A-Za-z0-9_.:+-]*)(?<tail>.*)$",
@@ -35,6 +35,7 @@ public sealed class FFmpegOptionComposerWindow : Window
         {
             "Global / logging options",
             "Input / demuxer options",
+            "Additional input source",
             "Stream mapping / selection",
             "Video encoder options",
             "Audio encoder options",
@@ -326,14 +327,87 @@ public sealed class FFmpegOptionComposerWindow : Window
     private void LoadGuideOptionIndex()
     {
         _allOptions = EncodingGuideOptionIndex.All
-            .Select(option => new OptionEntry(
-                option.Name,
-                $"{option.Name}  [{option.Group}]  {option.Description}  | Source: {option.SourceFiles}",
-                !string.Equals(option.Group, "Build capability note", StringComparison.OrdinalIgnoreCase)))
+            .Select(option =>
+            {
+                var nonRunnableGroups = new[]
+                {
+                    "Build capability note",
+                    "Tool inspection only",
+                    "External tool syntax only",
+                    "Probe / diagnostic"
+                };
+                var runnable = !nonRunnableGroups.Contains(option.Group, StringComparer.OrdinalIgnoreCase);
+                return new OptionEntry(
+                    option.Name,
+                    $"{option.Name}  [{option.Group}]  {option.Description}  | Source: {option.SourceFiles}",
+                    runnable,
+                    RecommendScope(option.Name, option.Group, option.Description));
+            })
             .ToArray();
         _search.Text = string.Empty;
         ApplySearch();
         _status.Text = $"Loaded {_allOptions.Count:N0} unique option entries extracted from {EncodingGuideOptionIndex.SourceFiles.Count:N0} Dropbox .txt guides. Build-time flags are explanatory only.";
+    }
+
+    private static string? RecommendScope(string optionName, string group, string description)
+    {
+        if (string.Equals(group, "Build capability note", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(group, "Tool inspection only", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(group, "External tool syntax only", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(group, "Probe / diagnostic", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        if (optionName.Equals("-i", StringComparison.OrdinalIgnoreCase))
+            return "Additional input source";
+
+        if (group.Contains("Stream selection", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Metadata / stream", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-map" or "-map_metadata" or "-map_chapters" or "-an")
+            return "Stream mapping / selection";
+
+        if (group.Contains("Audio", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-ar" or "-ac" or "-b:a" or "-q:a" or "-qscale:a"
+                or "-profile:a" or "-cutoff" or "-vbr" or "-aq")
+            return "Audio encoder options";
+
+        if (group.Contains("Input", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Capture", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-ss" or "-t" or "-to" or "-re" or "-framerate"
+                or "-video_size" or "-list_formats" or "-list-formats-ext"
+                or "-hwaccel" or "-probesize")
+            return "Input / demuxer options";
+
+        if (group.Contains("Filter", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-vf" or "-filter_complex")
+            return "Filters / filtergraph";
+
+        if (group.Contains("Container", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Streaming", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Compatibility", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("HDR", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Multiplexing", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-f" or "-movflags" or "-metadata" or "-metadata:s:v:0" or "-tag:v" or "-vtag" or "-vendor")
+            return "Muxer / container options";
+
+        if (group.Contains("Global", StringComparison.OrdinalIgnoreCase)
+            || optionName is "-y" or "-loglevel" or "-report")
+            return "Global / logging options";
+
+        if (group.Contains("Video", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Rate control", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Quantizer", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Keyframe", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("GOP", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Parallelism", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("VFX", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Hardware encoding", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Speed", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("Profile", StringComparison.OrdinalIgnoreCase)
+            || group.Contains("FFV1", StringComparison.OrdinalIgnoreCase))
+            return "Video encoder options";
+
+        _ = description;
+        return null;
     }
 
     private static IReadOnlyList<OptionEntry> ParseOptions(string help)
@@ -390,6 +464,12 @@ public sealed class FFmpegOptionComposerWindow : Window
         _optionName.Text = entry.Name;
         _description.Text = entry.HelpLine;
         _selectedOptionIsRunnable = entry.IsRunnable;
+        if (entry.RecommendedScope is not null)
+        {
+            var scopes = _scope.ItemsSource as IEnumerable<string> ?? Array.Empty<string>();
+            if (scopes.Contains(entry.RecommendedScope, StringComparer.OrdinalIgnoreCase))
+                _scope.SelectedItem = entry.RecommendedScope;
+        }
     }
 
     private void AddSelectedOption()

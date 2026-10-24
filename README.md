@@ -1,26 +1,30 @@
 # FFGrabber
 
-**FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
+**FFGrabber** is a cross-platform graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.5.7).** Native Avalonia GUI with persistent System/Light/Dark themes, opaque surfaces to avoid backdrop-transparency artifacts, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
+> **Status: active preview (0.5.8).** Native Avalonia GUI for Windows and desktop Linux, with persistent System/Light/Dark themes, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, Windows x64/ARM64 installers, and Linux x64/ARM64 packages.
 
 ## Downloads
 
 **Official download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
 
-- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.7.exe`
-- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.7.exe`
-- **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
-- **Release notes:** [FFGrabber v0.5.7](docs/RELEASE-NOTES-0.5.7.md)
+- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.8.exe`
+- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.8.exe`
+- **Linux x64:** `FFGrabber-0.5.8-linux-x64.deb`, `.rpm`, `.AppImage`, and `.tar.gz`
+- **Linux ARM64:** `FFGrabber-0.5.8-linux-arm64.deb`, `.rpm`, `.AppImage`, and `.tar.gz`
+- **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each package
+- **Release notes:** [FFGrabber v0.5.8](docs/RELEASE-NOTES-0.5.8.md)
 
 ## First run: import FFmpeg
 
 FFmpeg is not included, not downloaded, and not read from `PATH` or the install folder.
 
-1. Get an FFmpeg build for your platform from [ffmpeg.org/download.html](https://ffmpeg.org/download.html) and extract it.
+1. Get an FFmpeg build for your OS and CPU architecture from [ffmpeg.org/download.html](https://ffmpeg.org/download.html), then extract it.
 2. Start FFGrabber and click **Import FFmpeg…**.
-3. Select the folder containing `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe` (an extracted package root with a `bin` subfolder also works).
-4. FFGrabber runs `-version` on all three. Only if every check passes is the folder saved to `%LOCALAPPDATA%\FFGrabber\ffmpeg-import.json`. A failed import leaves the previous selection unchanged.
+3. Select a folder containing `ffmpeg.exe`, `ffprobe.exe`, and `ffplay.exe` on Windows, or the extensionless `ffmpeg`, `ffprobe`, and `ffplay` executables on Linux. An extracted package root with a `bin` subfolder is also accepted.
+4. FFGrabber runs `-version` on all three native executables before saving the import location. A failed import leaves the previous selection unchanged.
+
+The Linux GUI uses Avalonia's X11 backend. It can run on Wayland desktops through XWayland; a system without XWayland needs an X11 session or an XWayland compatibility package.
 
 Use a build that matches your CPU architecture. Until a valid import exists, encoding, probing and playback are disabled and the window says so.
 
@@ -33,11 +37,11 @@ Use a build that matches your CPU architecture. Until a valid import exists, enc
 - **Automated two-pass encoding** for libx264, native MPEG-4, libvpx/VP9, libaom-av1 and FFV1 profiles. Pass 1 uses the null muxer, pass 2 writes the requested output; managed pass logs are removed after the job. Encoder-private workflows such as x265 pass parameters remain editable in advanced options.
 - Searchable **Complete Settings Editor**: 124 distinct guide-indexed option entries with descriptions and source-file attribution, plus live options from the imported executable's `-h full` catalogue. Options are routed to their recommended input, additional-input, video, audio, filter, muxer, mapping or output field; build-time configure switches and help commands are marked reference-only.
 - Scoped **output temporary-file cleanup**: removes only output-related `.tmp` files created by the current job after FFmpeg exits. Older matching files can be reviewed in a confirmation dialog and manually removed; unrelated temp files are not swept recursively.
-- Video/audio encoder, input demuxer and output muxer lists discovered from the imported `ffmpeg.exe`.
+- Video/audio encoder, input demuxer and output muxer lists discovered from the imported FFmpeg executable.
 - Advanced raw option fields (global, input, mapping, video/audio encoder, filters, muxer, output) passed as argument vectors, never through a shell.
 - Capability browser for `-h full`, per-encoder/decoder/demuxer/muxer/filter/bitstream-filter/protocol help, encoders, decoders, formats, filters, protocols, devices, hardware accelerators, pixel/sample formats, channel layouts, and runtime device source/sink discovery from the imported build.
-- Persistent **System / Light / Dark** appearance selector. System follows the Windows color theme dynamically; Light and Dark can be pinned explicitly. The UI uses opaque, theme-aware surfaces rather than desktop-dependent translucent panels.
-- Windows Fluent-inspired workspace with persistent System / Light / Dark appearance, sidebar navigation, consistent rounded controls and a system-aware title bar.
+- Persistent **System / Light / Dark** appearance selector. System follows the operating-system color theme; Light and Dark can be pinned explicitly. The UI uses opaque, theme-aware surfaces rather than desktop-dependent translucent panels.
+- Theme-aware workspace with persistent System / Light / Dark appearance, sidebar navigation, consistent rounded controls and a system-aware title bar.
 - Direct links to the official FFmpeg command-line and full component references, ffprobe/ffplay documentation, and the FFmpeg Trac wiki.
 - Local files, URLs, pipes, protocol targets and device expressions as input/output.
 - Command preview, sequential queue, live log, cancellation.
@@ -56,12 +60,20 @@ Prerequisites: .NET 10 SDK and PowerShell 7. Inno Setup 7.1.0+ only for local in
 ```powershell
 ./scripts/Build.ps1 -Architecture x64
 ./scripts/Build.ps1 -Architecture arm64
-./scripts/Build.ps1 -Architecture x64 -Version 0.5.7 -Installer
+./scripts/Build.ps1 -Architecture x64 -Version 0.5.8 -Installer
 ```
+
+## Linux packages
+
+The release provides Debian/Ubuntu .deb, RPM .rpm, single-file AppImage, and a portable .tar.gz archive for both x86-64 and ARM64. The portable archive includes per-user install and uninstall scripts and does not require sudo. Native packages add a desktop-menu entry and scalable SVG icon.
+
+FFmpeg is not bundled. On Linux, import a matching build containing the extensionless ffmpeg, ffprobe, and ffplay executables. Linux capture examples include X11/XWayland desktop capture and V4L2 webcams; device access depends on the desktop session and imported FFmpeg build.
+
+To build packages from source, use the .NET 10 SDK and install ruby, ruby-dev, build-essential, rpm, curl, and fpm 1.17.0. Publish the app for linux-x64 or linux-arm64, then run scripts/build-linux-packages.sh with the version, architecture, and pinned appimagetool SHA-256 environment variables. GitHub Actions provides the complete reference commands.
 
 ## GitHub Actions
 
-`.github/workflows/build.yml` builds and tests on pull requests and pushes to `main`, and on `v*` tags; it checks the PE machine type, **fails if any FFmpeg executable or `tools/ffmpeg` folder is present in the payload**, compiles installers with signature- and SHA-256-verified Inno Setup, and writes installer checksums. A `v*` tag also publishes a permanent GitHub Release for the configured version; an existing release is never overwritten. `.github/workflows/auto-backup.yml` creates a verified Git bundle, source ZIP, and SHA-256 manifest on every branch push, every pull request to `main`, and once daily, with manual dispatch supported.
+`.github/workflows/build.yml` tests on Windows and Linux, builds Windows x64/ARM64 installers and Linux x64/ARM64 .deb, .rpm, AppImage and portable archives, rejects bundled FFmpeg executables, and publishes SHA-256 checksums for every release package. A `v*` tag also publishes a permanent GitHub Release for the configured version; an existing release is never overwritten. `.github/workflows/auto-backup.yml` creates a verified Git bundle, source ZIP, and SHA-256 manifest on every branch push, every pull request to `main`, and once daily, with manual dispatch supported.
 
 ## Automatic backups
 
@@ -85,5 +97,5 @@ Version 0.5.6 adds dedicated DirectShow, Windows desktop-capture and hardware-ac
 
 All 78 original `.txt` files currently present in the connected Dropbox root are preserved under [docs/source-guides/dropbox](docs/source-guides/README.md), retaining their original filenames and source wording. The application embeds the files and the Source Guide Library displays each source body without inserting editorial text. The separate reconstructed profile payloads remain identified as summaries rather than being treated as replacements for historical source documents. Historical and platform-specific examples are reference material; runtime help from the imported FFmpeg remains authoritative.
 
-The new glossy blue/cyan FFGrabber icon is used by the application executable, title bar, desktop and Start Menu shortcuts, Setup package and uninstall display entry. The main window shows the product version and includes an About/version dialog.
+The glossy blue/cyan FFGrabber icon is used by Windows application and Setup shortcuts; Linux packages install a scalable SVG icon and desktop launcher. The main window shows the product version and includes an About/version dialog.
 

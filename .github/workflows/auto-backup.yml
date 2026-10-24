@@ -1,0 +1,47 @@
+name: Automatic repository backup
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Create verified source and Git-history backups
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out complete repository history
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Create and verify backup files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backup-artifacts
+          git bundle create "backup-artifacts/FFGrabber-${GITHUB_SHA}.bundle" --all
+          git bundle verify "backup-artifacts/FFGrabber-${GITHUB_SHA}.bundle"
+          git archive --format=zip --output="backup-artifacts/FFGrabber-source-${GITHUB_SHA}.zip" HEAD
+          (
+            cd backup-artifacts
+            sha256sum ./*.bundle ./*.zip > SHA256SUMS.txt
+          )
+          cat backup-artifacts/SHA256SUMS.txt
+
+      - name: Upload automatic backup artifact
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: FFGrabber-AutoBackup-${{ github.run_id }}
+          path: backup-artifacts/*
+          if-no-files-found: error
+          retention-days: 90

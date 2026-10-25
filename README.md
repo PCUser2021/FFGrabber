@@ -2,7 +2,7 @@
 
 **FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.5.8).** Native Avalonia GUI with persistent System/Light/Dark themes, opaque surfaces to avoid backdrop-transparency artifacts, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
+> **Status: active preview (0.5.8).** Windows x64 and ARM64 GUI with persistent System/Light/Dark themes, MediaInfo JSON inspection, automatic release checks, a responsive ffplay launch size, Explorer media actions, a guided CPU thread budget, live encoding progress and process/system telemetry, and process-tree cancellation with scoped temporary/partial-output cleanup.
 
 ## Downloads
 

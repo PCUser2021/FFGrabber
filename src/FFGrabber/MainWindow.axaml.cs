@@ -143,7 +143,7 @@ public partial class MainWindow : Window
     private int _activeFfmpegProcessId;
     private Task _usageMonitorTask = Task.CompletedTask;
 
-    private static string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.5.6";
+    private static string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.5.8";
 
     public MainWindow(string[]? startupArguments = null)
     {
@@ -2078,7 +2078,7 @@ public partial class MainWindow : Window
         close.Click += (_, _) => dialog.Close();
         root.Children.Add(close);
         dialog.Content = new Border { Classes = { "glassShell" }, Child = root };
-        try { dialog.Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/FFGrabber.ico"))); } catch { }
+        try { dialog.Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/Windows11.ico"))); } catch { }
         await dialog.ShowDialog(this);
     }
 

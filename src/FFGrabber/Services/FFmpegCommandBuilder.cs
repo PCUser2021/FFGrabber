@@ -133,12 +133,13 @@ public static class FFmpegCommandBuilder
         // Thread budgets reduce software encoder and filter concurrency on busy systems.
         // They are a best-effort thread cap, not a hard OS-level CPU percentage limiter.
         var threadBudget = ResolveCpuThreadBudget(s.CpuUsageLimit);
-        var globalOptionText = s.GlobalOptions ?? string.Empty;
-        if (!HasAnyOption(globalOptionText, "-threads", "-threads:v"))
+        var globalAndEncoderOptions = CombineOptionLines(s.GlobalOptions, s.VideoEncoderOptions);
+        var globalAndFilterOptions = CombineOptionLines(s.GlobalOptions, s.FilterOptions);
+        if (!HasAnyOption(globalAndEncoderOptions, "-threads", "-threads:v"))
             args.AddRange(["-threads:v", threadBudget.ToString(CultureInfo.InvariantCulture)]);
-        if (!HasOption(globalOptionText, "-filter_threads"))
+        if (!HasOption(globalAndFilterOptions, "-filter_threads"))
             args.AddRange(["-filter_threads", threadBudget.ToString(CultureInfo.InvariantCulture)]);
-        if (!HasOption(globalOptionText, "-filter_complex_threads"))
+        if (!HasOption(globalAndFilterOptions, "-filter_complex_threads"))
             args.AddRange(["-filter_complex_threads", threadBudget.ToString(CultureInfo.InvariantCulture)]);
 
         if (usesCaptureFilter)

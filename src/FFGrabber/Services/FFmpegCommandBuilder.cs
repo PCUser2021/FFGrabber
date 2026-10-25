@@ -130,6 +130,18 @@ public static class FFmpegCommandBuilder
         // override a generated value with the matching FFmpeg flag (for example -preset or -crf).
         args.AddRange(FFmpegArgumentParser.Parse(s.VideoEncoderOptions));
         args.AddRange(FFmpegArgumentParser.Parse(s.AudioEncoderOptions));
+        // Thread budgets reduce software encoder and filter concurrency on busy systems.
+        // They are a best-effort thread cap, not a hard OS-level CPU percentage limiter.
+        var threadBudget = ResolveCpuThreadBudget(s.CpuUsageLimit);
+        var globalAndEncoderOptions = CombineOptionLines(s.GlobalOptions, s.VideoEncoderOptions);
+        var globalAndFilterOptions = CombineOptionLines(s.GlobalOptions, s.FilterOptions);
+        if (!HasAnyOption(globalAndEncoderOptions, "-threads", "-threads:v"))
+            args.AddRange(["-threads:v", threadBudget.ToString(CultureInfo.InvariantCulture)]);
+        if (!HasOption(globalAndFilterOptions, "-filter_threads"))
+            args.AddRange(["-filter_threads", threadBudget.ToString(CultureInfo.InvariantCulture)]);
+        if (!HasOption(globalAndFilterOptions, "-filter_complex_threads"))
+            args.AddRange(["-filter_complex_threads", threadBudget.ToString(CultureInfo.InvariantCulture)]);
+
         if (usesCaptureFilter)
             args.AddRange(["-filter_complex", s.CaptureFilterSource.Trim()]);
         args.AddRange(FFmpegArgumentParser.Parse(s.FilterOptions));
@@ -244,6 +256,18 @@ public static class FFmpegCommandBuilder
             Build(secondPassSettings),
             passLogPrefix,
             autoManaged);
+    }
+
+    private static int ResolveCpuThreadBudget(string? choice)
+    {
+        var logicalProcessors = Math.Max(1, Environment.ProcessorCount);
+        var proportion = choice switch
+        {
+            "Reduced (50%)" => 0.50,
+            "Maximum (100%)" => 1.00,
+            _ => 0.75
+        };
+        return Math.Clamp((int)Math.Floor(logicalProcessors * proportion), 1, logicalProcessors);
     }
 
     private static string CombineOptionLines(params string?[] values) =>

@@ -14,7 +14,8 @@ public static class FFmpegProcessRunner
         IEnumerable<string> arguments,
         Action<string>? onStandardOutput = null,
         Action<string>? onStandardError = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Action<int>? onProcessStarted = null)
     {
         var info = new ProcessStartInfo(executable)
         {
@@ -29,6 +30,7 @@ public static class FFmpegProcessRunner
         using var process = new Process { StartInfo = info };
         if (!process.Start())
             throw new InvalidOperationException($"Unable to start {Path.GetFileName(executable)}.");
+        onProcessStarted?.Invoke(process.Id);
 
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();

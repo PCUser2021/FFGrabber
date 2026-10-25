@@ -2,16 +2,26 @@
 
 **FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.5.7).** Native Avalonia GUI with persistent System/Light/Dark themes, opaque surfaces to avoid backdrop-transparency artifacts, direct FFmpeg process invocation, transcode/remux/audio-extract modes, ffprobe metadata inspection, ffplay launch, a sequential queue, full logging, cancellation, and x64/ARM64 installers.
+> **Status: active preview (0.5.8).** Windows x64 and ARM64 GUI with persistent System/Light/Dark themes, MediaInfo JSON inspection, automatic release checks, a responsive ffplay launch size, Explorer media actions, a guided CPU thread budget, live encoding progress and process/system telemetry, and process-tree cancellation with scoped temporary/partial-output cleanup.
 
 ## Downloads
 
 **Official download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
 
-- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.7.exe`
-- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.7.exe`
+- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.8.exe`
+- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.8.exe`
 - **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
-- **Release notes:** [FFGrabber v0.5.7](docs/RELEASE-NOTES-0.5.7.md)
+- **Release notes:** [FFGrabber v0.5.8](docs/RELEASE-NOTES-0.5.8.md)
+
+## MediaInfo integration and automatic update checks
+
+FFGrabber can inspect media through the user-installed [MediaInfo CLI](https://github.com/MediaArea/MediaInfo). Click **MediaInfo…** and select the official `MediaInfo.exe` CLI when prompted. The report uses MediaInfo JSON output, with copy-to-clipboard support. MediaInfo is not bundled.
+
+On startup, FFGrabber checks official GitHub Releases metadata for FFGrabber and an imported MediaInfo CLI at most once every 24 hours. It opens the official release page when a newer version is found; it does not silently download or replace executables.
+
+## File Explorer context menu
+
+The Windows installer adds current-user context-menu verbs for video/audio files: convert, remux/stream copy, extract video or audio, play, and inspect with MediaInfo. These invoke the installed FFGrabber application; FFmpeg/FFprobe/FFplay still need to be imported first.
 
 ## First run: import FFmpeg
 
@@ -37,12 +47,14 @@ Use a build that matches your CPU architecture. Until a valid import exists, enc
 - Advanced raw option fields (global, input, mapping, video/audio encoder, filters, muxer, output) passed as argument vectors, never through a shell.
 - Capability browser for `-h full`, per-encoder/decoder/demuxer/muxer/filter/bitstream-filter/protocol help, encoders, decoders, formats, filters, protocols, devices, hardware accelerators, pixel/sample formats, channel layouts, and runtime device source/sink discovery from the imported build.
 - Persistent **System / Light / Dark** appearance selector. System follows the Windows color theme dynamically; Light and Dark can be pinned explicitly. The UI uses opaque, theme-aware surfaces rather than desktop-dependent translucent panels.
-- Windows Fluent-inspired workspace with persistent System / Light / Dark appearance, sidebar navigation, consistent rounded controls and a system-aware title bar.
+- Windows Fluent-inspired workspace with persistent System / Light / Dark appearance, sidebar navigation, consistent rounded controls, a unified Windows 11 logo mark and a system-aware title bar.
 - Direct links to the official FFmpeg command-line and full component references, ffprobe/ffplay documentation, and the FFmpeg Trac wiki.
 - Local files, URLs, pipes, protocol targets and device expressions as input/output.
 - Command preview, sequential queue, live log, cancellation.
 - ffprobe JSON metadata inspection and ffplay preview.
 - Full support ZIP via **Options → Save Logs…**.
+- Live conversion progress using FFmpeg's `-progress` protocol, plus per-process CPU utilization, total system CPU load, working-set/private memory, thread count, and system RAM metrics.
+- Adjustable software encoder/filter thread budget (Reduced / Balanced / Maximum) to lower peak resource use.
 
 ## Stack
 
@@ -83,7 +95,7 @@ FFGrabber application code is offered under the MIT License. Third-party compone
 
 Version 0.5.6 adds dedicated DirectShow, Windows desktop-capture and hardware-acceleration controls; capture starter profiles; an optional source-filter graph for DDAgrab/gfxcapture; and visible version/About information. The searchable settings catalogue now covers hardware frame contexts, capture buffering and device modes. Availability depends on the imported FFmpeg build, hardware, drivers and target platform.
 
-All 78 original `.txt` files currently present in the connected Dropbox root are preserved under [docs/source-guides/dropbox](docs/source-guides/README.md), retaining their original filenames and source wording. The application embeds the files and the Source Guide Library displays each source body without inserting editorial text. The separate reconstructed profile payloads remain identified as summaries rather than being treated as replacements for historical source documents. Historical and platform-specific examples are reference material; runtime help from the imported FFmpeg remains authoritative.
+All 79 original `.txt` files currently present in the connected Dropbox root are preserved under [docs/source-guides/dropbox](docs/source-guides/README.md), retaining their original filenames and source wording. The application embeds the files and the Source Guide Library displays each source body without inserting editorial text. The separate reconstructed profile payloads remain identified as summaries rather than being treated as replacements for historical source documents. Historical and platform-specific examples are reference material; runtime help from the imported FFmpeg remains authoritative.
 
 The new glossy blue/cyan FFGrabber icon is used by the application executable, title bar, desktop and Start Menu shortcuts, Setup package and uninstall display entry. The main window shows the product version and includes an About/version dialog.
 

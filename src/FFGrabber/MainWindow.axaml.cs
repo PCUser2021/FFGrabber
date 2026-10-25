@@ -107,7 +107,8 @@ public partial class MainWindow : Window
     private readonly TextBox _extraHwFrames = new() { PlaceholderText = "e.g. 8", Width = 90 };
     private readonly TextBox _captureFilterSource = MultiLine("Optional source filter graph, e.g. ddagrab=0 or gfxcapture=monitor_idx=1:max_framerate=60. When set, FFGrabber does not add the primary -i input.", 60);
 
-    private readonly TextBox _globalOptions = MultiLine("-loglevel verbose -threads 0", 56);
+    private readonly ComboBox _cpuBudget = Combo(["Balanced (75%)", "Reduced (50%)", "Maximum (100%)"]);
+    private readonly TextBox _globalOptions = MultiLine("-loglevel warning", 56);
     private readonly TextBox _inputOptions = MultiLine("-ss 00:00:05 -probesize 50M -analyzeduration 100M", 56);
     private readonly TextBox _mappingOptions = MultiLine("-map 0:v:0 -map 0:a? -map_metadata 0 -map_chapters 0", 56);
     private readonly TextBox _videoEncoderOptions = MultiLine(@"e.g. -profile:v high -level:v 5.1 -x264-params ""keyint=240:min-keyint=24""", 56);
@@ -132,24 +133,31 @@ public partial class MainWindow : Window
     private readonly ListBox _queueView = new() { MinHeight = 90 };
     private readonly Button _startButton = new() { Content = "Start queue", Classes = { "primary" } };
     private readonly Button _cancelButton = new() { Content = "Cancel active job", IsEnabled = false };
+    private readonly ProgressBar _conversionProgress = new() { Minimum = 0, Maximum = 100, Value = 0, Height = 18 };
+    private readonly TextBlock _progressDescription = new() { Text = "Idle — no active conversion", TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _systemUsage = new() { Text = "CPU / memory telemetry is shown while FFmpeg is running.", TextWrapping = TextWrapping.Wrap };
     private CancellationTokenSource? _cancellation;
     private EncodingSettings? _activeJobSettings;
     private Action<int>? _navigateToWorkspace;
+    private readonly string[] _startupArguments;
+    private int _activeFfmpegProcessId;
+    private Task _usageMonitorTask = Task.CompletedTask;
 
-    private static string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.5.6";
+    private static string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.5.8";
 
-    public MainWindow()
+    public MainWindow(string[]? startupArguments = null)
     {
+        _startupArguments = startupArguments ?? Array.Empty<string>();
         InitializeComponent();
         try
         {
-            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/FFGrabber.ico")));
+            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/Windows11.ico")));
         }
         catch (Exception ex)
         {
             _sessionLog.Write("Could not load embedded FFGrabber icon: " + ex.Message);
         }
-        Title = $"FFGrabber v{AppVersion} — Fluent media workspace";
+        Title = $"FFGrabber v{AppVersion} — Fluent Media Workspace";
         Width = 1260;
         Height = 1000;
         MinWidth = 900;
@@ -184,7 +192,7 @@ public partial class MainWindow : Window
         {
             Classes = { "tagPill" },
             VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock { Text = "WINDOWS FLUENT  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#C2F970") }
+            Child = new TextBlock { Text = "WINDOWS FLUENT  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#2E6FA4") }
         });
         brandRow.Children.Add(new Border
         {
@@ -249,6 +257,7 @@ public partial class MainWindow : Window
         _importFfmpegButton.Content = ButtonContent("\uE8E5", "Import FFmpeg…");
         topActions.Children.Add(_importFfmpegButton);
         _importFfmpegButton.Click += async (_, _) => await ImportFFmpegAsync();
+        topActions.Children.Add(Button("MediaInfo…", async (_, _) => await OpenMediaInfoAsync(_input.Text ?? string.Empty)));
         topActions.Children.Add(GlyphButton("\uE71C", "FFmpeg options & capabilities", async (_, _) => await OpenCapabilitiesAsync()));
         topActions.Children.Add(GlyphButton("\uE713", "Encoding settings editor", async (_, _) => await OpenOptionComposerAsync()));
         topActions.Children.Add(GlyphButton("\uE74D", "Clean output .tmp files…", async (_, _) => await CleanTemporaryFilesAsync()));
@@ -283,6 +292,14 @@ public partial class MainWindow : Window
         settings.Children.Add(Row("Video codec / encoder", _videoCodec));
         settings.Children.Add(Row("Encoder preset", _preset));
         settings.Children.Add(Row("Rate control", _rateControl));
+        settings.Children.Add(Row("CPU thread budget", _cpuBudget));
+        settings.Children.Add(new TextBlock
+        {
+            Text = "Balanced and Reduced cap software encoder/filter thread concurrency to lower peak CPU use. This is a best-effort thread budget, not a hard OS CPU quota; hardware encoders may ignore it.",
+            Foreground = Brush("#A4A9B6"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12
+        });
 
         var quality = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         quality.Children.Add(Label("CRF", 80));
@@ -392,11 +409,17 @@ public partial class MainWindow : Window
         _startButton.Click += async (_, _) => await RunQueueAsync();
         actions.Children.Add(_startButton);
         _cancelButton.Content = ButtonContent("\uE711", "Cancel active job");
-        _cancelButton.Click += (_, _) => _cancellation?.Cancel();
+        _cancelButton.Click += (_, _) => CancelActiveJob();
         actions.Children.Add(_cancelButton);
         actions.Children.Add(GlyphButton("\uE946", "Inspect with ffprobe", async (_, _) => await ProbeAsync()));
         actions.Children.Add(GlyphButton("\uE768", "Play with ffplay", Play));
+        actions.Children.Add(Button("MediaInfo…", async (_, _) => await OpenMediaInfoAsync(_input.Text ?? string.Empty)));
         convertContent.Children.Add(actions);
+
+        convertContent.Children.Add(Heading("Live conversion progress and system usage"));
+        convertContent.Children.Add(_conversionProgress);
+        convertContent.Children.Add(_progressDescription);
+        convertContent.Children.Add(_systemUsage);
 
         convertContent.Children.Add(Heading("Command preview"));
         convertContent.Children.Add(_preview);
@@ -504,7 +527,13 @@ public partial class MainWindow : Window
         _sessionLog.Write($"FFGrabber main window initialized; OS={RuntimeInformation.OSDescription}; architecture={RuntimeInformation.ProcessArchitecture}; appVersion={AppVersion}");
         _sessionLog.Write($"Tool paths: ffmpeg={FFmpegLocator.Find("ffmpeg") ?? "(not found)"}; ffprobe={FFmpegLocator.Find("ffprobe") ?? "(not found)"}; ffplay={FFmpegLocator.Find("ffplay") ?? "(not found)"}");
         AppendDisplayLog("Session log location: " + _sessionLog.CurrentLogPath);
-        Opened += async (_, _) => await LoadAvailableCapabilitiesAsync();
+        Opened += async (_, _) =>
+        {
+            await LoadAvailableCapabilitiesAsync();
+            if (_startupArguments.Length > 0)
+                await HandleStartupArgumentsAsync(_startupArguments);
+            _ = CheckForUpdatesOnStartupAsync();
+        };
         Closed += (_, _) =>
         {
             // Do not leave an FFmpeg encode running unattended after the window is closed.
@@ -594,18 +623,31 @@ public partial class MainWindow : Window
         return row;
     }
 
-    private static Control BuildBrandGlyph() =>
-        new TextBlock
+    private static Control BuildBrandGlyph(double size = 32)
+    {
+        // Consistent Windows 11 four-pane mark, matching the supplied logo reference.
+        var grid = new Grid { Width = size, Height = size };
+        grid.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        grid.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        for (var row = 0; row < 2; row++)
         {
-            Text = "F",
-            FontFamily = new FontFamily("Segoe UI Variable"),
-            FontSize = 29,
-            FontWeight = FontWeight.Bold,
-            Foreground = Brush("#FFFFFF"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, -2, 0, 0)
-        };
+            for (var column = 0; column < 2; column++)
+            {
+                var pane = new Border
+                {
+                    Background = Brush("#0078D4"),
+                    CornerRadius = new CornerRadius(Math.Max(0.5, size / 32)),
+                    Margin = new Thickness(0, 0, size * 0.055, size * 0.055)
+                };
+                Grid.SetRow(pane, row);
+                Grid.SetColumn(pane, column);
+                grid.Children.Add(pane);
+            }
+        }
+        return grid;
+    }
 
     private static Control ButtonContent(string glyph, string label)
     {
@@ -615,14 +657,7 @@ public partial class MainWindow : Window
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center
         };
-        content.Children.Add(new TextBlock
-        {
-            Text = glyph,
-            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            FontSize = 16,
-            Foreground = Brush("#C2F970"),
-            VerticalAlignment = VerticalAlignment.Center
-        });
+        content.Children.Add(BuildBrandGlyph(16));
         content.Children.Add(new TextBlock
         {
             Text = label,
@@ -1128,7 +1163,8 @@ public partial class MainWindow : Window
         _additionalInputs.Text ?? string.Empty,
         _twoPass.IsChecked == true,
         _passLogFile.Text?.Trim() ?? string.Empty,
-        _captureFilterSource.Text?.Trim() ?? string.Empty);
+        _captureFilterSource.Text?.Trim() ?? string.Empty,
+        _cpuBudget.SelectedItem?.ToString() ?? "Balanced (75%)");
 
     private async Task LoadAvailableCapabilitiesAsync()
     {
@@ -1359,17 +1395,15 @@ public partial class MainWindow : Window
                     // Track the final output's temporary files across the whole job. Pass 1
                     // writes to the null muxer, so cleanup is scoped to the requested output.
                     var cleanupArguments = twoPassPlan?.SecondPassArguments ?? args;
+                    var durationSeconds = await TryGetInputDurationSecondsAsync(job.InputPath, _cancellation.Token);
+                    ResetConversionProgress(job, durationSeconds);
                     var temporaryFileScope = FFmpegTemporaryFileCleanupScope.Begin(job.OutputPath, cleanupArguments);
                     try
                     {
                         if (twoPassPlan is null)
                         {
-                            var result = await FFmpegProcessRunner.RunAsync(
-                                executable,
-                                args,
-                                onStandardOutput: line => LogProcessLine("FFMPEG STDOUT", line),
-                                onStandardError: line => LogProcessLine("FFMPEG STDERR", line),
-                                cancellationToken: _cancellation.Token);
+                            var result = await RunMonitoredFfmpegAsync(
+                                executable, args, job, durationSeconds, "Encoding", _cancellation.Token);
                             AppendLog(result.ExitCode == 0
                                 ? "Completed: " + job.OutputPath
                                 : $"Failed (exit {result.ExitCode}): {job.OutputPath}");
@@ -1377,12 +1411,8 @@ public partial class MainWindow : Window
                         else
                         {
                             AppendLog("Two-pass job: starting pass 1/2 (analysis output is discarded).");
-                            var firstPass = await FFmpegProcessRunner.RunAsync(
-                                executable,
-                                twoPassPlan.FirstPassArguments,
-                                onStandardOutput: line => LogProcessLine("FFMPEG PASS 1 STDOUT", line),
-                                onStandardError: line => LogProcessLine("FFMPEG PASS 1 STDERR", line),
-                                cancellationToken: _cancellation.Token);
+                            var firstPass = await RunMonitoredFfmpegAsync(
+                                executable, twoPassPlan.FirstPassArguments, job, durationSeconds, "Pass 1 of 2", _cancellation.Token);
 
                             if (firstPass.ExitCode != 0)
                             {
@@ -1391,12 +1421,8 @@ public partial class MainWindow : Window
                             else
                             {
                                 AppendLog("Two-pass pass 1 succeeded; starting pass 2/2 (final output).");
-                                var secondPass = await FFmpegProcessRunner.RunAsync(
-                                    executable,
-                                    twoPassPlan.SecondPassArguments,
-                                    onStandardOutput: line => LogProcessLine("FFMPEG PASS 2 STDOUT", line),
-                                    onStandardError: line => LogProcessLine("FFMPEG PASS 2 STDERR", line),
-                                    cancellationToken: _cancellation.Token);
+                                var secondPass = await RunMonitoredFfmpegAsync(
+                                    executable, twoPassPlan.SecondPassArguments, job, durationSeconds, "Pass 2 of 2", _cancellation.Token);
                                 AppendLog(secondPass.ExitCode == 0
                                     ? "Two-pass encoding completed: " + job.OutputPath
                                     : $"Two-pass pass 2 failed (exit {secondPass.ExitCode}): {job.OutputPath}");
@@ -1409,7 +1435,9 @@ public partial class MainWindow : Window
                         // files. Cleanup is restricted to patterns in the output's own scope.
                         if (temporaryFileScope is not null)
                         {
-                            var cleanup = temporaryFileScope.CleanupCreatedFiles();
+                            var cleanup = _cancellation?.IsCancellationRequested == true
+                                ? temporaryFileScope.CleanupAfterCancellation()
+                                : temporaryFileScope.CleanupCreatedFiles();
                             foreach (var orphan in cleanup.DeletedFiles)
                                 AppendLog("Removed temporary file created by this FFmpeg job: " + orphan);
                             foreach (var failure in cleanup.FailedFiles)
@@ -1424,7 +1452,14 @@ public partial class MainWindow : Window
                 }
                 catch (OperationCanceledException)
                 {
-                    AppendLog("Job canceled by user.");
+                    AppendLog("Job canceled by user; FFmpeg was terminated and job-owned temporary files are being cleaned.");
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _progressDescription.Text = "Canceled — process terminated; job-owned temporary files cleaned where possible.";
+                        _conversionProgress.IsIndeterminate = false;
+                        _conversionProgress.Value = 0;
+                        _systemUsage.Text = "FFmpeg is no longer running.";
+                    });
                     break;
                 }
                 catch (Exception ex)
@@ -1441,6 +1476,12 @@ public partial class MainWindow : Window
             _cancellation = null;
             _startButton.IsEnabled = true;
             _cancelButton.IsEnabled = false;
+            _cancelButton.Content = ButtonContent("\\uE711", "Cancel active job");
+            Dispatcher.UIThread.Post(() =>
+            {
+                _conversionProgress.IsIndeterminate = false;
+                _systemUsage.Text = "FFmpeg is no longer running.";
+            });
             AppendLog("Queue processing ended.");
         }
     }
@@ -1505,7 +1546,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Play(object? sender, RoutedEventArgs e)
+    private void Play(object? sender, RoutedEventArgs e) => _ = PlayAsync();
+
+    private async Task PlayAsync()
     {
         if (string.IsNullOrWhiteSpace(_input.Text))
         {
@@ -1522,16 +1565,462 @@ public partial class MainWindow : Window
 
         try
         {
+            // FFplay's default display aspect ratio calculation is preserved by forcing only
+            // one dimension. The other dimension is calculated by ffplay from the media DAR.
+            var maxWidth = 1280;
+            var maxHeight = 720;
+            var displayAspect = await TryGetDisplayAspectRatioAsync(_input.Text!);
+            var maxAspect = maxWidth / (double)maxHeight;
+            var args = new List<string> { "-hide_banner", "-window_title", "FFGrabber — " + Path.GetFileName(_input.Text!) };
+            if (displayAspect is > 0)
+            {
+                if (displayAspect.Value >= maxAspect)
+                    args.AddRange(["-x", maxWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+                else
+                    args.AddRange(["-y", maxHeight.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+            }
+            else
+            {
+                // Unknown/streaming input: set width only and let FFplay keep its default DAR.
+                args.AddRange(["-x", maxWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+            }
+            args.Add(_input.Text!);
+            AppendLog("Launching size-capped FFplay with its default display aspect ratio: " + FFmpegCommandBuilder.ToDisplayCommand(executable, args));
+            // Pass the media path as a separate process argument; never use a shell.
             var info = new ProcessStartInfo(executable) { UseShellExecute = false };
-            info.ArgumentList.Add("-hide_banner");
-            info.ArgumentList.Add(_input.Text!);
-            AppendLog("Launching: " + FFmpegCommandBuilder.ToDisplayCommand(executable, ["-hide_banner", _input.Text!]));
+            foreach (var arg in args) info.ArgumentList.Add(arg);
             Process.Start(info);
         }
         catch (Exception ex)
         {
             AppendLog("Could not launch ffplay: " + ex);
         }
+    }
+
+    private void CancelActiveJob()
+    {
+        var cancellation = _cancellation;
+        if (cancellation is null || cancellation.IsCancellationRequested)
+            return;
+
+        // CancellationToken registration in FFmpegProcessRunner kills the entire process tree.
+        // It runs synchronously here; file cleanup follows only after process exit is observed.
+        _cancelButton.IsEnabled = false;
+        _cancelButton.Content = ButtonContent("\\uE711", "Stopping…");
+        _progressDescription.Text = "Cancellation requested — terminating FFmpeg process tree…";
+        AppendLog("Cancellation requested. Terminating active FFmpeg process tree now.");
+        try { cancellation.Cancel(); }
+        catch (ObjectDisposedException) { }
+    }
+
+    private async Task<ProcessRunResult> RunMonitoredFfmpegAsync(
+        string executable,
+        IReadOnlyList<string> commandArguments,
+        EncodingSettings job,
+        double? durationSeconds,
+        string stage,
+        CancellationToken cancellationToken)
+    {
+        var arguments = commandArguments.ToList();
+        // FFmpeg's progress protocol is routed to stderr so an output targeting stdout/pipe:1
+        // remains intact. -nostats removes only the periodic terminal status line.
+        var insertAt = arguments.Count > 0 && arguments[0] == "-hide_banner" ? 1 : 0;
+        arguments.InsertRange(insertAt, ["-progress", "pipe:2", "-nostats"]);
+
+        Task usageMonitor = Task.CompletedTask;
+        try
+        {
+            AppendLog("Running with progress telemetry: " + FFmpegCommandBuilder.ToDisplayCommand(executable, arguments));
+            var result = await FFmpegProcessRunner.RunAsync(
+                executable,
+                arguments,
+                onStandardOutput: line =>
+                {
+                    // Keep any genuine output/log text, but don't clutter the log with progress key/value frames.
+                    if (!IsProgressProtocolLine(line))
+                        LogProcessLine("FFMPEG STDOUT", line);
+                },
+                onStandardError: line =>
+                {
+                    if (!HandleProgressProtocolLine(line, durationSeconds, job, stage))
+                        LogProcessLine("FFMPEG STDERR", line);
+                },
+                cancellationToken: cancellationToken,
+                onProcessStarted: processId =>
+                {
+                    Interlocked.Exchange(ref _activeFfmpegProcessId, processId);
+                    usageMonitor = SystemUsageMonitor.RunAsync(
+                        processId,
+                        snapshot => Dispatcher.UIThread.Post(() =>
+                        {
+                            if (Interlocked.CompareExchange(ref _activeFfmpegProcessId, 0, 0) != processId)
+                                return;
+                            _systemUsage.Text =
+                                $"FFmpeg PID {snapshot.ProcessId}  |  Process CPU {snapshot.ProcessCpuPercent:F1}% of total machine capacity  |  System CPU {snapshot.SystemCpuPercent:F1}%"
+                                + Environment.NewLine
+                                + $"Working set {snapshot.ProcessWorkingSetMiB:N0} MiB  |  Private memory {snapshot.ProcessPrivateMemoryMiB:N0} MiB  |  Threads {snapshot.ProcessThreadCount}"
+                                + Environment.NewLine
+                                + (snapshot.TotalMemoryGiB > 0
+                                    ? $"System RAM {snapshot.UsedMemoryGiB:F1}/{snapshot.TotalMemoryGiB:F1} GiB ({snapshot.UsedMemoryPercent:F1}% used)"
+                                    : "System RAM telemetry is unavailable.");
+                        }),
+                        () => Interlocked.CompareExchange(ref _activeFfmpegProcessId, 0, 0) == processId);
+                });
+            if (result.ExitCode == 0)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (durationSeconds is > 0)
+                    {
+                        _conversionProgress.IsIndeterminate = false;
+                        _conversionProgress.Value = 100;
+                    }
+                    _progressDescription.Text = $"{stage} completed — {Path.GetFileName(job.OutputPath)}";
+                });
+            }
+            return result;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _activeFfmpegProcessId, 0);
+            try { await usageMonitor.ConfigureAwait(false); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                AppendLog("System usage sampling ended: " + ex.Message);
+            }
+        }
+    }
+
+    private static bool IsProgressProtocolLine(string line)
+    {
+        var trimmed = line.TrimStart();
+        return trimmed.StartsWith("frame=", StringComparison.Ordinal)
+            || trimmed.StartsWith("fps=", StringComparison.Ordinal)
+            || trimmed.StartsWith("stream_", StringComparison.Ordinal)
+            || trimmed.StartsWith("bitrate=", StringComparison.Ordinal)
+            || trimmed.StartsWith("total_size=", StringComparison.Ordinal)
+            || trimmed.StartsWith("out_time_us=", StringComparison.Ordinal)
+            || trimmed.StartsWith("out_time_ms=", StringComparison.Ordinal)
+            || trimmed.StartsWith("out_time=", StringComparison.Ordinal)
+            || trimmed.StartsWith("dup_frames=", StringComparison.Ordinal)
+            || trimmed.StartsWith("drop_frames=", StringComparison.Ordinal)
+            || trimmed.StartsWith("speed=", StringComparison.Ordinal)
+            || trimmed.StartsWith("progress=", StringComparison.Ordinal);
+    }
+
+    private bool HandleProgressProtocolLine(string line, double? durationSeconds, EncodingSettings job, string stage)
+    {
+        var trimmed = line.Trim();
+        if (trimmed.StartsWith("out_time_us=", StringComparison.Ordinal)
+            && long.TryParse(trimmed.AsSpan("out_time_us=".Length), out var microseconds)
+            && microseconds >= 0)
+        {
+            var elapsedSeconds = microseconds / 1_000_000d;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (durationSeconds is > 0)
+                {
+                    var percent = Math.Clamp(elapsedSeconds / durationSeconds.Value * 100d, 0d, 100d);
+                    _conversionProgress.IsIndeterminate = false;
+                    _conversionProgress.Value = percent;
+                    _progressDescription.Text =
+                        $"{stage}  |  {percent:F1}%  |  {FormatProgressTime(elapsedSeconds)} / {FormatProgressTime(durationSeconds.Value)}"
+                        + Environment.NewLine + Path.GetFileName(job.InputPath) + " → " + Path.GetFileName(job.OutputPath);
+                }
+                else
+                {
+                    _conversionProgress.IsIndeterminate = true;
+                    _progressDescription.Text = $"{stage}  |  Processed {FormatProgressTime(elapsedSeconds)} (duration unavailable)"
+                        + Environment.NewLine + Path.GetFileName(job.InputPath) + " → " + Path.GetFileName(job.OutputPath);
+                }
+            });
+            return true;
+        }
+
+        if (trimmed.Equals("progress=end", StringComparison.Ordinal))
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                _conversionProgress.IsIndeterminate = false;
+                _conversionProgress.Value = 100;
+                _progressDescription.Text = $"{stage} — finalizing output…";
+            });
+            return true;
+        }
+
+        return IsProgressProtocolLine(trimmed);
+    }
+
+    private static string FormatProgressTime(double seconds)
+    {
+        if (!double.IsFinite(seconds) || seconds < 0)
+            return "—";
+        var time = TimeSpan.FromSeconds(Math.Min(seconds, TimeSpan.MaxValue.TotalSeconds));
+        return time.TotalHours >= 1 ? time.ToString(@"hh\:mm\:ss") : time.ToString(@"mm\:ss");
+    }
+
+    private void ResetConversionProgress(EncodingSettings job, double? durationSeconds)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            _conversionProgress.IsIndeterminate = durationSeconds is not > 0;
+            _conversionProgress.Value = 0;
+            _progressDescription.Text =
+                $"Starting  |  {Path.GetFileName(job.InputPath)} → {Path.GetFileName(job.OutputPath)}";
+            _systemUsage.Text = "Waiting for FFmpeg process metrics…";
+        });
+    }
+
+    private async Task<double?> TryGetInputDurationSecondsAsync(string inputPath, CancellationToken cancellationToken)
+    {
+        var ffprobe = FFmpegLocator.Find("ffprobe");
+        if (ffprobe is null || string.IsNullOrWhiteSpace(inputPath))
+            return null;
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(6));
+        try
+        {
+            var result = await FFmpegProcessRunner.RunAsync(
+                ffprobe,
+                ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", inputPath],
+                cancellationToken: timeout.Token);
+            if (result.ExitCode == 0)
+            {
+                foreach (var value in result.StandardOutput.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (double.TryParse(value.Trim(), System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var seconds)
+                        && double.IsFinite(seconds) && seconds > 0)
+                        return seconds;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            AppendLog("Duration probe timed out after six seconds; progress will show elapsed media time without a percentage.");
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            AppendLog("Could not determine media duration; progress percentage will be unavailable: " + ex.Message);
+        }
+        return null;
+    }
+
+    private async Task<double?> TryGetDisplayAspectRatioAsync(string mediaPath)
+    {
+        var ffprobe = FFmpegLocator.Find("ffprobe");
+        if (ffprobe is null)
+            return null;
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            var result = await FFmpegProcessRunner.RunAsync(
+                ffprobe,
+                ["-v", "error", "-select_streams", "v:0", "-show_entries",
+                 "stream=width,height,sample_aspect_ratio,display_aspect_ratio:stream_side_data=rotation",
+                 "-of", "json", mediaPath],
+                cancellationToken: timeout.Token);
+            if (result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.StandardOutput))
+                return null;
+
+            using var document = JsonDocument.Parse(result.StandardOutput);
+            if (!document.RootElement.TryGetProperty("streams", out var streams)
+                || streams.ValueKind != JsonValueKind.Array || streams.GetArrayLength() == 0)
+                return null;
+
+            var stream = streams[0];
+            var ratio = ReadRatio(stream, "display_aspect_ratio");
+            if (ratio is null
+                && stream.TryGetProperty("width", out var widthNode)
+                && stream.TryGetProperty("height", out var heightNode)
+                && widthNode.TryGetInt32(out var width) && heightNode.TryGetInt32(out var height)
+                && width > 0 && height > 0)
+            {
+                ratio = width / (double)height;
+                var sample = ReadRatio(stream, "sample_aspect_ratio");
+                if (sample is > 0) ratio *= sample.Value;
+            }
+
+            // FFprobe reports rotation in stream_side_data on many formats. A quarter turn
+            // swaps the display axes; the computed ffplay window remains within its size cap.
+            if (ratio is > 0 && stream.TryGetProperty("side_data_list", out var sideData)
+                && sideData.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in sideData.EnumerateArray())
+                {
+                    if (item.TryGetProperty("rotation", out var rotationNode)
+                        && rotationNode.TryGetDouble(out var degrees)
+                        && Math.Abs(Math.Abs(degrees) % 180d - 90d) < 1d)
+                    {
+                        ratio = 1d / ratio.Value;
+                        break;
+                    }
+                }
+            }
+            return ratio is > 0 && double.IsFinite(ratio.Value) ? ratio : null;
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or InvalidOperationException
+            or System.ComponentModel.Win32Exception or OperationCanceledException)
+        {
+            AppendLog("ffprobe could not calculate display aspect ratio; ffplay will use default DAR with a width limit. " + ex.Message);
+            return null;
+        }
+    }
+
+    private static double? ReadRatio(JsonElement node, string propertyName)
+    {
+        if (!node.TryGetProperty(propertyName, out var valueNode) || valueNode.ValueKind != JsonValueKind.String)
+            return null;
+        var value = valueNode.GetString()?.Trim();
+        if (string.IsNullOrWhiteSpace(value) || value == "N/A")
+            return null;
+        var parts = value.Split(':', StringSplitOptions.TrimEntries);
+        if (parts.Length == 2
+            && double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var numerator)
+            && double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var denominator)
+            && numerator > 0 && denominator > 0)
+            return numerator / denominator;
+        if (double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ratio)
+            && ratio > 0 && double.IsFinite(ratio))
+            return ratio;
+        return null;
+    }
+
+    private async Task OpenMediaInfoAsync(string mediaPath)
+    {
+        if (string.IsNullOrWhiteSpace(mediaPath))
+        {
+            AppendLog("Select a media file first, then open MediaInfo.");
+            return;
+        }
+
+        var window = new MediaInfoWindow(mediaPath.Trim());
+        await window.ShowDialog(this);
+    }
+
+    private async Task HandleStartupArgumentsAsync(string[] arguments)
+    {
+        if (arguments.Length < 2 || string.IsNullOrWhiteSpace(arguments[0]) || string.IsNullOrWhiteSpace(arguments[1]))
+            return;
+
+        var action = arguments[0].Trim().ToLowerInvariant();
+        var inputPath = arguments[1].Trim().Trim('"');
+        if (!File.Exists(inputPath))
+        {
+            AppendLog("Explorer action ignored because the source file no longer exists: " + inputPath);
+            return;
+        }
+
+        _input.Text = inputPath;
+        var folder = Path.GetDirectoryName(inputPath) ?? Environment.CurrentDirectory;
+        var stem = Path.GetFileNameWithoutExtension(inputPath);
+        switch (action)
+        {
+            case "--context-play":
+                await PlayAsync();
+                return;
+            case "--context-mediainfo":
+                await OpenMediaInfoAsync(inputPath);
+                return;
+            case "--context-convert":
+                SetComboValue(_mode, "Convert / encode");
+                _output.Text = Path.Combine(folder, stem + "_converted.mkv");
+                break;
+            case "--context-remux":
+                SetComboValue(_mode, "Remux / stream copy");
+                _output.Text = Path.Combine(folder, stem + "_remuxed.mkv");
+                break;
+            case "--context-demux":
+                // Video-only stream-copy output; the selected container remains user-editable.
+                SetComboValue(_mode, "Video only");
+                _output.Text = Path.Combine(folder, stem + "_video.mkv");
+                break;
+            case "--context-extract-audio":
+                SetComboValue(_mode, "Extract audio");
+                SetComboValue(_audioCodec, "copy");
+                _output.Text = Path.Combine(folder, stem + "_audio.mka");
+                break;
+            default:
+                return;
+        }
+
+        AddToQueue(this, new RoutedEventArgs());
+        await RunQueueAsync();
+    }
+
+    private async Task CheckForUpdatesOnStartupAsync()
+    {
+        try
+        {
+            var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var directory = Path.Combine(localData, "FFGrabber");
+            var lastCheckPath = Path.Combine(directory, "last-update-check-utc.txt");
+            if (File.Exists(lastCheckPath)
+                && DateTimeOffset.TryParse(await File.ReadAllTextAsync(lastCheckPath), out var lastCheck)
+                && DateTimeOffset.UtcNow - lastCheck.ToUniversalTime() < TimeSpan.FromHours(24))
+                return;
+
+            Directory.CreateDirectory(directory);
+            await File.WriteAllTextAsync(lastCheckPath, DateTimeOffset.UtcNow.ToString("O"));
+            var mediaInfoVersion = await MediaInfoService.GetVersionAsync();
+            var result = await UpdateCheckService.CheckAsync(AppVersion, mediaInfoVersion);
+            foreach (var note in result.Notes)
+                AppendLog("Automatic update check: " + note);
+            if (result.Available.Count > 0)
+                await ShowAvailableUpdatesAsync(result.Available);
+        }
+        catch (Exception ex)
+        {
+            AppendLog("Automatic update check failed without interrupting FFGrabber: " + ex.Message);
+        }
+    }
+
+    private async Task ShowAvailableUpdatesAsync(IReadOnlyList<AvailableUpdate> updates)
+    {
+        var dialog = new Window
+        {
+            Title = "FFGrabber — Updates available",
+            Width = 620,
+            Height = 360,
+            MinWidth = 520,
+            MinHeight = 300,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = Brush("#FF111319")
+        };
+        var root = new StackPanel { Spacing = 12, Margin = new Thickness(20) };
+        root.Children.Add(new TextBlock
+        {
+            Text = "New releases are available",
+            FontSize = 22,
+            FontWeight = FontWeight.SemiBold
+        });
+        root.Children.Add(new TextBlock
+        {
+            Text = "FFGrabber checks official release metadata automatically. It does not silently download or replace application binaries or your imported FFmpeg/MediaInfo tools.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Brush("#A4A9B6")
+        });
+        foreach (var update in updates)
+        {
+            root.Children.Add(new TextBlock
+            {
+                Text = $"{update.Product}: {update.CurrentVersion} → {update.LatestVersion}",
+                FontWeight = FontWeight.SemiBold
+            });
+            root.Children.Add(Button("Open official " + update.Product + " release ↗", (_, _) => OpenUrl(update.ReleaseUrl)));
+        }
+        var close = Button("Close", (_, _) => dialog.Close());
+        root.Children.Add(close);
+        dialog.Content = new Border { Classes = { "glassShell" }, Child = root };
+        await dialog.ShowDialog(this);
+    }
+
+    private void OpenUrl(string url)
+    {
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch (Exception ex) { AppendLog("Could not open the release URL: " + ex.Message); }
     }
 
     private async Task OpenGuideLibraryAsync()
@@ -1590,7 +2079,7 @@ public partial class MainWindow : Window
         close.Click += (_, _) => dialog.Close();
         root.Children.Add(close);
         dialog.Content = new Border { Classes = { "glassShell" }, Child = root };
-        try { dialog.Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/FFGrabber.ico"))); } catch { }
+        try { dialog.Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/Windows11.ico"))); } catch { }
         await dialog.ShowDialog(this);
     }
 

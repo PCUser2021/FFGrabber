@@ -14,6 +14,7 @@ public sealed class FFmpegTemporaryFileCleanupScope
 
     private readonly DateTime _startedUtc;
     private readonly string _protectedOutputPath;
+    private readonly bool _outputExistedAtStart;
     private readonly HashSet<string> _existingAtStart;
     private readonly IReadOnlyList<string> _directories;
     private readonly IReadOnlyList<TemporaryNamePattern> _patterns;
@@ -25,9 +26,13 @@ public sealed class FFmpegTemporaryFileCleanupScope
     {
         _startedUtc = DateTime.UtcNow;
         _protectedOutputPath = Path.GetFullPath(protectedOutputPath);
+        _outputExistedAtStart = File.Exists(_protectedOutputPath);
         _directories = directories;
         _patterns = patterns;
-        _existingAtStart = EnumerateTemporaryFiles(directories)
+        // Snapshot every path that matches the specific output/muxer patterns, including
+        // HLS/DASH segments that do not end in .tmp. Existing user files are never cleanup targets.
+        _existingAtStart = EnumerateTrackedFiles(directories)
+            .Where(MatchesTrackedPattern)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -77,13 +82,13 @@ public sealed class FFmpegTemporaryFileCleanupScope
 
         if (isHls)
         {
+            var hlsSegmentPattern = "(?:" + string.Join("|", HlsExtensions.Select(Regex.Escape)) + ")";
             patterns.Add(TemporaryNamePattern.Regex(
                 outputDirectoryFull,
                 new Regex(
                     "^" + Regex.Escape(outputStem) +
-                    "(?:[0-9]+|[_-][0-9]+)[^\\\\/]*\\.(?:" +
-                    string.Join("|", HlsExtensions.Select(Regex.Escape)) +
-                    ")\\.tmp$",
+                    "(?:[0-9]+|[_-][0-9]+)[^\\\\/]*\\." + hlsSegmentPattern +
+                    "(?:\\.tmp)?$",
                     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled)));
 
             patterns.Add(TemporaryNamePattern.Exact(outputDirectoryFull, outputFileName + ".tmp"));
@@ -96,7 +101,7 @@ public sealed class FFmpegTemporaryFileCleanupScope
             patterns.Add(TemporaryNamePattern.Regex(
                 outputDirectoryFull,
                 new Regex(
-                    "^(?:init-stream|chunk-stream)[A-Za-z0-9_-]*\\.(?:m4s|mp4|webm|m4a|cmfv|cmfa)\\.tmp$",
+                    "^(?:init-stream|chunk-stream)[A-Za-z0-9_-]*\\.(?:m4s|mp4|webm|m4a|cmfv|cmfa)(?:\\.tmp)?$",
                     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled)));
             patterns.Add(TemporaryNamePattern.Exact(outputDirectoryFull, outputFileName + ".tmp"));
         }
@@ -168,6 +173,69 @@ public sealed class FFmpegTemporaryFileCleanupScope
             catch (DirectoryNotFoundException)
             {
                 // The output directory may have been removed while the job was running.
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                failures.Add($"{path}: {ex.Message}");
+            }
+        }
+
+        return new TemporaryFileCleanupResult(deleted, failures);
+    }
+
+    /// <summary>
+    /// Cleanup path used after an explicit cancellation. First delete only job-created temp
+    /// files inside the existing output-specific scope. Also remove a partial final output
+    /// only when this job created it; never delete an output that was present at job start.
+    /// </summary>
+    public TemporaryFileCleanupResult CleanupAfterCancellation()
+    {
+        var cleanup = CleanupCreatedFiles();
+        var deleted = cleanup.DeletedFiles.ToList();
+        var failures = cleanup.FailedFiles.ToList();
+
+        if (!_outputExistedAtStart && File.Exists(_protectedOutputPath))
+        {
+            try
+            {
+                using (new FileStream(_protectedOutputPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                {
+                }
+                File.Delete(_protectedOutputPath);
+                deleted.Add(_protectedOutputPath);
+            }
+            catch (FileNotFoundException)
+            {
+                // Already removed by FFmpeg.
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                failures.Add($"{_protectedOutputPath}: {ex.Message}");
+            }
+        }
+
+        // HLS/DASH muxers may leave segment files without a .tmp suffix when interrupted.
+        // On cancellation only, also remove newly-created artifacts matching an explicit output
+        // stem/template. Existing files were snapshotted at job start and are protected.
+        foreach (var path in EnumerateTrackedFiles(_directories))
+        {
+            if (Path.GetExtension(path).Equals(".tmp", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(path, _protectedOutputPath, StringComparison.OrdinalIgnoreCase)
+                || _existingAtStart.Contains(path)
+                || !MatchesTrackedPattern(path))
+                continue;
+
+            try
+            {
+                using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                {
+                }
+                File.Delete(path);
+                deleted.Add(path);
+            }
+            catch (FileNotFoundException)
+            {
+                // Already removed by FFmpeg or another cleanup pass.
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -285,6 +353,7 @@ public sealed class FFmpegTemporaryFileCleanupScope
         if (marker < 0)
         {
             patterns.Add(TemporaryNamePattern.Exact(Path.GetFullPath(directory), fileName + ".tmp"));
+            patterns.Add(TemporaryNamePattern.Exact(Path.GetFullPath(directory), fileName));
             return;
         }
 
@@ -298,6 +367,8 @@ public sealed class FFmpegTemporaryFileCleanupScope
 
         patterns.Add(TemporaryNamePattern.PrefixAndSuffix(
             Path.GetFullPath(directory), prefix, extension + ".tmp"));
+        patterns.Add(TemporaryNamePattern.PrefixAndSuffix(
+            Path.GetFullPath(directory), prefix, extension));
     }
 
     private static bool TryGetLocalPath(
@@ -344,6 +415,33 @@ public sealed class FFmpegTemporaryFileCleanupScope
                 value = arguments[i + 1];
         }
         return value;
+    }
+
+    private static IEnumerable<string> EnumerateTrackedFiles(IEnumerable<string> directories)
+    {
+        foreach (var directory in directories.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!Directory.Exists(directory))
+                continue;
+
+            string[] files;
+            try
+            {
+                files = Directory.GetFiles(directory, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            foreach (var file in files)
+            {
+                string fullPath;
+                try { fullPath = Path.GetFullPath(file); }
+                catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException) { continue; }
+                yield return fullPath;
+            }
+        }
     }
 
     private static IEnumerable<string> EnumerateTemporaryFiles(IEnumerable<string> directories)

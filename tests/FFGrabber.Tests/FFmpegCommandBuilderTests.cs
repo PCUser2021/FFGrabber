@@ -9,6 +9,40 @@ namespace FFGrabber.Tests;
 public sealed class FFmpegCommandBuilderTests
 {
     [TestMethod]
+    public void Build_UsesBalancedThreadBudgetAndHonorsManualOverride()
+    {
+        using var directory = new TemporaryDirectory();
+        var settings = new EncodingSettings(
+            InputPath: "input.mp4",
+            OutputPath: System.IO.Path.Combine(directory.Path, "output.mkv"),
+            Mode: "Convert / encode",
+            VideoCodec: "libx264",
+            Preset: "medium",
+            Crf: 20,
+            AudioCodec: "aac",
+            AudioBitrate: "192k",
+            Overwrite: true,
+            RateControl: "CRF quality",
+            VideoBitrate: "8M",
+            OutputSize: "source",
+            FrameRate: "source",
+            PixelFormat: "auto",
+            PreserveMetadata: true,
+            FastStart: true);
+
+        var balanced = FFmpegCommandBuilder.Build(settings);
+        var expectedThreads = Math.Max(1, (int)Math.Floor(Environment.ProcessorCount * 0.75));
+        Assert.AreEqual(expectedThreads.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            GetOptionValue(balanced, "-threads:v"));
+        Assert.AreEqual(expectedThreads.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            GetOptionValue(balanced, "-filter_threads"));
+
+        var manual = FFmpegCommandBuilder.Build(settings with { VideoEncoderOptions = "-threads:v 2" });
+        Assert.AreEqual("2", GetOptionValue(manual, "-threads:v"));
+        Assert.AreEqual(1, manual.Count(option => string.Equals(option, "-threads:v", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
     public void BuildTwoPass_CreatesOrderedAnalysisAndFinalPassArguments()
     {
         using var directory = new TemporaryDirectory();
@@ -150,8 +184,8 @@ public sealed class FFmpegCommandBuilderTests
             "EncodingForStreamingSites.txt", "StreamingGuide.txt", "ffserver.txt"
         ];
 
-        Assert.IsTrue(resources.Length >= 92,
-            "All 78 Dropbox source texts and the reconstructed profile payloads must be embedded.");
+        Assert.IsTrue(resources.Length >= 93,
+            "All 79 Dropbox source texts and the reconstructed profile payloads must be embedded.");
         foreach (var source in preservedReferences)
             Assert.IsTrue(resources.Contains(
                 "FFGrabber.source-guides.dropbox." + source,
@@ -165,8 +199,8 @@ public sealed class FFmpegCommandBuilderTests
         var repositoryRoot = FindRepositoryRootForGuideSources();
         var sourceDirectory = System.IO.Path.Combine(repositoryRoot, "docs", "source-guides", "dropbox");
         var sourceFiles = Directory.GetFiles(sourceDirectory, "*.txt", SearchOption.TopDirectoryOnly);
-        Assert.IsTrue(sourceFiles.Length >= 78,
-            "The complete set of 78 original Dropbox source texts must be tracked.");
+        Assert.IsTrue(sourceFiles.Length >= 79,
+            "The complete set of 79 original Dropbox source texts must be tracked.");
 
         var assembly = typeof(EncodingGuideProfiles).Assembly;
         foreach (var filePath in sourceFiles)

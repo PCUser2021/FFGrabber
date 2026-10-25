@@ -4,7 +4,7 @@ FFGrabber embeds every `.txt` file in `docs/source-guides/dropbox/` through the 
 
 ## Verbatim Dropbox source snapshot manifest
 
-The following **78 original `.txt` files** were present in the connected Dropbox root when this integration was performed. Their original filenames are retained under `docs/source-guides/dropbox/`, with no editorial rewrites of their text.
+The following **79 original `.txt` files** are preserved in the connected Dropbox root when this integration was performed. Their original filenames are retained under `docs/source-guides/dropbox/`, with no editorial rewrites of their text.
 
 - `AfadeCurves.txt`
 - `audio types.txt`
@@ -21,6 +21,7 @@ The following **78 original `.txt` files** were present in the connected Dropbox
 - `Chroma Subsampling.txt`
 - `Cleanup.txt`
 - `colorspace.txt`
+- `cli.rst.txt` (x265 encoder command-line reference)
 - `Concatenate.txt`
 - `Create a mosaic out of several input videos using xstack.txt`
 - `Create a mosaic out of several input videos.txt`

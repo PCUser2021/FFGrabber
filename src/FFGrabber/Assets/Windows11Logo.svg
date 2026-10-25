@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Source reference requested by the user: https://upload.wikimedia.org/wikipedia/commons/e/e6/Windows_11_logo.svg
+     The user-provided artwork is a wide Windows 11 wordmark; this scalable asset retains its blue four-pane mark and wordmark for FFGrabber branding. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="184.24" viewBox="0 0 1000 184.24" role="img" aria-label="Windows 11">
+  <g fill="#0078D4">
+    <rect x="0" y="0" width="86" height="86"/>
+    <rect x="94" y="0" width="86" height="86"/>
+    <rect x="0" y="94" width="86" height="90"/>
+    <rect x="94" y="94" width="86" height="90"/>
+    <text x="226" y="140" font-family="Segoe UI,Arial,sans-serif" font-size="142" font-weight="400" letter-spacing="-2">Windows 11</text>
+  </g>
+</svg>

@@ -1394,17 +1394,15 @@ public partial class MainWindow : Window
                     // Track the final output's temporary files across the whole job. Pass 1
                     // writes to the null muxer, so cleanup is scoped to the requested output.
                     var cleanupArguments = twoPassPlan?.SecondPassArguments ?? args;
+                    var durationSeconds = await TryGetInputDurationSecondsAsync(job.InputPath, _cancellation.Token);
+                    ResetConversionProgress(job, durationSeconds);
                     var temporaryFileScope = FFmpegTemporaryFileCleanupScope.Begin(job.OutputPath, cleanupArguments);
                     try
                     {
                         if (twoPassPlan is null)
                         {
-                            var result = await FFmpegProcessRunner.RunAsync(
-                                executable,
-                                args,
-                                onStandardOutput: line => LogProcessLine("FFMPEG STDOUT", line),
-                                onStandardError: line => LogProcessLine("FFMPEG STDERR", line),
-                                cancellationToken: _cancellation.Token);
+                            var result = await RunMonitoredFfmpegAsync(
+                                executable, args, job, durationSeconds, "Encoding", _cancellation.Token);
                             AppendLog(result.ExitCode == 0
                                 ? "Completed: " + job.OutputPath
                                 : $"Failed (exit {result.ExitCode}): {job.OutputPath}");
@@ -1412,12 +1410,8 @@ public partial class MainWindow : Window
                         else
                         {
                             AppendLog("Two-pass job: starting pass 1/2 (analysis output is discarded).");
-                            var firstPass = await FFmpegProcessRunner.RunAsync(
-                                executable,
-                                twoPassPlan.FirstPassArguments,
-                                onStandardOutput: line => LogProcessLine("FFMPEG PASS 1 STDOUT", line),
-                                onStandardError: line => LogProcessLine("FFMPEG PASS 1 STDERR", line),
-                                cancellationToken: _cancellation.Token);
+                            var firstPass = await RunMonitoredFfmpegAsync(
+                                executable, twoPassPlan.FirstPassArguments, job, durationSeconds, "Pass 1 of 2", _cancellation.Token);
 
                             if (firstPass.ExitCode != 0)
                             {
@@ -1426,12 +1420,8 @@ public partial class MainWindow : Window
                             else
                             {
                                 AppendLog("Two-pass pass 1 succeeded; starting pass 2/2 (final output).");
-                                var secondPass = await FFmpegProcessRunner.RunAsync(
-                                    executable,
-                                    twoPassPlan.SecondPassArguments,
-                                    onStandardOutput: line => LogProcessLine("FFMPEG PASS 2 STDOUT", line),
-                                    onStandardError: line => LogProcessLine("FFMPEG PASS 2 STDERR", line),
-                                    cancellationToken: _cancellation.Token);
+                                var secondPass = await RunMonitoredFfmpegAsync(
+                                    executable, twoPassPlan.SecondPassArguments, job, durationSeconds, "Pass 2 of 2", _cancellation.Token);
                                 AppendLog(secondPass.ExitCode == 0
                                     ? "Two-pass encoding completed: " + job.OutputPath
                                     : $"Two-pass pass 2 failed (exit {secondPass.ExitCode}): {job.OutputPath}");
@@ -1444,7 +1434,9 @@ public partial class MainWindow : Window
                         // files. Cleanup is restricted to patterns in the output's own scope.
                         if (temporaryFileScope is not null)
                         {
-                            var cleanup = temporaryFileScope.CleanupCreatedFiles();
+                            var cleanup = _cancellation?.IsCancellationRequested == true
+                                ? temporaryFileScope.CleanupAfterCancellation()
+                                : temporaryFileScope.CleanupCreatedFiles();
                             foreach (var orphan in cleanup.DeletedFiles)
                                 AppendLog("Removed temporary file created by this FFmpeg job: " + orphan);
                             foreach (var failure in cleanup.FailedFiles)
@@ -1459,7 +1451,14 @@ public partial class MainWindow : Window
                 }
                 catch (OperationCanceledException)
                 {
-                    AppendLog("Job canceled by user.");
+                    AppendLog("Job canceled by user; FFmpeg was terminated and job-owned temporary files are being cleaned.");
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _progressDescription.Text = "Canceled — process terminated; job-owned temporary files cleaned where possible.";
+                        _conversionProgress.IsIndeterminate = false;
+                        _conversionProgress.Value = 0;
+                        _systemUsage.Text = "FFmpeg is no longer running.";
+                    });
                     break;
                 }
                 catch (Exception ex)
@@ -1476,6 +1475,12 @@ public partial class MainWindow : Window
             _cancellation = null;
             _startButton.IsEnabled = true;
             _cancelButton.IsEnabled = false;
+            _cancelButton.Content = ButtonContent("\\uE711", "Cancel active job");
+            Dispatcher.UIThread.Post(() =>
+            {
+                _conversionProgress.IsIndeterminate = false;
+                _systemUsage.Text = "FFmpeg is no longer running.";
+            });
             AppendLog("Queue processing ended.");
         }
     }
@@ -1540,7 +1545,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Play(object? sender, RoutedEventArgs e)
+    private void Play(object? sender, RoutedEventArgs e) => _ = PlayAsync();
+
+    private async Task PlayAsync()
     {
         if (string.IsNullOrWhiteSpace(_input.Text))
         {
@@ -1557,10 +1564,31 @@ public partial class MainWindow : Window
 
         try
         {
+            // FFplay's default display aspect ratio calculation is preserved by forcing only
+            // one dimension. The other dimension is calculated by ffplay from the media DAR.
+            var maxWidth = 1280;
+            var maxHeight = 720;
+            var displayAspect = await TryGetDisplayAspectRatioAsync(_input.Text!);
+            var maxAspect = maxWidth / (double)maxHeight;
+            var args = new List<string> { "-hide_banner", "-window_title", "FFGrabber — " + Path.GetFileName(_input.Text!) };
+            if (displayAspect is > 0)
+            {
+                if (displayAspect.Value >= maxAspect)
+                    args.AddRange(["-x", maxWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+                else
+                    args.AddRange(["-y", maxHeight.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+            }
+            else
+            {
+                // Unknown/streaming input: set width only and let FFplay keep its default DAR.
+                args.AddRange(["-x", maxWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+            }
+            args.Add(_input.Text!);
+            AppendLog("Launching size-capped FFplay with its default display aspect ratio: " + FFmpegCommandBuilder.ToDisplayCommand(executable, args));
+            Process.Start(new ProcessStartInfo(executable) { UseShellExecute = false, ArgumentList = { } });
+            // Rebuild with ArgumentList, never shell-concatenate a user-provided path.
             var info = new ProcessStartInfo(executable) { UseShellExecute = false };
-            info.ArgumentList.Add("-hide_banner");
-            info.ArgumentList.Add(_input.Text!);
-            AppendLog("Launching: " + FFmpegCommandBuilder.ToDisplayCommand(executable, ["-hide_banner", _input.Text!]));
+            foreach (var arg in args) info.ArgumentList.Add(arg);
             Process.Start(info);
         }
         catch (Exception ex)

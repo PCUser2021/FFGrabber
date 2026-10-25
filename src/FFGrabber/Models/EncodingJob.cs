@@ -30,7 +30,8 @@ public sealed record EncodingSettings(
     string AdditionalInputs = "",
     bool TwoPass = false,
     string PassLogFile = "",
-    string CaptureFilterSource = "");
+    string CaptureFilterSource = "",
+    string CpuUsageLimit = "Balanced (75%)");
 
 public sealed class EncodingJob(EncodingSettings settings)
 {

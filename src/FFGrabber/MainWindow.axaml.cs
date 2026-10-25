@@ -107,7 +107,8 @@ public partial class MainWindow : Window
     private readonly TextBox _extraHwFrames = new() { PlaceholderText = "e.g. 8", Width = 90 };
     private readonly TextBox _captureFilterSource = MultiLine("Optional source filter graph, e.g. ddagrab=0 or gfxcapture=monitor_idx=1:max_framerate=60. When set, FFGrabber does not add the primary -i input.", 60);
 
-    private readonly TextBox _globalOptions = MultiLine("-loglevel verbose -threads 0", 56);
+    private readonly ComboBox _cpuBudget = Combo(["Balanced (75%)", "Reduced (50%)", "Maximum (100%)"]);
+    private readonly TextBox _globalOptions = MultiLine("-loglevel warning", 56);
     private readonly TextBox _inputOptions = MultiLine("-ss 00:00:05 -probesize 50M -analyzeduration 100M", 56);
     private readonly TextBox _mappingOptions = MultiLine("-map 0:v:0 -map 0:a? -map_metadata 0 -map_chapters 0", 56);
     private readonly TextBox _videoEncoderOptions = MultiLine(@"e.g. -profile:v high -level:v 5.1 -x264-params ""keyint=240:min-keyint=24""", 56);
@@ -132,24 +133,31 @@ public partial class MainWindow : Window
     private readonly ListBox _queueView = new() { MinHeight = 90 };
     private readonly Button _startButton = new() { Content = "Start queue", Classes = { "primary" } };
     private readonly Button _cancelButton = new() { Content = "Cancel active job", IsEnabled = false };
+    private readonly ProgressBar _conversionProgress = new() { Minimum = 0, Maximum = 100, Value = 0, Height = 18 };
+    private readonly TextBlock _progressDescription = new() { Text = "Idle — no active conversion", TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _systemUsage = new() { Text = "CPU / memory telemetry is shown while FFmpeg is running.", TextWrapping = TextWrapping.Wrap };
     private CancellationTokenSource? _cancellation;
     private EncodingSettings? _activeJobSettings;
     private Action<int>? _navigateToWorkspace;
+    private readonly string[] _startupArguments;
+    private int _activeFfmpegProcessId;
+    private Task _usageMonitorTask = Task.CompletedTask;
 
     private static string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.5.6";
 
-    public MainWindow()
+    public MainWindow(string[]? startupArguments = null)
     {
+        _startupArguments = startupArguments ?? Array.Empty<string>();
         InitializeComponent();
         try
         {
-            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/FFGrabber.ico")));
+            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://FFGrabber/Assets/Windows11.ico")));
         }
         catch (Exception ex)
         {
             _sessionLog.Write("Could not load embedded FFGrabber icon: " + ex.Message);
         }
-        Title = $"FFGrabber v{AppVersion} — Fluent media workspace";
+        Title = $"FFGrabber v{AppVersion} — Fluent Media Workspace";
         Width = 1260;
         Height = 1000;
         MinWidth = 900;
@@ -184,7 +192,7 @@ public partial class MainWindow : Window
         {
             Classes = { "tagPill" },
             VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock { Text = "WINDOWS FLUENT  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#C2F970") }
+            Child = new TextBlock { Text = "WINDOWS FLUENT  ·  IMPORT-ONLY", FontSize = 10, FontWeight = FontWeight.SemiBold, Foreground = Brush("#2E6FA4") }
         });
         brandRow.Children.Add(new Border
         {
@@ -249,6 +257,7 @@ public partial class MainWindow : Window
         _importFfmpegButton.Content = ButtonContent("\uE8E5", "Import FFmpeg…");
         topActions.Children.Add(_importFfmpegButton);
         _importFfmpegButton.Click += async (_, _) => await ImportFFmpegAsync();
+        topActions.Children.Add(Button("MediaInfo…", async (_, _) => await OpenMediaInfoAsync(_input.Text ?? string.Empty)));
         topActions.Children.Add(GlyphButton("\uE71C", "FFmpeg options & capabilities", async (_, _) => await OpenCapabilitiesAsync()));
         topActions.Children.Add(GlyphButton("\uE713", "Encoding settings editor", async (_, _) => await OpenOptionComposerAsync()));
         topActions.Children.Add(GlyphButton("\uE74D", "Clean output .tmp files…", async (_, _) => await CleanTemporaryFilesAsync()));
@@ -283,6 +292,14 @@ public partial class MainWindow : Window
         settings.Children.Add(Row("Video codec / encoder", _videoCodec));
         settings.Children.Add(Row("Encoder preset", _preset));
         settings.Children.Add(Row("Rate control", _rateControl));
+        settings.Children.Add(Row("CPU thread budget", _cpuBudget));
+        settings.Children.Add(new TextBlock
+        {
+            Text = "Balanced and Reduced cap software encoder/filter thread concurrency to lower peak CPU use. This is a best-effort thread budget, not a hard OS CPU quota; hardware encoders may ignore it.",
+            Foreground = Brush("#A4A9B6"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12
+        });
 
         var quality = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         quality.Children.Add(Label("CRF", 80));
@@ -392,11 +409,17 @@ public partial class MainWindow : Window
         _startButton.Click += async (_, _) => await RunQueueAsync();
         actions.Children.Add(_startButton);
         _cancelButton.Content = ButtonContent("\uE711", "Cancel active job");
-        _cancelButton.Click += (_, _) => _cancellation?.Cancel();
+        _cancelButton.Click += (_, _) => CancelActiveJob();
         actions.Children.Add(_cancelButton);
         actions.Children.Add(GlyphButton("\uE946", "Inspect with ffprobe", async (_, _) => await ProbeAsync()));
         actions.Children.Add(GlyphButton("\uE768", "Play with ffplay", Play));
+        actions.Children.Add(Button("MediaInfo…", async (_, _) => await OpenMediaInfoAsync(_input.Text ?? string.Empty)));
         convertContent.Children.Add(actions);
+
+        convertContent.Children.Add(Heading("Live conversion progress and system usage"));
+        convertContent.Children.Add(_conversionProgress);
+        convertContent.Children.Add(_progressDescription);
+        convertContent.Children.Add(_systemUsage);
 
         convertContent.Children.Add(Heading("Command preview"));
         convertContent.Children.Add(_preview);
@@ -504,7 +527,13 @@ public partial class MainWindow : Window
         _sessionLog.Write($"FFGrabber main window initialized; OS={RuntimeInformation.OSDescription}; architecture={RuntimeInformation.ProcessArchitecture}; appVersion={AppVersion}");
         _sessionLog.Write($"Tool paths: ffmpeg={FFmpegLocator.Find("ffmpeg") ?? "(not found)"}; ffprobe={FFmpegLocator.Find("ffprobe") ?? "(not found)"}; ffplay={FFmpegLocator.Find("ffplay") ?? "(not found)"}");
         AppendDisplayLog("Session log location: " + _sessionLog.CurrentLogPath);
-        Opened += async (_, _) => await LoadAvailableCapabilitiesAsync();
+        Opened += async (_, _) =>
+        {
+            await LoadAvailableCapabilitiesAsync();
+            if (_startupArguments.Length > 0)
+                await HandleStartupArgumentsAsync(_startupArguments);
+            _ = CheckForUpdatesOnStartupAsync();
+        };
         Closed += (_, _) =>
         {
             // Do not leave an FFmpeg encode running unattended after the window is closed.
@@ -594,18 +623,31 @@ public partial class MainWindow : Window
         return row;
     }
 
-    private static Control BuildBrandGlyph() =>
-        new TextBlock
+    private static Control BuildBrandGlyph(double size = 32)
+    {
+        // Consistent Windows 11 four-pane mark, matching the supplied logo reference.
+        var grid = new Grid { Width = size, Height = size };
+        grid.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        grid.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+        grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        for (var row = 0; row < 2; row++)
         {
-            Text = "F",
-            FontFamily = new FontFamily("Segoe UI Variable"),
-            FontSize = 29,
-            FontWeight = FontWeight.Bold,
-            Foreground = Brush("#FFFFFF"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, -2, 0, 0)
-        };
+            for (var column = 0; column < 2; column++)
+            {
+                var pane = new Border
+                {
+                    Background = Brush("#0078D4"),
+                    CornerRadius = new CornerRadius(Math.Max(0.5, size / 32)),
+                    Margin = new Thickness(0, 0, size * 0.055, size * 0.055)
+                };
+                Grid.SetRow(pane, row);
+                Grid.SetColumn(pane, column);
+                grid.Children.Add(pane);
+            }
+        }
+        return grid;
+    }
 
     private static Control ButtonContent(string glyph, string label)
     {
@@ -615,14 +657,7 @@ public partial class MainWindow : Window
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center
         };
-        content.Children.Add(new TextBlock
-        {
-            Text = glyph,
-            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            FontSize = 16,
-            Foreground = Brush("#C2F970"),
-            VerticalAlignment = VerticalAlignment.Center
-        });
+        content.Children.Add(BuildBrandGlyph(16));
         content.Children.Add(new TextBlock
         {
             Text = label,

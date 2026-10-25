@@ -1163,7 +1163,8 @@ public partial class MainWindow : Window
         _additionalInputs.Text ?? string.Empty,
         _twoPass.IsChecked == true,
         _passLogFile.Text?.Trim() ?? string.Empty,
-        _captureFilterSource.Text?.Trim() ?? string.Empty);
+        _captureFilterSource.Text?.Trim() ?? string.Empty,
+        _cpuBudget.SelectedItem?.ToString() ?? "Balanced (75%)");
 
     private async Task LoadAvailableCapabilitiesAsync()
     {

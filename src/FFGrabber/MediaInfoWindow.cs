@@ -44,15 +44,7 @@ public sealed class MediaInfoWindow : Window
         actions.Children.Add(_inspect);
         actions.Children.Add(_import);
         actions.Children.Add(Button("MediaInfo releases ↗", (_, _) => OpenUrl("https://github.com/MediaArea/MediaInfo/releases")));
-        actions.Children.Add(Button("Copy report", (_, _) =>
-        {
-            if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-                && _report.Text is { Length: > 0 } text)
-            {
-                // Clipboard is owned by the top-level visual; use the window's clipboard service.
-                _status.Text = "Select the report text and copy it with Ctrl+C.";
-            }
-        }));
+        actions.Children.Add(Button("Copy report", async (_, _) => await CopyReportAsync()));
         root.Children.Add(actions);
         root.Children.Add(_status);
         root.Children.Add(_report);
@@ -86,6 +78,30 @@ public sealed class MediaInfoWindow : Window
             _status.Text = "MediaInfo import failed: " + ex.Message;
         }
         finally { _import.IsEnabled = true; }
+    }
+
+    private async Task CopyReportAsync()
+    {
+        if (string.IsNullOrEmpty(_report.Text))
+        {
+            _status.Text = "There is no report to copy yet.";
+            return;
+        }
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard is null)
+        {
+            _status.Text = "Clipboard service is unavailable in this desktop session.";
+            return;
+        }
+        try
+        {
+            await clipboard.SetTextAsync(_report.Text);
+            _status.Text = "MediaInfo JSON report copied to the clipboard.";
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "Could not copy report: " + ex.Message;
+        }
     }
 
     private async Task InspectAsync()

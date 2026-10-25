@@ -14,6 +14,7 @@ public sealed class FFmpegTemporaryFileCleanupScope
 
     private readonly DateTime _startedUtc;
     private readonly string _protectedOutputPath;
+    private readonly bool _outputExistedAtStart;
     private readonly HashSet<string> _existingAtStart;
     private readonly IReadOnlyList<string> _directories;
     private readonly IReadOnlyList<TemporaryNamePattern> _patterns;
@@ -25,6 +26,7 @@ public sealed class FFmpegTemporaryFileCleanupScope
     {
         _startedUtc = DateTime.UtcNow;
         _protectedOutputPath = Path.GetFullPath(protectedOutputPath);
+        _outputExistedAtStart = File.Exists(_protectedOutputPath);
         _directories = directories;
         _patterns = patterns;
         _existingAtStart = EnumerateTemporaryFiles(directories)
@@ -172,6 +174,40 @@ public sealed class FFmpegTemporaryFileCleanupScope
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 failures.Add($"{path}: {ex.Message}");
+            }
+        }
+
+        return new TemporaryFileCleanupResult(deleted, failures);
+    }
+
+    /// <summary>
+    /// Cleanup path used after an explicit cancellation. First delete only job-created temp
+    /// files inside the existing output-specific scope. Also remove a partial final output
+    /// only when this job created it; never delete an output that was present at job start.
+    /// </summary>
+    public TemporaryFileCleanupResult CleanupAfterCancellation()
+    {
+        var cleanup = CleanupCreatedFiles();
+        var deleted = cleanup.DeletedFiles.ToList();
+        var failures = cleanup.FailedFiles.ToList();
+
+        if (!_outputExistedAtStart && File.Exists(_protectedOutputPath))
+        {
+            try
+            {
+                using (new FileStream(_protectedOutputPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                {
+                }
+                File.Delete(_protectedOutputPath);
+                deleted.Add(_protectedOutputPath);
+            }
+            catch (FileNotFoundException)
+            {
+                // Already removed by FFmpeg.
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                failures.Add($"{_protectedOutputPath}: {ex.Message}");
             }
         }
 

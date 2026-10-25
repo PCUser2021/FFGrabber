@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using FFGrabber.Services;
@@ -15,12 +16,10 @@ public sealed class MediaInfoWindow : Window
     {
         IsReadOnly = true,
         AcceptsReturn = true,
-        TextWrapping = TextWrapping.NoWrap,
+        TextWrapping = TextWrapping.Wrap,
         FontFamily = new FontFamily("Consolas"),
         FontSize = 12,
         MinHeight = 320,
-        HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-        VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
     };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap };
     private readonly Button _inspect = new() { Content = "Inspect with MediaInfo", Classes = { "primary" } };

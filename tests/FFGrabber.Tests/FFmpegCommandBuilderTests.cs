@@ -184,8 +184,8 @@ public sealed class FFmpegCommandBuilderTests
             "EncodingForStreamingSites.txt", "StreamingGuide.txt", "ffserver.txt"
         ];
 
-        Assert.IsTrue(resources.Length >= 92,
-            "All 78 Dropbox source texts and the reconstructed profile payloads must be embedded.");
+        Assert.IsTrue(resources.Length >= 93,
+            "All 79 Dropbox source texts and the reconstructed profile payloads must be embedded.");
         foreach (var source in preservedReferences)
             Assert.IsTrue(resources.Contains(
                 "FFGrabber.source-guides.dropbox." + source,
@@ -199,8 +199,8 @@ public sealed class FFmpegCommandBuilderTests
         var repositoryRoot = FindRepositoryRootForGuideSources();
         var sourceDirectory = System.IO.Path.Combine(repositoryRoot, "docs", "source-guides", "dropbox");
         var sourceFiles = Directory.GetFiles(sourceDirectory, "*.txt", SearchOption.TopDirectoryOnly);
-        Assert.IsTrue(sourceFiles.Length >= 78,
-            "The complete set of 78 original Dropbox source texts must be tracked.");
+        Assert.IsTrue(sourceFiles.Length >= 79,
+            "The complete set of 79 original Dropbox source texts must be tracked.");
 
         var assembly = typeof(EncodingGuideProfiles).Assembly;
         foreach (var filePath in sourceFiles)

@@ -93,8 +93,18 @@ public static class MediaInfoService
     {
         var executable = ImportedPath;
         if (executable is null) return null;
-        var result = await FFmpegProcessRunner.RunAsync(executable, ["--Version"], cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        ProcessRunResult result;
+        try
+        {
+            result = await FFmpegProcessRunner.RunAsync(
+                executable, ["--Version"], cancellationToken: timeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return null; // Never block startup on a stale or hung MediaInfo executable.
+        }
         if (result.ExitCode != 0) return null;
         var text = string.Join(Environment.NewLine, result.StandardOutput, result.StandardError);
         var match = Regex.Match(text, @"(?i)MediaInfo(?:Lib)?[^0-9]{0,24}(\d{2,4}\.\d{1,2}(?:\.\d+)?)");

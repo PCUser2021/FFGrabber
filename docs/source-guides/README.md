@@ -86,6 +86,12 @@ The following **79 original `.txt` files** are preserved in the connected Dropbo
 - `WaveformMonitor.txt`
 - `Xfade.txt`
 
+## Exact-source audit — 2026-10-25
+
+- The Dropbox root inventory was fully enumerated and contained **79 `.txt` files**; the repository manifest contains the same 79 filenames, with no missing or additional source files.
+- Each source file was fetched again and compared against `docs/source-guides/dropbox/<original filename>` in this repository. **All 79 of 79 files matched character-for-character**, including `cli.rst.txt` (128,933 characters). No source `.txt` file required modification.
+- `src/FFGrabber/FFGrabber.csproj` embeds every file in `docs/source-guides/dropbox/*.txt`. The Source Guide Library exposes the embedded documents for search and displays their full source text. The automated regression test `EmbeddedSourceGuideText_MatchesEveryTrackedTxtFileExactly` verifies that embedded text matches each tracked `.txt` file exactly.
+
 ## Reconstructed profile payloads
 
 The separate lower-case companion profile `.txt` files already present in this folder remain clearly identified as reconstructed summaries. They provide editable one-click settings but are not substitutes for the full source-guide texts listed above.

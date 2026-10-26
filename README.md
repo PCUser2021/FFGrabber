@@ -37,7 +37,7 @@ Use a build that matches your CPU architecture. Until a valid import exists, enc
 ## Features
 
 - Standard controls for transcode, stream-copy/remux, audio extraction and video-only output.
-- **53 encoding/audio/streaming profiles**: the original 35 profiles, 14 supplied/reconstructed profile payloads, and three full-guide-based streaming workflows (file-to-RTMP, live-input-to-RTMP, and RTMP plus local recording through the tee muxer). The 14 short payloads remain identified as reconstructions, not original historical full encoder guides.
+- **53 encoding/audio/streaming profiles**: the original 36 guide-derived profiles, 14 supplied/reconstructed profile payloads, and three full-guide-based streaming workflows (file-to-RTMP, live-input-to-RTMP, and RTMP plus local recording through the tee muxer). The 14 short payloads remain identified as reconstructions, not original historical full encoder guides.
 - **H.265 / HEVC lossless profile** using `-x265-params lossless=1` exactly as documented in `Encode_H.265.txt`; it stream-copies audio to avoid a surprise lossy re-encode.
 - Dedicated guide-specific controls for minimum/maximum video bitrate, VBV buffer, GOP/keyframe interval, encoder tune/profile, video Qscale/QP, audio Qscale/VBR/profile/cutoff, sample rate/channels, and HDR color primaries/transfer/colorspace.
 - Searchable **Source Guide Library** that embeds and displays the complete preserved text of every tracked `.txt` guide, searches across full document bodies, and applies associated encoder/audio/capture profiles back to the main workspace.

@@ -11,20 +11,13 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   test:
     name: Unit tests (mock FFmpeg and argument planning)
     runs-on: windows-latest
-    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
 
       - name: Install .NET 10 SDK
         uses: actions/setup-dotnet@v6.0.0
@@ -41,7 +34,6 @@ jobs:
     needs: test
     name: Build and verify ${{ matrix.arch }} installer
     runs-on: windows-latest
-    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -55,19 +47,14 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
 
       - name: Determine version
         id: app-version
         shell: pwsh
-        env:
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
         run: |
           $version = '0.5.9'
-          if ($env:REF_TYPE -eq 'tag' -and $env:REF_NAME.StartsWith('v')) {
-            $version = $env:REF_NAME.Substring(1)
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}'.StartsWith('v')) {
+            $version = '${{ github.ref_name }}'.Substring(1)
           }
           if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') { throw "Invalid version: $version" }
           $fileVersion = (($version -split '[-+]')[0]) + '.0'
@@ -178,20 +165,16 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, '[release v0.5.9]'))
     needs: build
     runs-on: windows-latest
-    timeout-minutes: 20
     permissions:
       contents: write
     steps:
       - name: Determine release version
         id: release-version
         shell: pwsh
-        env:
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
         run: |
           $version = '0.5.9'
-          if ($env:REF_TYPE -eq 'tag' -and $env:REF_NAME.StartsWith('v')) {
-            $version = $env:REF_NAME.Substring(1)
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}'.StartsWith('v')) {
+            $version = '${{ github.ref_name }}'.Substring(1)
           }
           if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') { throw "Invalid release version: $version" }
           "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -201,9 +184,8 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ steps.release-version.outputs.value }}
         run: |
-          $tagName = "v$env:RELEASE_VERSION"
+          $tagName = 'v${{ steps.release-version.outputs.value }}'
           $uri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$tagName"
           $headers = @{
             Authorization = "Bearer $env:GH_TOKEN"

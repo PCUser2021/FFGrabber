@@ -8,10 +8,6 @@ namespace FFGrabber.Services;
 /// </summary>
 public sealed class SessionLog : IDisposable
 {
-    // Keep the log folder bounded: old sessions are pruned when a new session starts.
-    private const int MaxRetainedLogFiles = 60;
-    private static readonly TimeSpan MaxLogAge = TimeSpan.FromDays(60);
-
     private readonly object _gate = new();
     private readonly StreamWriter _writer;
     private bool _disposed;
@@ -25,7 +21,6 @@ public sealed class SessionLog : IDisposable
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "FFGrabber", "Logs");
         Directory.CreateDirectory(LogDirectory);
-        PruneOldLogs(LogDirectory);
         CurrentLogPath = Path.Combine(LogDirectory, $"FFGrabber-{DateTime.Now:yyyyMMdd-HHmmss-fff}.log");
         _writer = new StreamWriter(
             new FileStream(CurrentLogPath, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite),
@@ -42,8 +37,7 @@ public sealed class SessionLog : IDisposable
         lock (_gate)
         {
             if (_disposed) return;
-            // Credentials in URLs, headers and options must never reach the on-disk log.
-            _writer.WriteLine($"{DateTimeOffset.Now:O}\t{SensitiveTextRedactor.Redact(message)}");
+            _writer.WriteLine($"{DateTimeOffset.Now:O}\t{message}");
         }
     }
 
@@ -73,31 +67,6 @@ public sealed class SessionLog : IDisposable
             _writer.Flush();
             using var file = new FileStream(CurrentLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             file.CopyTo(destination);
-        }
-    }
-
-    private static void PruneOldLogs(string directory)
-    {
-        try
-        {
-            var cutoff = DateTime.UtcNow - MaxLogAge;
-            var files = new DirectoryInfo(directory)
-                .EnumerateFiles("FFGrabber-*.log", SearchOption.TopDirectoryOnly)
-                .Where(file => (file.Attributes & FileAttributes.ReparsePoint) == 0)
-                .OrderByDescending(file => file.LastWriteTimeUtc)
-                .ToList();
-
-            for (var i = 0; i < files.Count; i++)
-            {
-                if (i < MaxRetainedLogFiles && files[i].LastWriteTimeUtc >= cutoff)
-                    continue;
-                try { files[i].Delete(); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Log retention is housekeeping only and must never prevent the application from starting.
         }
     }
 

@@ -93,8 +93,7 @@ public static class FFmpegLogArchiveService
             "Contents include the complete current-session log, available previous FFGrabber session logs, " +
             "current encoding settings, queue snapshot, system/tool paths, and reports returned by the installed " +
             "FFmpeg/ffprobe/ffplay executables. Log data may contain local file paths, command-line options, " +
-            "media metadata, and process output. URL passwords, tokens, stream keys and authorization headers are masked on a best-effort basis; " +
-            "review the archive before sharing it. Media file contents are not included.\r\n"));
+            "media metadata, and process output. Review the archive before sharing it. Media file contents are not included.\r\n"));
 
         if (!string.IsNullOrWhiteSpace(ffmpeg))
         {
@@ -152,7 +151,7 @@ public static class FFmpegLogArchiveService
                 var entry = archive.CreateEntry(report.Name, CompressionLevel.Fastest);
                 using var stream = entry.Open();
                 using var writer = new StreamWriter(stream, new UTF8Encoding(false));
-                writer.Write(SensitiveTextRedactor.Redact(report.Content));
+                writer.Write(report.Content);
             }
         }, cancellationToken).ConfigureAwait(false);
 

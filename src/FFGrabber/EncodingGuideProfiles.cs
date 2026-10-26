@@ -1,9 +1,10 @@
 namespace FFGrabber;
 
 /// <summary>
-/// Editable starting profiles distilled from the user's 14 FFmpeg encoding-guide text files.
-/// Every profile maps to ordinary GUI fields and argument groups; it is a starting point,
-/// not a guarantee that a given imported FFmpeg build includes the required encoder.
+/// Curated, editable one-click recipes mapped from applicable FFmpeg source-guide examples.
+/// The complete source text is separately preserved in the Source Guide Library; explanatory
+/// and historical documents do not automatically become one-click profiles. Every profile
+/// is a starting point, not a guarantee that the imported FFmpeg build includes its encoder.
 /// </summary>
 public sealed record EncodingGuideProfile
 {

@@ -17,10 +17,12 @@ jobs:
   backup:
     name: Create verified source and Git-history backups
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out complete repository history
         uses: actions/checkout@v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
           fetch-tags: true
 

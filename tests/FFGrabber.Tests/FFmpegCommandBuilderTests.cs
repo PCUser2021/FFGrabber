@@ -11,9 +11,9 @@ public sealed class FFmpegCommandBuilderTests
     [TestMethod]
     public void H265LosslessGuideProfile_IsSelectableAndBuildsLosslessX265Arguments()
     {
-        var profile = EncodingGuideProfiles.Find("H.265 / HEVC — lossless");
-        Assert.IsNotNull(profile, "The explicit lossless mode in Encode_H.265.txt must have a selectable profile.");
-        Assert.AreEqual("Encode_H.265.txt", profile!.SourceFile);
+        var profile = EncodingGuideProfiles.Find("H.265 / HEVC — lossless")
+            ?? throw new AssertFailedException("The explicit lossless mode in Encode_H.265.txt must have a selectable profile.");
+        Assert.AreEqual("Encode_H.265.txt", profile.SourceFile);
         Assert.AreEqual("libx265", profile.VideoCodec);
         Assert.AreEqual("Encoder-specific options", profile.RateControl);
         Assert.AreEqual("copy", profile.AudioCodec);

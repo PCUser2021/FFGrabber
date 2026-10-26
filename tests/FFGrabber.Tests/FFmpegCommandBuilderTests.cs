@@ -9,6 +9,61 @@ namespace FFGrabber.Tests;
 public sealed class FFmpegCommandBuilderTests
 {
     [TestMethod]
+    public void H265LosslessGuideProfile_IsSelectableAndBuildsLosslessX265Arguments()
+    {
+        var profile = EncodingGuideProfiles.Find("H.265 / HEVC — lossless")
+            ?? throw new AssertFailedException("The explicit lossless mode in Encode_H.265.txt must have a selectable profile.");
+        Assert.AreEqual("Encode_H.265.txt", profile.SourceFile);
+        Assert.AreEqual("libx265", profile.VideoCodec);
+        Assert.AreEqual("Encoder-specific options", profile.RateControl);
+        Assert.AreEqual("copy", profile.AudioCodec);
+        Assert.AreEqual("-x265-params lossless=1", profile.VideoEncoderOptions);
+
+        using var directory = new TemporaryDirectory();
+        var settings = new EncodingSettings(
+            InputPath: "input.mkv",
+            OutputPath: System.IO.Path.Combine(directory.Path, "lossless.mkv"),
+            Mode: profile.Mode,
+            VideoCodec: profile.VideoCodec,
+            Preset: profile.Preset,
+            Crf: 23,
+            AudioCodec: profile.AudioCodec,
+            AudioBitrate: profile.AudioBitrate,
+            Overwrite: true,
+            RateControl: profile.RateControl,
+            VideoBitrate: profile.VideoBitrate,
+            OutputSize: profile.OutputSize,
+            FrameRate: profile.FrameRate,
+            PixelFormat: profile.PixelFormat,
+            PreserveMetadata: profile.PreserveMetadata,
+            FastStart: profile.FastStart,
+            GlobalOptions: profile.GlobalOptions,
+            InputOptions: profile.InputOptions,
+            StreamMappingOptions: profile.MappingOptions,
+            VideoEncoderOptions: profile.VideoEncoderOptions,
+            AudioEncoderOptions: profile.AudioEncoderOptions,
+            FilterOptions: profile.FilterOptions,
+            MuxerOptions: profile.MuxerOptions,
+            OutputOptions: profile.OutputOptions,
+            InputFormat: profile.InputFormat,
+            OutputFormat: profile.OutputFormat,
+            AdditionalInputs: profile.AdditionalInputs,
+            TwoPass: profile.TwoPass,
+            PassLogFile: profile.PassLogFile);
+
+        var args = FFmpegCommandBuilder.Build(settings);
+
+        Assert.AreEqual("lossless=1", GetOptionValue(args, "-x265-params"));
+        Assert.AreEqual("libx265", GetOptionValue(args, "-c:v"));
+        Assert.AreEqual("copy", GetOptionValue(args, "-c:a"));
+        Assert.IsFalse(args.Contains("-crf", StringComparer.OrdinalIgnoreCase),
+            "The source guide explicitly says CRF 0 is not required for x265 lossless mode.");
+        Assert.IsFalse(args.Contains("-b:v", StringComparer.OrdinalIgnoreCase),
+            "Lossless mode must not accidentally force a target bitrate.");
+        Assert.AreEqual(1, args.Count(option => string.Equals(option, "-x265-params", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
     public void Build_UsesBalancedThreadBudgetAndHonorsManualOverride()
     {
         using var directory = new TemporaryDirectory();
@@ -167,7 +222,7 @@ public sealed class FFmpegCommandBuilderTests
             ?? throw new AssertFailedException("Tee-muxer profile missing.");
         Assert.AreEqual("tee", teeProfile.OutputFormat);
         Assert.IsTrue(teeProfile.OutputOptions.Contains("+global_header", StringComparison.OrdinalIgnoreCase));
-        Assert.AreEqual(52, EncodingGuideProfiles.All.Count);
+        Assert.AreEqual(53, EncodingGuideProfiles.All.Count);
     }
 
     [TestMethod]

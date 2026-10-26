@@ -1,9 +1,10 @@
 namespace FFGrabber;
 
 /// <summary>
-/// Editable starting profiles distilled from the user's 14 FFmpeg encoding-guide text files.
-/// Every profile maps to ordinary GUI fields and argument groups; it is a starting point,
-/// not a guarantee that a given imported FFmpeg build includes the required encoder.
+/// Curated, editable one-click recipes mapped from applicable FFmpeg source-guide examples.
+/// The complete source text is separately preserved in the Source Guide Library; explanatory
+/// and historical documents do not automatically become one-click profiles. Every profile
+/// is a starting point, not a guarantee that the imported FFmpeg build includes its encoder.
 /// </summary>
 public sealed record EncodingGuideProfile
 {
@@ -137,6 +138,15 @@ public static class EncodingGuideProfiles
             VideoCodec = "libx265", AudioCodec = "aac", Preset = "fast",
             RateControl = "CRF quality", Crf = "26", AudioBitrate = "128k",
             FastStart = true
+        },
+        new()
+        {
+            Name = "H.265 / HEVC — lossless",
+            SourceFile = "Encode_H.265.txt",
+            Description = "True lossless libx265 video using the H.265 guide's -x265-params lossless=1. CRF 0 is not required. Audio is stream-copied to avoid adding a lossy audio encode; output can be very large. Requires an imported FFmpeg build containing libx265.",
+            VideoCodec = "libx265", AudioCodec = "copy", Preset = "medium",
+            RateControl = "Encoder-specific options", PixelFormat = "auto",
+            VideoEncoderOptions = "-x265-params lossless=1", FastStart = true
         },
         new()
         {

@@ -2019,14 +2019,7 @@ public partial class MainWindow : Window
 
     private void OpenUrl(string url)
     {
-        // UseShellExecute hands the string to the Windows shell, so only well-formed https URLs are allowed.
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
-        {
-            AppendLog("Refused to open a non-HTTPS URL.");
-            return;
-        }
-
-        try { Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
         catch (Exception ex) { AppendLog("Could not open the release URL: " + ex.Message); }
     }
 

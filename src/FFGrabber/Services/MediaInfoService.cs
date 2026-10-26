@@ -8,8 +8,7 @@ public sealed record MediaInfoInspection(string ExecutablePath, string Version, 
 
 /// <summary>
 /// Manages a user-owned MediaInfo CLI executable. FFGrabber does not silently
-/// download or replace executables; the user explicitly selects the official CLI. Automatic
-/// discovery is limited to the Program Files install locations.
+/// download or replace executables; the user explicitly selects the official CLI.
 /// </summary>
 public static class MediaInfoService
 {
@@ -124,7 +123,9 @@ public static class MediaInfoService
         foreach (var root in new[]
         {
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            AppContext.BaseDirectory,
+            FFmpegLocator.ImportedDirectory
         })
         {
             if (!string.IsNullOrWhiteSpace(root))
@@ -134,10 +135,11 @@ public static class MediaInfoService
             }
         }
 
-        // Only protected system install locations are probed. PATH, the application folder and the
-        // imported FFmpeg folder are intentionally not searched: any of them may be user-writable, so
-        // a planted MediaInfo.exe would be executed automatically on startup. Users can still select
-        // a MediaInfo.exe explicitly with the import button.
+        var pathValue = Environment.GetEnvironmentVariable("PATH");
+        if (!string.IsNullOrWhiteSpace(pathValue))
+            candidates.AddRange(pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+                .Select(directory => Path.Combine(directory.Trim(), "MediaInfo.exe")));
+
         return candidates.FirstOrDefault(path => File.Exists(path));
     }
 

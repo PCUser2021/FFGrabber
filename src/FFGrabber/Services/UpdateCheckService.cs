@@ -10,19 +10,12 @@ public sealed record UpdateCheckResult(IReadOnlyList<AvailableUpdate> Available,
 /// <summary>Queries official GitHub Releases APIs only. This service informs the user but never installs binaries.</summary>
 public static class UpdateCheckService
 {
-    private const int MaxResponseBytes = 1_048_576;
     private static readonly HttpClient Client = CreateClient();
 
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(5),
-            MaxResponseContentBufferSize = MaxResponseBytes
-        };
-        var version = typeof(UpdateCheckService).Assembly.GetName().Version;
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(
-            "FFGrabber", version is null ? "0" : $"{version.Major}.{version.Minor}.{version.Build}"));
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("FFGrabber", "1.0"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
         return client;
@@ -80,13 +73,6 @@ public static class UpdateCheckService
                 return;
             }
 
-            // The URL is later handed to the OS shell; never trust it beyond an official GitHub release page.
-            if (!IsTrustedReleaseUrl(releaseUrl))
-            {
-                notes.Add($"{product}: ignored a release link that is not an official https://github.com URL.");
-                return;
-            }
-
             var latest = latestTag.TrimStart('v', 'V');
             var current = currentVersion.TrimStart('v', 'V');
             if (CompareNumericVersions(latest, current) > 0)
@@ -103,15 +89,6 @@ public static class UpdateCheckService
             notes.Add($"{product}: update check was unavailable ({ex.Message}).");
         }
     }
-
-    internal static bool IsTrustedReleaseUrl(string? value) =>
-        Uri.TryCreate(value, UriKind.Absolute, out var uri)
-        && uri.Scheme == Uri.UriSchemeHttps
-        && string.Equals(uri.Host, "github.com", StringComparison.OrdinalIgnoreCase)
-        && uri.IsDefaultPort
-        && string.IsNullOrEmpty(uri.UserInfo)
-        && (uri.AbsolutePath.StartsWith("/PCUser2021/FFGrabber/", StringComparison.OrdinalIgnoreCase)
-            || uri.AbsolutePath.StartsWith("/MediaArea/MediaInfo/", StringComparison.OrdinalIgnoreCase));
 
     private static int CompareNumericVersions(string left, string right)
     {

@@ -2,16 +2,16 @@
 
 **FFGrabber** is a Windows graphical frontend for FFmpeg. It is a pure GUI: it ships **no FFmpeg binaries at all**. You import your own `ffmpeg.exe`, `ffprobe.exe` and `ffplay.exe`, and FFGrabber runs those executables locally as separate processes.
 
-> **Status: active preview (0.5.9).** Windows x64 and ARM64 GUI with persistent System/Light/Dark themes, MediaInfo JSON inspection, automatic release checks, a responsive ffplay launch size, Explorer media actions, a guided CPU thread budget, live encoding progress and process/system telemetry, and process-tree cancellation with scoped temporary/partial-output cleanup.
+> **Status: active preview (0.5.10).** Windows x64 and ARM64 GUI with persistent System/Light/Dark themes, MediaInfo JSON inspection, automatic release checks, a responsive ffplay launch size, Explorer media actions, a guided CPU thread budget, live encoding progress and process/system telemetry, and process-tree cancellation with scoped temporary/partial-output cleanup.
 
 ## Downloads
 
 **Official download page:** [GitHub Releases](https://github.com/PCUser2021/FFGrabber/releases/latest)
 
-- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.9.exe`
-- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.9.exe`
+- **Windows x64 (Intel/AMD):** `FFGrabber-Setup-x64-v0.5.10.exe`
+- **Windows ARM64:** `FFGrabber-Setup-arm64-v0.5.10.exe`
 - **Checksums:** `SHA256SUMS.txt` and a `.sha256` file next to each installer
-- **Release notes:** [FFGrabber v0.5.9](docs/RELEASE-NOTES-0.5.9.md)
+- **Release notes:** [FFGrabber v0.5.10](docs/RELEASE-NOTES-0.5.10.md)
 
 ## MediaInfo integration and automatic update checks
 
@@ -37,7 +37,8 @@ Use a build that matches your CPU architecture. Until a valid import exists, enc
 ## Features
 
 - Standard controls for transcode, stream-copy/remux, audio extraction and video-only output.
-- **52 encoding/audio/streaming profiles**: the original 35 profiles, 14 supplied/reconstructed profile payloads, and three full-guide-based streaming workflows (file-to-RTMP, live-input-to-RTMP, and RTMP plus local recording through the tee muxer). The 14 short payloads remain identified as reconstructions, not original historical full encoder guides.
+- **53 encoding/audio/streaming profiles**: the original 35 profiles, 14 supplied/reconstructed profile payloads, and three full-guide-based streaming workflows (file-to-RTMP, live-input-to-RTMP, and RTMP plus local recording through the tee muxer). The 14 short payloads remain identified as reconstructions, not original historical full encoder guides.
+- **H.265 / HEVC lossless profile** using `-x265-params lossless=1` exactly as documented in `Encode_H.265.txt`; it stream-copies audio to avoid a surprise lossy re-encode.
 - Dedicated guide-specific controls for minimum/maximum video bitrate, VBV buffer, GOP/keyframe interval, encoder tune/profile, video Qscale/QP, audio Qscale/VBR/profile/cutoff, sample rate/channels, and HDR color primaries/transfer/colorspace.
 - Searchable **Source Guide Library** that embeds and displays the complete preserved text of every tracked `.txt` guide, searches across full document bodies, and applies associated encoder/audio/capture profiles back to the main workspace.
 - **Automated two-pass encoding** for libx264, native MPEG-4, libvpx/VP9, libaom-av1 and FFV1 profiles. Pass 1 uses the null muxer, pass 2 writes the requested output; managed pass logs are removed after the job. Encoder-private workflows such as x265 pass parameters remain editable in advanced options.
@@ -68,7 +69,7 @@ Prerequisites: .NET 10 SDK and PowerShell 7. Inno Setup 7.1.0+ only for local in
 ```powershell
 ./scripts/Build.ps1 -Architecture x64
 ./scripts/Build.ps1 -Architecture arm64
-./scripts/Build.ps1 -Architecture x64 -Version 0.5.9 -Installer
+./scripts/Build.ps1 -Architecture x64 -Version 0.5.10 -Installer
 ```
 
 ## GitHub Actions

@@ -140,6 +140,15 @@ public static class EncodingGuideProfiles
         },
         new()
         {
+            Name = "H.265 / HEVC — lossless",
+            SourceFile = "Encode_H.265.txt",
+            Description = "True lossless libx265 video using the H.265 guide's -x265-params lossless=1. CRF 0 is not required. Audio is stream-copied to avoid adding a lossy audio encode; output can be very large. Requires an imported FFmpeg build containing libx265.",
+            VideoCodec = "libx265", AudioCodec = "copy", Preset = "medium",
+            RateControl = "Encoder-specific options", PixelFormat = "auto",
+            VideoEncoderOptions = "-x265-params lossless=1", FastStart = true
+        },
+        new()
+        {
             Name = "H.265 / HEVC — Apple hvc1 compatibility",
             SourceFile = "Encode_H.265.txt",
             Description = "H.265 quality encode plus the hvc1 sample-entry tag recommended by the guide for Apple / Final Cut compatibility.",
